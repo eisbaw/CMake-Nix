@@ -5,6 +5,7 @@
 #include <cm/memory>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
@@ -17,6 +18,8 @@
 cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   : cmGlobalCommonGenerator(cm)
 {
+  // Set the make program file
+  this->FindMakeProgramFile = "CMakeNixFindMake.cmake";
 }
 
 std::unique_ptr<cmLocalGenerator> cmGlobalNixGenerator::CreateLocalGenerator(
@@ -40,6 +43,32 @@ void cmGlobalNixGenerator::Generate()
   
   // Generate our Nix output
   this->WriteNixFile();
+}
+
+std::vector<cmGlobalGenerator::GeneratedMakeCommand>
+cmGlobalNixGenerator::GenerateBuildCommand(
+  std::string const& makeProgram, std::string const& /*projectName*/,
+  std::string const& /*projectDir*/,
+  std::vector<std::string> const& targetNames, std::string const& /*config*/,
+  int /*jobs*/, bool /*verbose*/, cmBuildOptions const& /*buildOptions*/,
+  std::vector<std::string> const& /*makeOptions*/)
+{
+  GeneratedMakeCommand makeCommand;
+  
+  // For Nix generator, we use nix-build as the build program
+  makeCommand.Add(this->SelectMakeProgram(makeProgram, "nix-build"));
+  
+  // Add default.nix file
+  makeCommand.Add("default.nix");
+  
+  // Add target names as attribute paths  
+  for (auto const& tname : targetNames) {
+    if (!tname.empty()) {
+      makeCommand.Add("-A", tname);
+    }
+  }
+  
+  return { std::move(makeCommand) };
 }
 
 void cmGlobalNixGenerator::WriteNixFile()
@@ -69,7 +98,7 @@ void cmGlobalNixGenerator::WriteNixFile()
   
   // Write final target outputs
   for (auto const& lg : this->LocalGenerators) {
-    auto targets = lg->GetGeneratorTargets();
+    auto const& targets = lg->GetGeneratorTargets();
     for (auto const& target : targets) {
       if (target->GetType() == cmStateEnums::EXECUTABLE ||
           target->GetType() == cmStateEnums::STATIC_LIBRARY ||
@@ -110,7 +139,7 @@ std::string cmGlobalNixGenerator::GetDerivationName(
 }
 
 std::vector<std::string> cmGlobalNixGenerator::GetSourceDependencies(
-  std::string const& sourceFile) const
+  std::string const& /*sourceFile*/) const
 {
   // TODO: Implement header dependency tracking
   // This will use CMake's existing dependency analysis

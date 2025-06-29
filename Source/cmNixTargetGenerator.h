@@ -32,6 +32,16 @@ public:
 
   std::string GetTargetName() const;
 
+  /// Get header dependencies for a source file
+  std::vector<std::string> GetSourceDependencies(cmSourceFile const* source) const;
+
+  // Pure virtual methods from cmCommonTargetGenerator
+  void AddIncludeFlags(std::string& flags, std::string const& lang,
+                       std::string const& config) override;
+  std::string GetClangTidyReplacementsFilePath(
+    std::string const& directory, cmSourceFile const& source,
+    std::string const& config) const override;
+
 protected:
   cmGeneratorTarget* GetGeneratorTarget() const
   {
@@ -56,9 +66,6 @@ protected:
 
   /// Get the object file name for a source file
   std::string GetObjectFileName(cmSourceFile const* source) const;
-
-  /// Get header dependencies for a source file
-  std::vector<std::string> GetSourceDependencies(cmSourceFile const* source) const;
 
 private:
   cmLocalNixGenerator* LocalGenerator;

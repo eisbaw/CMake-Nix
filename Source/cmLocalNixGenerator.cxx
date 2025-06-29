@@ -34,15 +34,16 @@ void cmLocalNixGenerator::GenerateTargetManifest()
 std::unique_ptr<cmRulePlaceholderExpander>
 cmLocalNixGenerator::CreateRulePlaceholderExpander(cmBuildStep buildStep) const
 {
+  std::map<std::string, std::string> compilers;
+  std::map<std::string, std::string> variableMappings;
+  
   return std::unique_ptr<cmRulePlaceholderExpander>(
     new cmRulePlaceholderExpander(
-      this->GetCompilerLauncher(this->GetMakefile(), "C", buildStep),
-      this->GetCompilerLauncher(this->GetMakefile(), "CXX", buildStep),
-      this->GetCompilerLauncher(this->GetMakefile(), "CUDA", buildStep),
-      this->GetCompilerLauncher(this->GetMakefile(), "Fortran", buildStep),
-      this->GetCompilerLauncher(this->GetMakefile(), "HIP", buildStep),
-      this->GetCompilerLauncher(this->GetMakefile(), "ISPC", buildStep),
-      this->GetCompilerLauncher(this->GetMakefile(), "Swift", buildStep)));
+      buildStep,
+      compilers,
+      variableMappings,
+      "", // compiler sysroot
+      "")); // linker sysroot
 }
 
 cmGlobalNixGenerator const* cmLocalNixGenerator::GetGlobalNixGenerator() const
@@ -76,13 +77,13 @@ void cmLocalNixGenerator::WriteTargetDerivations(cmGeneratorTarget* target)
   this->WriteLinkDerivation(target);
 }
 
-void cmLocalNixGenerator::WriteCompileDerivations(cmGeneratorTarget* target)
+void cmLocalNixGenerator::WriteCompileDerivations(cmGeneratorTarget* /*target*/)
 {
   // TODO: Implement per-source-file compilation derivations
   // This is Phase 1 core functionality
 }
 
-void cmLocalNixGenerator::WriteLinkDerivation(cmGeneratorTarget* target)
+void cmLocalNixGenerator::WriteLinkDerivation(cmGeneratorTarget* /*target*/)
 {
   // TODO: Implement linking derivation generation
   // This is Phase 1 core functionality

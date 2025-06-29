@@ -31,7 +31,7 @@ public:
 
   void Generate() override;
 
-  void GenerateTargetManifest() override;
+  void GenerateTargetManifest();
 
   std::unique_ptr<cmRulePlaceholderExpander> CreateRulePlaceholderExpander(
     cmBuildStep buildStep = cmBuildStep::Compile) const override;

@@ -4,6 +4,7 @@
 
 #include <cm/memory>
 #include <sstream>
+#include <algorithm>
 
 #include "cmGeneratorTarget.h"
 #include "cmGlobalNixGenerator.h"
@@ -92,9 +93,32 @@ std::string cmNixTargetGenerator::GetObjectFileName(
 }
 
 std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
-  cmSourceFile const* source) const
+  cmSourceFile const* /*source*/) const
 {
   // TODO: Implement header dependency tracking using CMake's dependency analysis
   // This is Phase 1 core functionality
   return {};
+}
+
+void cmNixTargetGenerator::AddIncludeFlags(std::string& flags, 
+                                          std::string const& lang,
+                                          std::string const& config)
+{
+  // TODO: Implement include flags for Nix derivations
+  // This is Phase 1 core functionality
+  (void)flags;
+  (void)lang;
+  (void)config;
+}
+
+std::string cmNixTargetGenerator::GetClangTidyReplacementsFilePath(
+  std::string const& directory, cmSourceFile const& source,
+  std::string const& config) const
+{
+  // TODO: Implement clang-tidy replacements file path for Nix
+  // This is Phase 1 core functionality
+  (void)directory;
+  (void)source;
+  (void)config;
+  return "";
 } 
