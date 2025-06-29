@@ -781,6 +781,14 @@ add_library(
   cmNinjaLinkLineDeviceComputer.cxx
   cmNinjaLinkLineDeviceComputer.h
 
+  # Nix support
+  cmGlobalNixGenerator.cxx
+  cmGlobalNixGenerator.h
+  cmLocalNixGenerator.cxx
+  cmLocalNixGenerator.h
+  cmNixTargetGenerator.cxx
+  cmNixTargetGenerator.h
+
   cm_get_date.h
   cm_get_date.c
   cm_utf8.h
