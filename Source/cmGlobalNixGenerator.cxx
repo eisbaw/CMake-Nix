@@ -182,12 +182,46 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   std::string derivName = this->GetDerivationName(target->GetName(), sourceFile);
   std::string objectName = cmSystemTools::GetFilenameWithoutLastExtension(
     cmSystemTools::GetFilenameName(sourceFile)) + ".o";
+  std::string lang = source->GetLanguage();
+  
+  // Get the configuration (Debug, Release, etc.)
+  std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+  if (config.empty()) {
+    config = "Release"; // Default configuration
+  }
+  
+  // Get the local generator for this target
+  cmLocalGenerator* lg = target->GetLocalGenerator();
+  
+  // Get configuration-specific compile flags
+  std::string compileFlags;
+  lg->GetTargetCompileFlags(target, config, lang, compileFlags);
+  
+  // Get configuration-specific preprocessor definitions
+  std::set<std::string> defines;
+  lg->GetTargetDefines(target, config, lang, defines);
+  std::string defineFlags;
+  for (const std::string& define : defines) {
+    if (!defineFlags.empty()) defineFlags += " ";
+    defineFlags += "-D" + define;
+  }
+  
+  // Get include directories from target with proper configuration
+  std::vector<BT<std::string>> includesBT = target->GetIncludeDirectories(lang, config);
+  std::string includeFlags;
+  for (const auto& inc : includesBT) {
+    if (!includeFlags.empty()) includeFlags += " ";
+    // Convert absolute include paths to relative for Nix build environment
+    std::string relativeInclude = cmSystemTools::RelativePath(
+      this->GetCMakeInstance()->GetHomeOutputDirectory(), inc.Value);
+    includeFlags += "-I" + (!relativeInclude.empty() ? relativeInclude : inc.Value);
+  }
   
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << objectName << "\";\n";
-  nixFileStream << "    src = ./.;\n";  // Use entire source tree
+  nixFileStream << "    src = ./.;\n";
   nixFileStream << "    buildInputs = [ gcc ];\n";
-  nixFileStream << "    dontFixup = true;\n";  // Skip ELF fixup for object files
+  nixFileStream << "    dontFixup = true;\n";
   
   // Add header dependencies - get them from target generator
   auto targetGen = cmNixTargetGenerator::New(target);
@@ -202,25 +236,18 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     nixFileStream << "    ];\n";
   }
   
-  // Get include directories from target
-  std::vector<BT<std::string>> includesBT = target->GetIncludeDirectories("", "");
-  std::vector<std::string> includes;
-  for (const auto& inc : includesBT) {
-    includes.push_back(inc.Value);
-  }
-  std::string includeFlags;
-  for (const std::string& include : includes) {
-    if (!includeFlags.empty()) includeFlags += " ";
-    // Convert absolute include paths to relative for Nix build environment
-    std::string relativeInclude = cmSystemTools::RelativePath(
-      this->GetCMakeInstance()->GetHomeOutputDirectory(), include);
-    includeFlags += "-I" + (!relativeInclude.empty() ? relativeInclude : include);
-  }
-  
+  nixFileStream << "    # Configuration: " << config << "\n";
   nixFileStream << "    buildPhase = ''\n";
   std::string relativePath = cmSystemTools::RelativePath(
     this->GetCMakeInstance()->GetHomeOutputDirectory(), sourceFile);
-  nixFileStream << "      gcc -c " << includeFlags << " \"" << relativePath 
+  
+  // Combine all flags: compile flags + defines + includes
+  std::string allFlags;
+  if (!compileFlags.empty()) allFlags += compileFlags + " ";
+  if (!defineFlags.empty()) allFlags += defineFlags + " ";
+  if (!includeFlags.empty()) allFlags += includeFlags;
+  
+  nixFileStream << "      gcc -c " << allFlags << " \"" << relativePath 
     << "\" -o \"$out\"\n";
   nixFileStream << "    '';\n";
   nixFileStream << "    installPhase = \"true\"; # No install needed for objects\n";
