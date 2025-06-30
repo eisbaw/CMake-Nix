@@ -77,22 +77,91 @@ Generate single `default.nix` file containing:
 - Top-level derivation exposing final targets
 
 ### Phase 2: Enhanced Features
-**Scope**: Multi-configuration, advanced dependency handling
+**Scope**: Header dependency tracking, include paths, multi-configuration support
 
-#### 2.1 Multi-Configuration Support
-- Generate per-configuration derivation sets
-- Support Debug/Release/etc. configurations
-- Implement `IsMultiConfig()` to return `true`
+#### 2.1 Header Dependency Tracking (Critical)
+**Status**: Required for complex projects - current limitation prevents building projects with multiple source files that include headers.
 
-#### 2.2 Compiler Auto-Detection
+- Implement header dependency scanning using CMake's `cmDepends` infrastructure
+- Add header files as derivation inputs to ensure proper rebuilds
+- Track transitive header dependencies across translation units
+- Handle system headers vs project headers appropriately
+
+**Implementation Details**:
+```cpp
+// In cmNixTargetGenerator::WriteObjectDerivation()
+std::vector<std::string> GetHeaderDependencies(cmSourceFile* source) {
+  // Use cmDepends to scan for #include directives
+  // Map to actual header file paths
+  // Return list of header dependencies for this source file
+}
+```
+
+**Example Enhanced Derivation**:
+```nix
+myproject_main_c_o = stdenv.mkDerivation {
+  name = "main.c.o";
+  src = ./.;
+  buildInputs = [ gcc ];
+  # Headers this translation unit depends on
+  inputs = [ ./src/calculator.h ./include/common.h ];
+  buildPhase = "gcc -c src/main.c -I./include -o $out";
+};
+```
+
+#### 2.2 Include Path Support (Critical)  
+**Status**: Required for multi-directory projects - current implementation cannot handle projects with headers in separate directories.
+
+- Pass target-specific include directories as `-I` flags to compilation derivations
+- Support both `target_include_directories()` and global include paths
+- Handle relative vs absolute include paths correctly
+- Support interface include directories for library targets
+
+**Implementation Details**:
+```cpp
+// Generate proper compiler flags with include paths
+std::string GetCompileFlags(cmGeneratorTarget* target, cmSourceFile* source) {
+  std::vector<std::string> includes = target->GetIncludeDirectories();
+  // Convert to -I flags for gcc/clang
+  // Add language-specific flags
+  // Handle configuration-specific includes
+}
+```
+
+#### 2.3 Build Configuration Support
+- Generate per-configuration derivation sets (Debug/Release/etc.)
+- Support configuration-specific compiler flags and optimization levels
+- Handle preprocessor definitions (`-D` flags)
+- Implement `IsMultiConfig()` to return `true` for multi-config generators
+
+**Configuration-Specific Derivations**:
+```nix
+# Debug configuration
+myproject_debug = stdenv.mkDerivation {
+  name = "myproject-debug";
+  buildInputs = [ gcc gdb ];
+  buildPhase = "gcc -g -O0 -DDEBUG $inputs -o $out";
+};
+
+# Release configuration  
+myproject_release = stdenv.mkDerivation {
+  name = "myproject-release";
+  buildInputs = [ gcc ];
+  buildPhase = "gcc -O2 -DNDEBUG $inputs -o $out";
+};
+```
+
+#### 2.4 Compiler Auto-Detection
 - Detect available compilers (gcc, clang, etc.)
-- Generate appropriate Nix buildInputs
+- Generate appropriate Nix buildInputs based on detected compiler
 - Handle cross-compilation scenarios
+- Support compiler-specific flags and features
 
-#### 2.3 Advanced Dependencies
-- External library dependencies
-- pkg-config integration
+#### 2.5 Advanced Dependencies
+- External library dependencies through Nix packages
+- pkg-config integration for system libraries
 - CMake find_package() mapping to Nix packages
+- Support for imported targets and interface libraries
 
 ### Phase 3: Production Features
 **Scope**: Full feature parity with other backends
@@ -183,9 +252,13 @@ Create test projects in `Tests/RunCMake/Nix/`:
 - [ ] All existing CMake tests pass with Nix backend disabled
 
 ### Phase 2 Success Criteria  
-- [ ] Multi-configuration support works
+- [ ] Header dependency tracking works - projects with multiple files and headers build correctly
+- [ ] Include path support enables building projects with headers in separate directories  
+- [ ] Multi-configuration support works (Debug/Release builds)
 - [ ] Compiler auto-detection functions correctly
-- [ ] External dependencies are handled properly
+- [ ] External dependencies are handled properly through Nix packages
+- [ ] Generated derivations include proper `-I` and `-D` flags
+- [ ] Complex projects (e.g., CMake itself) can be built with the Nix generator
 
 ### Phase 3 Success Criteria
 - [ ] Feature parity with Unix Makefiles generator
