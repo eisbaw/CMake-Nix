@@ -13,6 +13,7 @@
 #include "cmGlobalCommonGenerator.h"
 #include "cmGlobalGeneratorFactory.h"
 
+class cmGeneratedFileStream;
 class cmGeneratorTarget;
 class cmLocalGenerator;
 class cmMakefile;
@@ -78,8 +79,12 @@ public:
 protected:
   void WriteNixFile();
   void WriteDerivations();
-  void WritePerTranslationUnitDerivations();
-  void WriteLinkingDerivations();
+  void WritePerTranslationUnitDerivations(cmGeneratedFileStream& nixFileStream);
+  void WriteLinkingDerivations(cmGeneratedFileStream& nixFileStream);
+  void WriteObjectDerivation(cmGeneratedFileStream& nixFileStream, 
+                            cmGeneratorTarget* target, cmSourceFile* source);
+  void WriteLinkDerivation(cmGeneratedFileStream& nixFileStream, 
+                          cmGeneratorTarget* target);
 
 private:
   std::string GetDerivationName(std::string const& targetName, 
