@@ -28,10 +28,32 @@
 **Impact**: Header changes don't trigger rebuilds
 **Root Cause**: `cmDependsC` requires `cmLocalUnixMakefileGenerator3`, incompatible with `cmLocalNixGenerator`
 
-**Solution Options:**
-- **Option A**: Create adapter layer to bridge `cmLocalNixGenerator` → `cmLocalUnixMakefileGenerator3`
-- **Option B**: Implement Nix-specific dependency scanning using compiler `-M` flags
-- **Option C**: Use CMake's existing dependency cache/database
+**Solution Decision: Option B - Compiler-Based Dependency Scanning**
+After architectural analysis, Option B is the most robust and correct-by-design approach:
+- ✅ **Compiler authoritative**: Uses definitive source of dependency truth
+- ✅ **Industry standard**: Same approach as Ninja, Bazel, modern build systems  
+- ✅ **Architecturally sound**: Self-contained, no coupling to other generators
+- ✅ **Future-proof**: Independent of CMake generator internals
+- ✅ **Nix-aligned**: Explicit dependencies match Nix philosophy
+
+**Implementation Strategy:**
+1. **Phase 1**: Basic `-MM`/`-MD` support for GCC/Clang (covers 95% of use cases)
+2. **Phase 2**: Fallback to CMake's regex-based scanner for legacy compilers
+3. **Phase 3**: Manual dependency specification support for edge cases
+
+**Compiler Support Matrix:**
+- ✅ **GCC**: `-MM`, `-MD -MF` (primary target)
+- ✅ **Clang**: `-MM`, `-MD -MF` (primary target)  
+- ✅ **MSVC**: `/showIncludes` (Phase 2)
+- ✅ **Legacy/Custom**: Regex scanner fallback (Phase 2)
+- ✅ **Manual**: `OBJECT_DEPENDS` property support (Phase 3)
+
+**Fallback Strategy for Compilers Without Dependency Flags:**
+CMake provides several mechanisms for compilers that don't support automatic dependency generation:
+1. **Built-in regex scanner**: CMake's `cmDependsC::Scan()` for basic `#include` parsing
+2. **Manual specification**: `set_source_files_properties(file.c PROPERTIES OBJECT_DEPENDS "header1.h;header2.h")`
+3. **Directory-level**: `include_directories()` creates implicit dependencies
+4. **Target-level**: Interface dependencies via `target_link_libraries()` with header-only targets
 
 **Priority**: **HIGH** - Blocks correctness for real projects
 
@@ -60,8 +82,9 @@ target_link_libraries(myapp OpenGL::GL)
 
 #### Week 1: Critical Fixes
 1. **Header Dependency Tracking** 
-   - Research CMake dependency infrastructure further
-   - Implement Option B (compiler-based scanning) as most viable
+   - Implement compiler-based dependency scanning (Option B)
+   - Start with GCC/Clang `-MM` support (covers majority of users)
+   - Add fallback to CMake's regex scanner for legacy compilers
    - Test with projects that have complex header dependencies
 
 2. **Basic External Library Support**
