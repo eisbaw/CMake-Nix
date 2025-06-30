@@ -68,9 +68,36 @@ Source/cmConfigure.h
 Source/cmVersionConfig.h
 Source/CPack/
 
-# Test artifacts
+# Source build artifacts
+/Source/cmsys/
+/Source/kwsys/cmsysTest*
+
+# Test artifacts and directories
+/Testing/
+/Tests/CMakeLib/CMakeLibTests*
+/Tests/CMakeLib/PseudoMemcheck/
+/Tests/CMakeLib/runcompilecommands
+/Tests/CMakeLib/testAffinity
+/Tests/CMakeLib/testDebuggerNamedPipe
+/Tests/CMakeLib/testEncoding
+/Tests/CMakeLib/testUVProcessChain*
+/Tests/FindPackageModeMakefileTest/ConfMakefile
+/Tests/FindPackageModeMakefileTest/cmakeExecutable.mk
+/Tests/RunCMake/color_warning
+/Tests/RunCMake/detect_jobserver
+/Tests/RunCMake/exit_code
+/Tests/RunCMake/exit_crash
+/Tests/RunCMake/fake_build_command
+/Tests/RunCMake/print_stdin
+/Tests/RunCMake/pseudo_*
 test_nix_generator/
 result
+
+# Utilities build artifacts
+/Utilities/cmSTL.hxx
+/Utilities/KWIML/test/kwiml_test
+/Utilities/cmcurl/curltest
+/Utilities/cmlibarchive/cmake.tmp/
 
 # Logs
 *.log
