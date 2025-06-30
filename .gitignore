@@ -38,3 +38,48 @@
 
 # clang-tidy output
 /clang-tidy-fixes.patch
+# Build artifacts
+CMakeCache.txt
+CMakeFiles/
+CPackConfig.cmake
+CPackSourceConfig.cmake
+CTestCustom.cmake
+CTestTestfile.cmake
+DartConfiguration.tcl
+Makefile
+*.cmake
+*.qs
+*.tcl
+*.h
+!Source/*.h
+!Source/*.cxx
+
+# Bootstrap artifacts
+Bootstrap.cmk/
+
+# Build directories
+bin/
+lib/
+Auxiliary/
+Source/CMakeFiles/
+Source/Checks/
+Source/Makefile
+Source/cmConfigure.h
+Source/cmVersionConfig.h
+Source/CPack/
+
+# Test artifacts
+test_nix_generator/
+result
+
+# Logs
+*.log
+claude_history.log
+
+*.a
+*.so
+*.dylib
+*.dll
+*.lib
+*.exp
+*.def
