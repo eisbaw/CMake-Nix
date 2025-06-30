@@ -14,6 +14,8 @@
 #include "cmSourceFile.h"
 #include "cmSystemTools.h"
 #include "cmake.h"
+#include "cmNixTargetGenerator.h"
+#include "cmListFileCache.h"
 
 cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   : cmGlobalCommonGenerator(cm)
@@ -183,13 +185,43 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << objectName << "\";\n";
-  nixFileStream << "    src = ./" << cmSystemTools::RelativePath(
-    this->GetCMakeInstance()->GetHomeOutputDirectory(), sourceFile) << ";\n";
+  nixFileStream << "    src = ./.;\n";  // Use entire source tree
   nixFileStream << "    buildInputs = [ gcc ];\n";
-  nixFileStream << "    dontUnpack = true;\n";
   nixFileStream << "    dontFixup = true;\n";  // Skip ELF fixup for object files
+  
+  // Add header dependencies - get them from target generator
+  auto targetGen = cmNixTargetGenerator::New(target);
+  std::vector<std::string> headers = targetGen->GetSourceDependencies(source);
+  
+  if (!headers.empty()) {
+    nixFileStream << "    # Header dependencies\n";
+    nixFileStream << "    propagatedInputs = [\n";
+    for (const std::string& header : headers) {
+      nixFileStream << "      ./" << header << "\n";
+    }
+    nixFileStream << "    ];\n";
+  }
+  
+  // Get include directories from target
+  std::vector<BT<std::string>> includesBT = target->GetIncludeDirectories("", "");
+  std::vector<std::string> includes;
+  for (const auto& inc : includesBT) {
+    includes.push_back(inc.Value);
+  }
+  std::string includeFlags;
+  for (const std::string& include : includes) {
+    if (!includeFlags.empty()) includeFlags += " ";
+    // Convert absolute include paths to relative for Nix build environment
+    std::string relativeInclude = cmSystemTools::RelativePath(
+      this->GetCMakeInstance()->GetHomeOutputDirectory(), include);
+    includeFlags += "-I" + (!relativeInclude.empty() ? relativeInclude : include);
+  }
+  
   nixFileStream << "    buildPhase = ''\n";
-  nixFileStream << "      gcc -c \"$src\" -o \"$out\"\n";
+  std::string relativePath = cmSystemTools::RelativePath(
+    this->GetCMakeInstance()->GetHomeOutputDirectory(), sourceFile);
+  nixFileStream << "      gcc -c " << includeFlags << " \"" << relativePath 
+    << "\" -o \"$out\"\n";
   nixFileStream << "    '';\n";
   nixFileStream << "    installPhase = \"true\"; # No install needed for objects\n";
   nixFileStream << "  };\n\n";

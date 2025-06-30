@@ -5,6 +5,7 @@
 #include <cm/memory>
 #include <sstream>
 #include <algorithm>
+#include <set>
 
 #include "cmGeneratorTarget.h"
 #include "cmGlobalNixGenerator.h"
@@ -12,6 +13,9 @@
 #include "cmMakefile.h"
 #include "cmSourceFile.h"
 #include "cmSystemTools.h"
+#include "cmDependsC.h"
+#include "cmDepends.h"
+#include "cmLocalUnixMakefileGenerator3.h"
 
 std::unique_ptr<cmNixTargetGenerator> cmNixTargetGenerator::New(
   cmGeneratorTarget* target)
@@ -93,11 +97,22 @@ std::string cmNixTargetGenerator::GetObjectFileName(
 }
 
 std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
-  cmSourceFile const* /*source*/) const
+  cmSourceFile const* source) const
 {
-  // TODO: Implement header dependency tracking using CMake's dependency analysis
-  // This is Phase 1 core functionality
-  return {};
+  std::vector<std::string> dependencies;
+  
+  // Get the source language
+  std::string const& lang = source->GetLanguage();
+  if (lang != "C" && lang != "CXX" && lang != "OBJC" && lang != "OBJCXX" && 
+      lang != "CUDA" && lang != "HIP" && lang != "ISPC") {
+    return dependencies; // No dependency scanning for this language
+  }
+  
+  // For now, return empty dependencies - we need a different approach
+  // since cmDependsC requires cmLocalUnixMakefileGenerator3, not cmLocalNixGenerator
+  // TODO: Implement Nix-specific dependency scanning or create a compatibility layer
+  
+  return dependencies;
 }
 
 void cmNixTargetGenerator::AddIncludeFlags(std::string& flags, 
