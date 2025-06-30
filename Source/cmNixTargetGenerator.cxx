@@ -16,6 +16,12 @@
 #include "cmDependsC.h"
 #include "cmDepends.h"
 #include "cmLocalUnixMakefileGenerator3.h"
+#include "cmProcessOutput.h"
+#include "cmList.h"
+#include "cmListFileCache.h"
+#include "cmValue.h"
+#include <regex>
+#include <fstream>
 
 std::unique_ptr<cmNixTargetGenerator> cmNixTargetGenerator::New(
   cmGeneratorTarget* target)
@@ -108,11 +114,250 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
     return dependencies; // No dependency scanning for this language
   }
   
-  // For now, return empty dependencies - we need a different approach
-  // since cmDependsC requires cmLocalUnixMakefileGenerator3, not cmLocalNixGenerator
-  // TODO: Implement Nix-specific dependency scanning or create a compatibility layer
+  // Option B: Compiler-based dependency scanning
+  try {
+    // Try compiler-based scanning first (most accurate)
+    dependencies = this->ScanWithCompiler(source, lang);
+    if (!dependencies.empty()) {
+      return dependencies;
+    }
+  } catch (...) {
+    // Fall back to other methods if compiler scanning fails
+  }
+  
+  // Fallback 1: Check for manually specified dependencies
+  dependencies = this->GetManualDependencies(source);
+  if (!dependencies.empty()) {
+    return dependencies;
+  }
+  
+  // Fallback 2: Use CMake's regex-based scanner
+  dependencies = this->ScanWithRegex(source, lang);
   
   return dependencies;
+}
+
+std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
+  cmSourceFile const* source, std::string const& lang) const
+{
+  std::vector<std::string> dependencies;
+  
+  // Get compiler command
+  std::string compiler = this->GetCompilerCommand(lang);
+  if (compiler.empty()) {
+    return dependencies; // No compiler found
+  }
+  
+  // Get compile flags and include directories
+  std::string config = this->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+  if (config.empty()) {
+    config = "Release";
+  }
+  
+  std::vector<std::string> compileFlags = this->GetCompileFlags(lang, config);
+  std::vector<std::string> includeFlags = this->GetIncludeFlags(lang, config);
+  
+  // Build compiler command for dependency generation
+  std::vector<std::string> command;
+  command.push_back(compiler);
+  command.push_back("-MM"); // Generate dependencies, no system headers
+  
+  // Add compile flags
+  for (const std::string& flag : compileFlags) {
+    if (!flag.empty()) {
+      command.push_back(flag);
+    }
+  }
+  
+  // Add include flags
+  for (const std::string& flag : includeFlags) {
+    if (!flag.empty()) {
+      command.push_back(flag);
+    }
+  }
+  
+  command.push_back(source->GetFullPath());
+  
+  // Execute compiler to get dependencies
+  std::string output;
+  std::string error;
+  int result;
+  
+  if (cmSystemTools::RunSingleCommand(command, &output, &error, &result,
+                                     nullptr, cmSystemTools::OUTPUT_NONE)) {
+    if (result == 0) {
+      // Parse compiler output
+      dependencies = this->ParseCompilerDependencyOutput(output, source);
+    }
+  }
+  
+  return dependencies;
+}
+
+std::vector<std::string> cmNixTargetGenerator::GetManualDependencies(
+  cmSourceFile const* source) const
+{
+  std::vector<std::string> dependencies;
+  
+  // Check for OBJECT_DEPENDS property
+  cmValue objectDependsValue = source->GetProperty("OBJECT_DEPENDS");
+  if (objectDependsValue) {
+    cmExpandList(*objectDependsValue, dependencies);
+    
+    // Convert to relative paths
+    std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
+    for (std::string& dep : dependencies) {
+      if (cmSystemTools::FileIsFullPath(dep)) {
+        std::string relPath = cmSystemTools::RelativePath(sourceDir, dep);
+        if (!relPath.empty()) {
+          dep = relPath;
+        }
+      }
+    }
+  }
+  
+  return dependencies;
+}
+
+std::vector<std::string> cmNixTargetGenerator::ScanWithRegex(
+  cmSourceFile const* source, std::string const& /*lang*/) const
+{
+  std::vector<std::string> dependencies;
+  
+  // Simple regex-based scanner (fallback for legacy compilers)
+  std::ifstream sourceFile(source->GetFullPath());
+  if (!sourceFile.is_open()) {
+    return dependencies;
+  }
+  
+  // Regex to match #include statements
+  std::regex includePattern(R"(^\s*#\s*include\s*[<"]([^">]+)[">])");
+  std::string line;
+  
+  while (std::getline(sourceFile, line)) {
+    std::smatch match;
+    if (std::regex_search(line, match, includePattern)) {
+      std::string headerName = match[1].str();
+      
+      // Try to resolve include to full path
+      std::string fullPath = this->ResolveIncludePath(headerName);
+      if (!fullPath.empty()) {
+        // Convert to relative path
+        std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
+        std::string relPath = cmSystemTools::RelativePath(sourceDir, fullPath);
+        dependencies.push_back(!relPath.empty() ? relPath : fullPath);
+      }
+    }
+  }
+  
+  return dependencies;
+}
+
+std::string cmNixTargetGenerator::GetCompilerCommand(std::string const& lang) const
+{
+  std::string compilerVar = "CMAKE_" + lang + "_COMPILER";
+  return this->GetMakefile()->GetSafeDefinition(compilerVar);
+}
+
+std::vector<std::string> cmNixTargetGenerator::GetCompileFlags(
+  std::string const& lang, std::string const& config) const
+{
+  std::vector<std::string> flags;
+  
+  // Get language-specific flags
+  std::string langFlags = this->GetMakefile()->GetSafeDefinition("CMAKE_" + lang + "_FLAGS");
+  if (!langFlags.empty()) {
+    cmExpandList(langFlags, flags);
+  }
+  
+  // Get configuration-specific flags
+  std::string configFlags = this->GetMakefile()->GetSafeDefinition(
+    "CMAKE_" + lang + "_FLAGS_" + cmSystemTools::UpperCase(config));
+  if (!configFlags.empty()) {
+    cmExpandList(configFlags, flags);
+  }
+  
+  return flags;
+}
+
+std::vector<std::string> cmNixTargetGenerator::GetIncludeFlags(
+  std::string const& lang, std::string const& config) const
+{
+  std::vector<std::string> flags;
+  
+  // Get include directories from target
+  std::vector<BT<std::string>> includesBT = this->GeneratorTarget->GetIncludeDirectories(lang, config);
+  
+  for (const auto& inc : includesBT) {
+    flags.push_back("-I" + inc.Value);
+  }
+  
+  return flags;
+}
+
+std::vector<std::string> cmNixTargetGenerator::ParseCompilerDependencyOutput(
+  std::string const& output, cmSourceFile const* source) const
+{
+  std::vector<std::string> dependencies;
+  
+  // Parse GCC -MM output format: "object: source header1 header2 ..."
+  std::istringstream stream(output);
+  std::string line;
+  
+  // Concatenate all lines (dependencies can be split across lines with \)
+  std::string fullOutput;
+  while (std::getline(stream, line)) {
+    // Remove trailing backslash and concatenate
+    if (!line.empty() && line.back() == '\\') {
+      line.pop_back();
+    }
+    fullOutput += line + " ";
+  }
+  
+  // Find the colon that separates object from dependencies
+  size_t colonPos = fullOutput.find(':');
+  if (colonPos != std::string::npos) {
+    // Extract everything after the colon
+    std::string depsStr = fullOutput.substr(colonPos + 1);
+    
+    // Split by whitespace to get individual files
+    std::istringstream depsStream(depsStr);
+    std::string depFile;
+    
+    while (depsStream >> depFile) {
+      // Skip the source file itself, only add headers
+      if (depFile != source->GetFullPath() && !depFile.empty()) {
+        // Convert to relative path
+        std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
+        std::string relPath = cmSystemTools::RelativePath(sourceDir, depFile);
+        dependencies.push_back(!relPath.empty() ? relPath : depFile);
+      }
+    }
+  }
+  
+  return dependencies;
+}
+
+std::string cmNixTargetGenerator::ResolveIncludePath(std::string const& headerName) const
+{
+  // Try to resolve include file to full path using include directories
+  std::vector<BT<std::string>> includesBT = this->GeneratorTarget->GetIncludeDirectories("", "");
+  
+  for (const auto& inc : includesBT) {
+    std::string fullPath = inc.Value + "/" + headerName;
+    if (cmSystemTools::FileExists(fullPath)) {
+      return fullPath;
+    }
+  }
+  
+  // Try relative to source directory
+  std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
+  std::string fullPath = sourceDir + "/" + headerName;
+  if (cmSystemTools::FileExists(fullPath)) {
+    return fullPath;
+  }
+  
+  return ""; // Not found
 }
 
 void cmNixTargetGenerator::AddIncludeFlags(std::string& flags, 

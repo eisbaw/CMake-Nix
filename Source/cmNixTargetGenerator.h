@@ -67,6 +67,18 @@ protected:
   /// Get the object file name for a source file
   std::string GetObjectFileName(cmSourceFile const* source) const;
 
+  /// Option B: Compiler-based dependency scanning methods
+  std::vector<std::string> ScanWithCompiler(cmSourceFile const* source, std::string const& lang) const;
+  std::vector<std::string> GetManualDependencies(cmSourceFile const* source) const;
+  std::vector<std::string> ScanWithRegex(cmSourceFile const* source, std::string const& lang) const;
+  
+  /// Helper methods for dependency scanning
+  std::string GetCompilerCommand(std::string const& lang) const;
+  std::vector<std::string> GetCompileFlags(std::string const& lang, std::string const& config) const;
+  std::vector<std::string> GetIncludeFlags(std::string const& lang, std::string const& config) const;
+  std::vector<std::string> ParseCompilerDependencyOutput(std::string const& output, cmSourceFile const* source) const;
+  std::string ResolveIncludePath(std::string const& headerName) const;
+
 private:
   cmLocalNixGenerator* LocalGenerator;
   cmMakefile* Makefile;
