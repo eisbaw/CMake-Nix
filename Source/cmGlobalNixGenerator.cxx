@@ -220,11 +220,23 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << objectName << "\";\n";
   nixFileStream << "    src = ./.;\n";
-  nixFileStream << "    buildInputs = [ gcc ];\n";
+  
+  // Get external library dependencies for compilation (headers)
+  auto targetGen = cmNixTargetGenerator::New(target);
+  std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
+  
+  // Build buildInputs list including external libraries for headers
+  nixFileStream << "    buildInputs = [ gcc";
+  for (const std::string& lib : libraryDeps) {
+    if (!lib.empty()) {
+      nixFileStream << " (import " << lib << " { inherit pkgs; })";
+    }
+  }
+  nixFileStream << " ];\n";
+  
   nixFileStream << "    dontFixup = true;\n";
   
-  // Add header dependencies - get them from target generator
-  auto targetGen = cmNixTargetGenerator::New(target);
+  // Add header dependencies - get them from target generator  
   std::vector<std::string> headers = targetGen->GetSourceDependencies(source);
   
   if (!headers.empty()) {
