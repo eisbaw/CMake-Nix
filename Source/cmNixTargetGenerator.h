@@ -35,6 +35,10 @@ public:
   /// Get header dependencies for a source file
   std::vector<std::string> GetSourceDependencies(cmSourceFile const* source) const;
 
+  /// Pure Nix library support - public for global generator access
+  std::vector<std::string> GetTargetLibraryDependencies(std::string const& config) const;
+  std::string FindOrCreateNixPackage(std::string const& libName) const;
+
   // Pure virtual methods from cmCommonTargetGenerator
   void AddIncludeFlags(std::string& flags, std::string const& lang,
                        std::string const& config) override;
@@ -78,6 +82,11 @@ protected:
   std::vector<std::string> GetIncludeFlags(std::string const& lang, std::string const& config) const;
   std::vector<std::string> ParseCompilerDependencyOutput(std::string const& output, cmSourceFile const* source) const;
   std::string ResolveIncludePath(std::string const& headerName) const;
+
+  /// Pure Nix library support methods (private implementation)
+  bool CreateNixPackageFile(std::string const& libName, std::string const& filePath) const;
+  std::string MapCommonLibraryToNixPackage(std::string const& libName) const;
+  std::string GetNixPackageFilePath(std::string const& libName) const;
 
 private:
   cmLocalNixGenerator* LocalGenerator;

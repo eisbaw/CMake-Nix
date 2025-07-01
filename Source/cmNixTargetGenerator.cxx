@@ -72,8 +72,30 @@ void cmNixTargetGenerator::WriteObjectDerivations()
 
 void cmNixTargetGenerator::WriteLinkDerivation()
 {
-  // TODO: Generate linking derivation for this target  
-  // This is Phase 1 core functionality
+  // Get build configuration
+  std::string config = this->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+  if (config.empty()) {
+    config = "Release";
+  }
+  
+  // Get library dependencies using pure Nix approach
+  std::vector<std::string> libraryDeps = this->GetTargetLibraryDependencies(config);
+  
+  // Get object file dependencies (from per-translation-unit derivations)
+  std::vector<cmSourceFile*> sources;
+  this->GeneratorTarget->GetSourceFiles(sources, config);
+  
+  std::vector<std::string> objectDeps;
+  for (cmSourceFile* source : sources) {
+    std::string const& lang = source->GetLanguage();
+    if (lang == "C" || lang == "CXX") {
+      objectDeps.push_back(this->GetDerivationName(source));
+    }
+  }
+  
+  // TODO: Write the actual Nix derivation to the global output
+  // This will be integrated with cmGlobalNixGenerator's output system
+  // For now, we've collected all the dependency information needed
 }
 
 std::string cmNixTargetGenerator::GetDerivationName(
@@ -381,4 +403,156 @@ std::string cmNixTargetGenerator::GetClangTidyReplacementsFilePath(
   (void)source;
   (void)config;
   return "";
+}
+
+// Pure Nix library support implementation
+std::vector<std::string> cmNixTargetGenerator::GetTargetLibraryDependencies(
+  std::string const& config) const
+{
+  std::vector<std::string> nixPackages;
+  
+  // Get link implementation (direct library dependencies)
+  auto linkImpl = this->GeneratorTarget->GetLinkImplementation(config, 
+    cmGeneratorTarget::UseTo::Compile);
+  
+  if (!linkImpl) {
+    return nixPackages; // No dependencies
+  }
+  
+  // Process each library dependency
+  for (const cmLinkItem& item : linkImpl->Libraries) {
+    if (item.Target) {
+      // This is a CMake target dependency - handle separately
+      continue;
+    }
+    
+    // This is an external library (from find_package() or manual specification)
+    std::string libName = item.AsStr();
+    
+    // Find or create Nix package for this library
+    std::string nixPackage = this->FindOrCreateNixPackage(libName);
+    if (!nixPackage.empty()) {
+      nixPackages.push_back(nixPackage);
+    }
+  }
+  
+  return nixPackages;
+}
+
+std::string cmNixTargetGenerator::FindOrCreateNixPackage(
+  std::string const& libName) const
+{
+  // Try to find existing pkg_<name>.nix file
+  std::string nixFile = this->GetNixPackageFilePath(libName);
+  
+  if (cmSystemTools::FileExists(nixFile)) {
+    // Package file exists, return relative path for Nix import
+    std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
+    return "./" + cmSystemTools::RelativePath(sourceDir, nixFile);
+  }
+  
+  // File doesn't exist, try to auto-generate it
+  if (this->CreateNixPackageFile(libName, nixFile)) {
+    std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
+    return "./" + cmSystemTools::RelativePath(sourceDir, nixFile);
+  }
+  
+  return ""; // Could not find or create package
+}
+
+std::string cmNixTargetGenerator::GetNixPackageFilePath(
+  std::string const& libName) const
+{
+  std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
+  return sourceDir + "/pkg_" + libName + ".nix";
+}
+
+bool cmNixTargetGenerator::CreateNixPackageFile(
+  std::string const& libName, std::string const& filePath) const
+{
+  // Try to map to known Nix package first
+  std::string nixPackage = this->MapCommonLibraryToNixPackage(libName);
+  
+  if (nixPackage.empty()) {
+    // Can't auto-generate for unknown library
+    return false;
+  }
+  
+  // Generate pkg_<name>.nix file content
+  std::ostringstream content;
+  content << "# Auto-generated Nix package for " << libName << "\n";
+  content << "{ pkgs ? import <nixpkgs> {} }:\n\n";
+  content << "pkgs." << nixPackage << "\n";
+  
+  // Write file
+  std::ofstream file(filePath);
+  if (!file.is_open()) {
+    return false;
+  }
+  
+  file << content.str();
+  file.close();
+  
+  return true;
+}
+
+std::string cmNixTargetGenerator::MapCommonLibraryToNixPackage(
+  std::string const& libName) const
+{
+  // Map common CMake imported targets to Nix packages
+  static const std::map<std::string, std::string> commonMappings = {
+    // OpenGL
+    {"OpenGL::GL", "libGL"},
+    {"OpenGL::GLU", "libGLU"},
+    {"OpenGL::GLEW", "glew"},
+    {"GLFW", "glfw"},
+    
+    // Math and system libraries
+    {"m", "glibc"}, // math library
+    {"pthread", "glibc"}, // pthread library
+    {"dl", "glibc"}, // dynamic linking library
+    {"rt", "glibc"}, // real-time library
+    
+    // Common development libraries
+    {"z", "zlib"},
+    {"png", "libpng"},
+    {"jpeg", "libjpeg"},
+    {"ssl", "openssl"},
+    {"crypto", "openssl"},
+    
+    // Audio/Video
+    {"SDL2", "SDL2"},
+    {"SDL2_image", "SDL2_image"},
+    {"SDL2_mixer", "SDL2_mixer"},
+    {"SDL2_ttf", "SDL2_ttf"},
+    
+    // Network
+    {"curl", "curl"},
+    
+    // Database
+    {"sqlite3", "sqlite"},
+    
+    // Development tools
+    {"boost", "boost"},
+    {"protobuf", "protobuf"},
+  };
+  
+  auto it = commonMappings.find(libName);
+  if (it != commonMappings.end()) {
+    return it->second;
+  }
+  
+  // Try some heuristics for common patterns
+  if (libName.find("::") != std::string::npos) {
+    // CMake imported target format (e.g., "MyLib::MyLib")
+    size_t pos = libName.find("::");
+    std::string baseName = libName.substr(0, pos);
+    std::transform(baseName.begin(), baseName.end(), baseName.begin(), ::tolower);
+    return baseName;
+  }
+  
+  // Default: assume library name maps directly to Nix package name
+  std::string mapped = libName;
+  std::transform(mapped.begin(), mapped.end(), mapped.begin(), ::tolower);
+  return mapped;
 } 

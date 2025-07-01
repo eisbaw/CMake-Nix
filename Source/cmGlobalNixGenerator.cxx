@@ -262,7 +262,24 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << targetName << "\";\n";
-  nixFileStream << "    buildInputs = [ gcc ];\n";
+  
+  // Get external library dependencies using target generator
+  auto targetGen = cmNixTargetGenerator::New(target);
+  std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+  if (config.empty()) {
+    config = "Release";
+  }
+  std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
+  
+  // Build buildInputs list including external libraries  
+  nixFileStream << "    buildInputs = [ gcc";
+  for (const std::string& lib : libraryDeps) {
+    if (!lib.empty()) {
+      nixFileStream << " (import " << lib << " { inherit pkgs; })";
+    }
+  }
+  nixFileStream << " ];\n";
+  
   nixFileStream << "    dontUnpack = true;\n";  // No source to unpack
   
   // Collect object file dependencies
@@ -280,13 +297,28 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   }
   nixFileStream << "    ];\n";
   
+  // Get library link flags for build phase
+  std::string linkFlags;
+  if (!libraryDeps.empty()) {
+    // Add library flags based on actual library names
+    auto linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
+    if (linkImpl) {
+      for (const cmLinkItem& item : linkImpl->Libraries) {
+        if (!item.Target) { // External library
+          std::string libName = item.AsStr();
+          linkFlags += " -l" + libName;
+        }
+      }
+    }
+  }
+  
   nixFileStream << "    buildPhase = ''\n";
   if (target->GetType() == cmStateEnums::EXECUTABLE) {
-    nixFileStream << "      gcc $objects -o \"$out\"\n";
+    nixFileStream << "      gcc $objects" << linkFlags << " -o \"$out\"\n";
   } else if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
     nixFileStream << "      ar rcs \"$out\" $objects\n";
   } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-    nixFileStream << "      gcc -shared $objects -o \"$out\"\n";
+    nixFileStream << "      gcc -shared $objects" << linkFlags << " -o \"$out\"\n";
   }
   nixFileStream << "    '';\n";
   nixFileStream << "    installPhase = \"true\"; # No install needed\n";
