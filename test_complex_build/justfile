@@ -1,0 +1,27 @@
+# Complex Build Configuration Test
+# Tests mixed C/C++, multiple libraries, complex dependencies
+
+# Generate Nix files for complex build
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build all targets
+run: generate
+    @echo "=== Building complex mixed language application ==="
+    nix-build -A mixed_lang_app && ./result
+    @echo "\n=== Building static library ==="
+    nix-build -A complex_lib
+    @echo "\n=== Building shared library ==="
+    nix-build -A shared_complex
+
+# Check for proper language-specific compilation
+check-compilation: generate
+    @echo "=== Checking compilation flags ==="
+    @grep -E "(std=c99|std=c\+\+17)" default.nix || echo "Language standards not found"
+    @grep -E "(VERSION_MAJOR|LIB_VERSION)" default.nix || echo "Compile definitions not found"
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake

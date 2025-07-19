@@ -1,0 +1,26 @@
+# CMake Self-Hosting Test
+# Tests the Nix generator with real CMake source code
+
+# Generate Nix files for CMake components
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build and run the CMake self-hosting test
+run: generate
+    @echo "=== Building CMake core library ==="
+    nix-build -A cmake_core
+    @echo "\n=== Building CMake test app ==="
+    nix-build -A cmake_test_app && ./result
+
+# Check generated Nix for complex dependencies
+check-complexity: generate
+    @echo "=== Checking for complex CMake patterns ==="
+    @grep -E "(cmSystemTools|cmStringAlgorithms|Threads)" default.nix || echo "CMake patterns not found"
+    @echo "\n=== Checking include directories ==="
+    @grep -E "(-I.*Source|-I.*Bootstrap)" default.nix || echo "Include directories not found"
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
