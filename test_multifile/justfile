@@ -1,0 +1,16 @@
+# Multifile Calculator Test Project
+# Simple test with multiple C source files
+
+# Generate Nix files for multifile test
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build and run the calculator project  
+run: generate
+    nix-build -A calculator && ./result
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt 

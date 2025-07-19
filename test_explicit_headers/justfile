@@ -1,0 +1,25 @@
+# Explicit Headers Test Project
+# Manual OBJECT_DEPENDS configuration test
+
+# Generate Nix files for explicit headers test
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Generate Debug configuration
+generate-debug:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_BUILD_TYPE=Debug .
+
+# Build and run the ECS app
+run: generate
+    nix-build -A ecs_app && ./result
+
+# Build and run Debug configuration
+run-debug: generate-debug
+    nix-build -A ecs_app && ./result
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt 

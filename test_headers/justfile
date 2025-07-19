@@ -1,0 +1,34 @@
+# Headers Test Project  
+# Test project with separate header files
+
+# Generate Nix files for headers test
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Generate Debug configuration
+generate-debug:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_BUILD_TYPE=Debug .
+
+# Generate Release configuration  
+generate-release:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_BUILD_TYPE=Release .
+
+# Build and run the test project
+run: generate
+    nix-build -A test_headers && ./result
+
+# Build and run Debug configuration
+run-debug: generate-debug
+    nix-build -A test_headers && ./result
+
+# Build and run Release configuration
+run-release: generate-release
+    nix-build -A test_headers && ./result
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt 

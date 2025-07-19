@@ -1,0 +1,25 @@
+# Implicit Headers Test Project
+# Complex transitive dependencies test
+
+# Generate Nix files for implicit headers test
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Generate Debug configuration
+generate-debug:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_BUILD_TYPE=Debug .
+
+# Build and run the calc app
+run: generate
+    nix-build -A calc_app && ./result
+
+# Build and run Debug configuration
+run-debug: generate-debug
+    nix-build -A calc_app && ./result
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt 
