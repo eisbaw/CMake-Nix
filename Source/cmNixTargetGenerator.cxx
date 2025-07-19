@@ -422,7 +422,17 @@ std::vector<std::string> cmNixTargetGenerator::GetTargetLibraryDependencies(
   // Process each library dependency
   for (const cmLinkItem& item : linkImpl->Libraries) {
     if (item.Target) {
-      // This is a CMake target dependency - handle separately
+      // Check if this is an imported target (from find_package)
+      if (item.Target->IsImported()) {
+        std::string targetName = item.Target->GetName();
+        std::string nixPackage = this->PackageMapper.GetNixPackageForTarget(targetName);
+        if (!nixPackage.empty()) {
+          // For imported targets, we return the package name directly
+          // This will be handled specially in the global generator
+          nixPackages.push_back("__NIXPKG__" + nixPackage);
+        }
+      }
+      // Other CMake target dependencies handled separately
       continue;
     }
     

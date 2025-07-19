@@ -232,7 +232,16 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   nixFileStream << "    buildInputs = [ " << compilerPkg;
   for (const std::string& lib : libraryDeps) {
     if (!lib.empty()) {
-      nixFileStream << " (import " << lib << " { inherit pkgs; })";
+      if (lib.find("__NIXPKG__") == 0) {
+        // This is a built-in Nix package
+        std::string nixPkg = lib.substr(9); // Remove "__NIXPKG__" prefix
+        if (!nixPkg.empty()) {
+          nixFileStream << " " << nixPkg;
+        }
+      } else {
+        // This is a file import
+        nixFileStream << " (import " << lib << " { inherit pkgs; })";
+      }
     }
   }
   nixFileStream << " ];\n";
@@ -322,7 +331,16 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   nixFileStream << "    buildInputs = [ " << compilerPkg;
   for (const std::string& lib : libraryDeps) {
     if (!lib.empty()) {
-      nixFileStream << " (import " << lib << " { inherit pkgs; })";
+      if (lib.find("__NIXPKG__") == 0) {
+        // This is a built-in Nix package
+        std::string nixPkg = lib.substr(9); // Remove "__NIXPKG__" prefix
+        if (!nixPkg.empty()) {
+          nixFileStream << " " << nixPkg;
+        }
+      } else {
+        // This is a file import
+        nixFileStream << " (import " << lib << " { inherit pkgs; })";
+      }
     }
   }
   nixFileStream << " ];\n";
@@ -344,15 +362,20 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   // Get library link flags for build phase
   std::string linkFlags;
-  if (!libraryDeps.empty()) {
-    // Add library flags based on actual library names
-    auto linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
-    if (linkImpl) {
-      for (const cmLinkItem& item : linkImpl->Libraries) {
-        if (!item.Target) { // External library
-          std::string libName = item.AsStr();
-          linkFlags += " -l" + libName;
+  auto linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
+  if (linkImpl) {
+    for (const cmLinkItem& item : linkImpl->Libraries) {
+      if (item.Target && item.Target->IsImported()) {
+        // This is an imported target from find_package
+        std::string importedTargetName = item.Target->GetName();
+        std::string flags = targetGen->GetPackageMapper().GetLinkFlags(importedTargetName);
+        if (!flags.empty()) {
+          linkFlags += " " + flags;
         }
+      } else if (!item.Target) { 
+        // External library (not a target)
+        std::string libName = item.AsStr();
+        linkFlags += " -l" + libName;
       }
     }
   }

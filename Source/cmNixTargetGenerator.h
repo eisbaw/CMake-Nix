@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "cmCommonTargetGenerator.h"
+#include "cmNixPackageMapper.h"
 
 class cmGeneratorTarget;
 class cmLocalNixGenerator;
@@ -38,6 +39,7 @@ public:
   /// Pure Nix library support - public for global generator access
   std::vector<std::string> GetTargetLibraryDependencies(std::string const& config) const;
   std::string FindOrCreateNixPackage(std::string const& libName) const;
+  const cmNixPackageMapper& GetPackageMapper() const { return PackageMapper; }
 
   // Pure virtual methods from cmCommonTargetGenerator
   void AddIncludeFlags(std::string& flags, std::string const& lang,
@@ -91,4 +93,5 @@ protected:
 private:
   cmLocalNixGenerator* LocalGenerator;
   cmMakefile* Makefile;
+  cmNixPackageMapper PackageMapper;
 }; 

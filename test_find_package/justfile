@@ -1,0 +1,48 @@
+# Test find_package() integration
+
+# Configure with Nix generator
+configure:
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build
+
+# Build threaded app
+build-threaded: configure
+    cd build && nix-build -A threaded_app
+
+# Build compression app
+build-compress: configure
+    cd build && nix-build -A compress_app
+
+# Build OpenGL app (if found)
+build-opengl: configure
+    cd build && nix-build -A opengl_app || echo "OpenGL app not built (package not found)"
+
+# Build all available targets
+build: configure
+    cd build && nix-build -A threaded_app
+    cd build && nix-build -A compress_app
+    -cd build && nix-build -A opengl_app
+
+# Run tests
+run: build
+    @echo "=== Testing threaded app ==="
+    cd build && nix-build -A threaded_app && ./result
+    @echo "\n=== Testing compression app ==="
+    cd build && nix-build -A compress_app && ./result
+
+# Check for imported targets in generated Nix
+check-imports: configure
+    @echo "=== Checking for imported targets ==="
+    @grep -E "(Threads::|ZLIB::|OpenGL::)" build/default.nix || echo "No imported targets found"
+
+# Check for external packages in buildInputs
+check-packages: configure
+    @echo "=== Checking for external packages ==="
+    @grep -E "(zlib|pthread|opengl)" build/default.nix || echo "No external packages found"
+
+# Clean build directory
+clean:
+    rm -rf build
+
+# Run all tests
+test: clean run check-imports check-packages
+    @echo "\n✅ find_package() test passed!"

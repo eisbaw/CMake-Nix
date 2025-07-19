@@ -788,6 +788,8 @@ add_library(
   cmLocalNixGenerator.h
   cmNixTargetGenerator.cxx
   cmNixTargetGenerator.h
+  cmNixPackageMapper.cxx
+  cmNixPackageMapper.h
 
   cm_get_date.h
   cm_get_date.c
