@@ -315,6 +315,9 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   }
   std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
   
+  // Get link implementation for dependency processing
+  auto linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
+  
   // Build buildInputs list including external libraries
   // Determine the primary language for linking
   std::string primaryLang = "C";
@@ -329,6 +332,8 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   std::string compilerPkg = this->GetCompilerPackage(primaryLang);
   nixFileStream << "    buildInputs = [ " << compilerPkg;
+  
+  // Add external library dependencies
   for (const std::string& lib : libraryDeps) {
     if (!lib.empty()) {
       if (lib.find("__NIXPKG__") == 0) {
@@ -343,6 +348,20 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
       }
     }
   }
+  
+  // Add CMake target dependencies (only shared libraries, not static)
+  if (linkImpl) {
+    for (const cmLinkItem& item : linkImpl->Libraries) {
+      if (item.Target && !item.Target->IsImported()) {
+        // Only add shared libraries to buildInputs, not static libraries
+        if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+          std::string depDerivName = this->GetDerivationName(item.Target->GetName());
+          nixFileStream << " " << depDerivName;
+        }
+      }
+    }
+  }
+  
   nixFileStream << " ];\n";
   
   nixFileStream << "    dontUnpack = true;\n";  // No source to unpack
@@ -360,9 +379,10 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   }
   nixFileStream << "    ];\n";
   
+  // Target dependencies will be referenced directly in link flags
+  
   // Get library link flags for build phase
   std::string linkFlags;
-  auto linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
   if (linkImpl) {
     for (const cmLinkItem& item : linkImpl->Libraries) {
       if (item.Target && item.Target->IsImported()) {
@@ -371,6 +391,19 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
         std::string flags = targetGen->GetPackageMapper().GetLinkFlags(importedTargetName);
         if (!flags.empty()) {
           linkFlags += " " + flags;
+        }
+      } else if (item.Target && !item.Target->IsImported()) {
+        // This is a CMake target within the same project
+        std::string depTargetName = item.Target->GetName();
+        std::string depDerivName = this->GetDerivationName(depTargetName);
+        
+        // Add appropriate link flags based on target type using direct references
+        if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+          // For shared libraries, use Nix string interpolation
+          linkFlags += " ${" + depDerivName + "}/lib" + depTargetName + ".so";
+        } else if (item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
+          // For static libraries, link the archive directly using string interpolation
+          linkFlags += " ${" + depDerivName + "}";
         }
       } else if (!item.Target) { 
         // External library (not a target)
