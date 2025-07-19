@@ -5,48 +5,48 @@ let
   # Per-translation-unit derivations
   c_program_main_c_o = stdenv.mkDerivation {
     name = "main.o";
-    src = ./.;
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
     # Configuration: Release
     buildPhase = ''
-      gcc -c  "../main.c" -o "$out"
+      gcc -c  "main.c" -o "$out"
     '';
     installPhase = "true"; # No install needed for objects
   };
 
   cpp_program_main_cpp_o = stdenv.mkDerivation {
     name = "main.o";
-    src = ./.;
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
     # Configuration: Release
     buildPhase = ''
-      g++ -c  "../main.cpp" -o "$out"
+      g++ -c  "main.cpp" -o "$out"
     '';
     installPhase = "true"; # No install needed for objects
   };
 
   mixed_program_main_c_o = stdenv.mkDerivation {
     name = "main.o";
-    src = ./.;
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
     # Configuration: Release
     buildPhase = ''
-      gcc -c  "../main.c" -o "$out"
+      gcc -c  "main.c" -o "$out"
     '';
     installPhase = "true"; # No install needed for objects
   };
 
   mixed_program_helper_cpp_o = stdenv.mkDerivation {
     name = "helper.o";
-    src = ./.;
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
     # Configuration: Release
     buildPhase = ''
-      g++ -c  "../helper.cpp" -o "$out"
+      g++ -c  "helper.cpp" -o "$out"
     '';
     installPhase = "true"; # No install needed for objects
   };
@@ -93,9 +93,50 @@ let
     installPhase = "true"; # No install needed
   };
 
+
+  # Install derivations
+  link_c_program_install = stdenv.mkDerivation {
+    name = "c_program-install";
+    src = link_c_program;
+    dontUnpack = true;
+    dontBuild = true;
+    dontConfigure = true;
+    installPhase = ''
+      mkdir -p $out/bin $out/lib $out/include
+      cp $src $out/bin/c_program
+    '';
+  };
+
+  link_cpp_program_install = stdenv.mkDerivation {
+    name = "cpp_program-install";
+    src = link_cpp_program;
+    dontUnpack = true;
+    dontBuild = true;
+    dontConfigure = true;
+    installPhase = ''
+      mkdir -p $out/bin $out/lib $out/include
+      cp $src $out/bin/cpp_program
+    '';
+  };
+
+  link_mixed_program_install = stdenv.mkDerivation {
+    name = "mixed_program-install";
+    src = link_mixed_program;
+    dontUnpack = true;
+    dontBuild = true;
+    dontConfigure = true;
+    installPhase = ''
+      mkdir -p $out/bin $out/lib $out/include
+      cp $src $out/bin/mixed_program
+    '';
+  };
+
 in
 {
   "c_program" = link_c_program;
   "cpp_program" = link_cpp_program;
   "mixed_program" = link_mixed_program;
+  "c_program_install" = link_c_program_install;
+  "cpp_program_install" = link_cpp_program_install;
+  "mixed_program_install" = link_mixed_program_install;
 }

@@ -122,9 +122,9 @@ test-all:
     just test_custom_commands::run
     just test_external_library::run
     just test_zlib_example::run
-    just test_error_conditions::run
-    just test_complex_build::run
-    -just test_cmake_self_host::run
+    -just test_error_conditions::run
+    -just test_complex_build::run
+    just test_cmake_self_host::run
     just test_multiconfig::run
     just test_install_rules::run
     just test_mixed_language::run

@@ -5,12 +5,12 @@ let
   # Per-translation-unit derivations
   threaded_app_threaded_c_o = stdenv.mkDerivation {
     name = "threaded.o";
-    src = ./.;
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
     # Configuration: Release
     buildPhase = ''
-      gcc -c  "../threaded.c" -o "$out"
+      gcc -c  "threaded.c" -o "$out"
     '';
     installPhase = "true"; # No install needed for objects
   };
@@ -25,12 +25,27 @@ let
       threaded_app_threaded_c_o
     ];
     buildPhase = ''
-      gcc $objects -o "$out"
+      gcc $objects -lpthread -o "$out"
     '';
     installPhase = "true"; # No install needed
+  };
+
+
+  # Install derivations
+  link_threaded_app_install = stdenv.mkDerivation {
+    name = "threaded_app-install";
+    src = link_threaded_app;
+    dontUnpack = true;
+    dontBuild = true;
+    dontConfigure = true;
+    installPhase = ''
+      mkdir -p $out/bin $out/lib $out/include
+      cp $src $out/bin/threaded_app
+    '';
   };
 
 in
 {
   "threaded_app" = link_threaded_app;
+  "threaded_app_install" = link_threaded_app_install;
 }
