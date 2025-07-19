@@ -19,6 +19,9 @@ mod test_explicit_headers
 # Compiler auto-detection test
 mod test_compiler_detection
 
+# Shared library support test
+mod test_shared_library
+
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
     ./bootstrap --parallel=$(nproc)
@@ -34,6 +37,7 @@ clean-test-projects:
     -just test_implicit_headers::clean
     -just test_explicit_headers::clean
     -just test_compiler_detection::clean
+    -just test_shared_library::clean
 
 # Clean build of CMake itself and test project cruft½
 clean: clean-test-projects
@@ -51,6 +55,7 @@ test-all:
     just test_implicit_headers::run
     just test_explicit_headers::run
     just test_compiler_detection::run
+    just test_shared_library::run
     @echo "✅ All tests passed!"
 
 ########################################################

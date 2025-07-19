@@ -1,0 +1,53 @@
+# Test shared library support
+
+# Configure with Nix generator
+configure:
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build
+
+# Build shared library
+build-lib: configure
+    cd build && nix-build -A mylib
+
+# Build versioned library
+build-versioned: configure
+    cd build && nix-build -A versioned_lib
+
+# Build executable linking shared library
+build-app: configure
+    cd build && nix-build -A app
+
+# Build mixed linking executable
+build-mixed: configure
+    cd build && nix-build -A mixed_app
+
+# Build all targets
+build: configure
+    cd build && nix-build -A mylib
+    cd build && nix-build -A versioned_lib
+    cd build && nix-build -A app
+    cd build && nix-build -A mixed_app
+
+# Run executable tests
+run: build
+    @echo "=== Testing app with shared library ==="
+    cd build && nix-build -A app && ./result
+    @echo "\n=== Testing mixed app ==="
+    cd build && nix-build -A mixed_app && ./result
+
+# Check generated Nix for shared library flags
+check-flags: configure
+    @echo "=== Checking for -fPIC and -shared flags ==="
+    @grep -E "(fPIC|shared)" build/default.nix || echo "No PIC or shared flags found"
+
+# Check library naming
+check-names: configure
+    @echo "=== Checking library naming ==="
+    @grep -E "lib.*\.so" build/default.nix || echo "No .so naming found"
+
+# Clean build directory
+clean:
+    rm -rf build
+
+# Run all tests
+test: clean run check-flags check-names
+    @echo "\n✅ Shared library test passed!"

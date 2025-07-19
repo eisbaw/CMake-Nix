@@ -260,7 +260,17 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   std::string allFlags;
   if (!compileFlags.empty()) allFlags += compileFlags + " ";
   if (!defineFlags.empty()) allFlags += defineFlags + " ";
-  if (!includeFlags.empty()) allFlags += includeFlags;
+  if (!includeFlags.empty()) allFlags += includeFlags + " ";
+  
+  // Add -fPIC for shared libraries
+  if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+    allFlags += "-fPIC ";
+  }
+  
+  // Remove trailing space
+  if (!allFlags.empty() && allFlags.back() == ' ') {
+    allFlags.pop_back();
+  }
   
   std::string compilerCmd = this->GetCompilerCommand(lang);
   nixFileStream << "      " << compilerCmd << " -c " << allFlags << " \"" << relativePath 
@@ -277,7 +287,16 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   std::string targetName = target->GetName();
   
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
-  nixFileStream << "    name = \"" << targetName << "\";\n";
+  
+  // Generate appropriate name for target type
+  std::string outputName;
+  if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+    outputName = "lib" + targetName + ".so";
+  } else {
+    outputName = targetName;
+  }
+  
+  nixFileStream << "    name = \"" << outputName << "\";\n";
   
   // Get external library dependencies using target generator
   auto targetGen = cmNixTargetGenerator::New(target);
@@ -345,7 +364,27 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   } else if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
     nixFileStream << "      ar rcs \"$out\" $objects\n";
   } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-    nixFileStream << "      " << linkCompilerCmd << " -shared $objects" << linkFlags << " -o \"$out\"\n";
+    // Get library version properties
+    cmValue version = target->GetProperty("VERSION");
+    cmValue soversion = target->GetProperty("SOVERSION");
+    
+    nixFileStream << "      mkdir -p $out\n";
+    std::string libName = "lib" + targetName + ".so";
+    
+    if (version && soversion) {
+      // Create versioned library and symlinks
+      std::string versionedName = libName + "." + *version;
+      std::string soversionName = libName + "." + *soversion;
+      
+      nixFileStream << "      " << linkCompilerCmd << " -shared $objects" << linkFlags 
+                    << " -Wl,-soname," << soversionName << " -Wl,-rpath,$out/lib -o $out/" << versionedName << "\n";
+      nixFileStream << "      ln -sf " << versionedName << " $out/" << soversionName << "\n";
+      nixFileStream << "      ln -sf " << versionedName << " $out/" << libName << "\n";
+    } else {
+      // Simple shared library without versioning
+      nixFileStream << "      " << linkCompilerCmd << " -shared $objects" << linkFlags 
+                    << " -Wl,-rpath,$out/lib -o $out/" << libName << "\n";
+    }
   }
   nixFileStream << "    '';\n";
   nixFileStream << "    installPhase = \"true\"; # No install needed\n";
