@@ -1,0 +1,122 @@
+{
+  "test_compiler_detection": {
+    "success": false,
+    "output": "",
+    "error": "error: no argument specified and no 'shell.nix' or 'default.nix' file found in the working directory\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_compiler_detection"
+  },
+  "test_custom_commands": {
+    "success": false,
+    "output": "",
+    "error": "error: no argument specified and no 'shell.nix' or 'default.nix' file found in the working directory\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_commands"
+  },
+  "test_explicit_headers": {
+    "success": false,
+    "output": "",
+    "error": "these 3 derivations will be built:\n  /nix/store/5774ypn6m90b2832l3irjnm9x9g7l0zc-main.o.drv\n  /nix/store/8rbb2ylfyngpi0szy48cxdn1a5y7qris-memory.o.drv\n  /nix/store/bd2achmj8mp1g07ij69vjza2c1f0jm2i-entity.o.drv\nbuilding '/nix/store/bd2achmj8mp1g07ij69vjza2c1f0jm2i-entity.o.drv'...\nbuilding '/nix/store/5774ypn6m90b2832l3irjnm9x9g7l0zc-main.o.drv'...\nbuilding '/nix/store/8rbb2ylfyngpi0szy48cxdn1a5y7qris-memory.o.drv'...\nRunning phase: unpackPhase\nunpacking source archive /nix/store/h5pvxz1rpghcxha8fi9fmhaiw473mfzy-test_explicit_headers\nsource root is test_explicit_headers\nRunning phase: patchPhase\nRunning phase: updateAutotoolsGnuConfigScriptsPhase\nRunning phase: configurePhase\nno configure script, doing nothing\nRunning phase: buildPhase\nRunning phase: installPhase\nRunning phase: unpackPhase\nunpacking source archive /nix/store/h5pvxz1rpghcxha8fi9fmhaiw473mfzy-test_explicit_headers\nsource root is test_explicit_headers\nRunning phase: patchPhase\nRunning phase: updateAutotoolsGnuConfigScriptsPhase\nRunning phase: configurePhase\nno configure script, doing nothing\nRunning phase: buildPhase\nRunning phase: installPhase\nRunning phase: unpackPhase\nunpacking source archive /nix/store/h5pvxz1rpghcxha8fi9fmhaiw473mfzy-test_explicit_headers\nsource root is test_explicit_headers\nRunning phase: patchPhase\nRunning phase: updateAutotoolsGnuConfigScriptsPhase\nRunning phase: configurePhase\nno configure script, doing nothing\nRunning phase: buildPhase\nRunning phase: installPhase\nerror: Justfile does not contain recipe `dev`\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_explicit_headers"
+  },
+  "test_external_library": {
+    "success": false,
+    "output": "",
+    "error": "error: no argument specified and no 'shell.nix' or 'default.nix' file found in the working directory\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_library"
+  },
+  "test_find_package": {
+    "success": false,
+    "output": "",
+    "error": "this derivation will be built:\n  /nix/store/lcwm0yaqi53a8x3r6nx66w2dks0m7i37-threaded.o.drv\nbuilding '/nix/store/lcwm0yaqi53a8x3r6nx66w2dks0m7i37-threaded.o.drv'...\nRunning phase: unpackPhase\nunpacking source archive /nix/store/dd2hrx3fdqir4zdl6k9khjfgasg8j2p4-test_find_package\nsource root is test_find_package\nRunning phase: patchPhase\nRunning phase: updateAutotoolsGnuConfigScriptsPhase\nRunning phase: configurePhase\nno configure script, doing nothing\nRunning phase: buildPhase\nRunning phase: installPhase\nerror: Justfile does not contain recipe `dev`\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_find_package"
+  },
+  "test_headers": {
+    "success": false,
+    "output": "",
+    "error": "these 2 derivations will be built:\n  /nix/store/5i5wcj2j3b1mqmf4dsj0lgkr6bbi34qc-math_utils.o.drv\n  /nix/store/63890azp6nm4p9ghl8bhxzpxbazk4fp6-main.o.drv\nbuilding '/nix/store/63890azp6nm4p9ghl8bhxzpxbazk4fp6-main.o.drv'...\nbuilding '/nix/store/5i5wcj2j3b1mqmf4dsj0lgkr6bbi34qc-math_utils.o.drv'...\nRunning phase: unpackPhase\nunpacking source archive /nix/store/xp6jdbfyk8rkpijs3m9mmacgalwll7xj-test_headers\nsource root is test_headers\nRunning phase: patchPhase\nRunning phase: updateAutotoolsGnuConfigScriptsPhase\nRunning phase: configurePhase\nno configure script, doing nothing\nRunning phase: buildPhase\nRunning phase: installPhase\nRunning phase: unpackPhase\nunpacking source archive /nix/store/xp6jdbfyk8rkpijs3m9mmacgalwll7xj-test_headers\nsource root is test_headers\nRunning phase: patchPhase\nRunning phase: updateAutotoolsGnuConfigScriptsPhase\nRunning phase: configurePhase\nno configure script, doing nothing\nRunning phase: buildPhase\nRunning phase: installPhase\nerror: Justfile does not contain recipe `dev`\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_headers"
+  },
+  "test_implicit_headers": {
+    "success": false,
+    "output": "",
+    "error": "these 3 derivations will be built:\n  /nix/store/3a1k263q12j5f62kydglr61kyczfaimc-main.o.drv\n  /nix/store/5aryvsn7jm0ixxsn1xjdhds2f562i0i9-logger.o.drv\n  /nix/store/ca5lx27dqiyxqzihk0f9vlfyz34mbkkv-calculator.o.drv\nbuilding '/nix/store/ca5lx27dqiyxqzihk0f9vlfyz34mbkkv-calculator.o.drv'...\nbuilding '/nix/store/5aryvsn7jm0ixxsn1xjdhds2f562i0i9-logger.o.drv'...\nbuilding '/nix/store/3a1k263q12j5f62kydglr61kyczfaimc-main.o.drv'...\nRunning phase: unpackPhase\nunpacking source archive /nix/store/y7ws5mqyybcax6kys4w0fvchd8c680ys-test_implicit_headers\nsource root is test_implicit_headers\nRunning phase: patchPhase\nRunning phase: updateAutotoolsGnuConfigScriptsPhase\nRunning phase: configurePhase\nno configure script, doing nothing\nRunning phase: buildPhase\nRunning phase: installPhase\nRunning phase: unpackPhase\nunpacking source archive /nix/store/y7ws5mqyybcax6kys4w0fvchd8c680ys-test_implicit_headers\nsource root is test_implicit_headers\nRunning phase: patchPhase\nRunning phase: updateAutotoolsGnuConfigScriptsPhase\nRunning phase: configurePhase\nno configure script, doing nothing\nRunning phase: buildPhase\nRunning phase: installPhase\nRunning phase: unpackPhase\nunpacking source archive /nix/store/y7ws5mqyybcax6kys4w0fvchd8c680ys-test_implicit_headers\nsource root is test_implicit_headers\nRunning phase: patchPhase\nRunning phase: updateAutotoolsGnuConfigScriptsPhase\nRunning phase: configurePhase\nno configure script, doing nothing\nRunning phase: buildPhase\nRunning phase: installPhase\nerror: Justfile does not contain recipe `dev`\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_implicit_headers"
+  },
+  "test_multifile": {
+    "success": false,
+    "output": "",
+    "error": "error: nix-shell requires a single derivation\nTry 'nix-shell --help' for more information.\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_multifile"
+  },
+  "test_nix_generator": {
+    "success": false,
+    "output": "",
+    "error": "error: no argument specified and no 'shell.nix' or 'default.nix' file found in the working directory\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_nix_generator"
+  },
+  "test_shared_library": {
+    "success": false,
+    "output": "",
+    "error": "error: nix-shell requires a single derivation\nTry 'nix-shell --help' for more information.\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_shared_library"
+  },
+  "test_subdirectory": {
+    "success": false,
+    "output": "",
+    "error": "error: nix-shell requires a single derivation\nTry 'nix-shell --help' for more information.\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_subdirectory"
+  },
+  "test_zlib_example": {
+    "success": false,
+    "output": "",
+    "error": "error: no argument specified and no 'shell.nix' or 'default.nix' file found in the working directory\n",
+    "nix_valid": false,
+    "nix_issues": [
+      "No default.nix generated"
+    ],
+    "path": "/home/mpedersen/topics/cmake_nix_backend/CMake/test_zlib_example"
+  }
+}

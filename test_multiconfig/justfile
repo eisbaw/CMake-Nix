@@ -1,0 +1,55 @@
+# Multi-Config Test
+# Tests the Nix generator's ability to handle multiple build configurations
+
+# Generate Nix files for different configurations
+generate-debug:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=nix-build .
+
+generate-release:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+
+generate-relwithdebinfo:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_MAKE_PROGRAM=nix-build .
+
+generate-minsizerel:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Test all configurations
+test-all: generate-debug test-debug generate-release test-release generate-relwithdebinfo test-relwithdebinfo generate-minsizerel test-minsizerel
+
+# Main test entry point - test core multi-config functionality
+run: test-debug test-release
+
+test-debug: generate-debug
+    @echo "=== Testing Debug configuration ==="
+    nix-build -A simple_test && ./result
+
+test-release: generate-release
+    @echo "=== Testing Release configuration ==="
+    nix-build -A simple_test && ./result
+
+test-relwithdebinfo: generate-relwithdebinfo
+    @echo "=== Testing RelWithDebInfo configuration ==="
+    nix-build -A simple_test && ./result
+
+test-minsizerel: generate-minsizerel
+    @echo "=== Testing MinSizeRel configuration ==="
+    nix-build -A simple_test && ./result
+
+# Check configuration-specific generated output
+check-debug: generate-debug
+    @echo "=== Debug configuration flags ==="
+    @grep -E "(buildPhase|Configuration)" default.nix || echo "Configuration info not found"
+
+check-release: generate-release
+    @echo "=== Release configuration flags ==="
+    @grep -E "(buildPhase|Configuration)" default.nix || echo "Configuration info not found"
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake debug release relwithdebinfo minsizerel

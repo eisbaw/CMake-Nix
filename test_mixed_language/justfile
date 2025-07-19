@@ -1,0 +1,32 @@
+# Mixed Language Test
+# Tests C/C++ mixed language projects with complex dependencies
+
+# Generate and test the mixed language project
+run:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Building mixed language application ==="
+    nix-build -A mixed_app && ./result
+
+# Test all targets
+test-all: run
+    @echo "=== Building C static library ==="
+    nix-build -A c_math
+    @echo "=== Building C++ shared library ==="
+    nix-build -A cpp_utils
+    @echo "=== Testing install ==="
+    nix-build -A mixed_app_install
+
+# Check generated Nix for mixed languages
+check:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Checking for C compilation ==="
+    @grep -E "gcc.*-c.*\.c" default.nix || echo "C compilation not found"
+    @echo "=== Checking for C++ compilation ==="
+    @grep -E "g\+\+.*-c.*\.cpp" default.nix || echo "C++ compilation not found"
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake

@@ -1,0 +1,35 @@
+# Install Rules Test
+# Tests the Nix generator's ability to handle CMake install() commands
+
+# Generate Nix files with install rules
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build all targets
+run: generate
+    @echo "=== Building main executable ==="
+    nix-build -A install_app && ./result
+    @echo "\n=== Building shared library ==="
+    nix-build -A install_lib
+    @echo "\n=== Building static library ==="
+    nix-build -A install_static
+
+# Test install rules specifically
+test-install: generate
+    @echo "=== Testing install derivations ==="
+    -nix-build -A install_app_install
+    -nix-build -A install_lib_install
+    -nix-build -A install_static_install
+
+# Check for install rules in generated Nix
+check-install: generate
+    @echo "=== Checking for install rules ==="
+    @grep -E "(install|INSTALL)" default.nix || echo "Install rules not found"
+    @echo "\n=== Checking for install derivations ==="
+    @grep -E "(_install)" default.nix || echo "Install derivations not found"
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake

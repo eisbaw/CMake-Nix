@@ -1,0 +1,16 @@
+# Zlib External Library Example
+# Test integration with zlib compression library via find_package
+
+# Generate Nix files for zlib example
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build and run the compression demo
+run: generate
+    nix-build -A compress_demo && ./result
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake

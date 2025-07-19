@@ -1,0 +1,41 @@
+# Complex Dependencies Test
+# Tests complex transitive dependencies and library linking
+
+# Test the main application (transitive dependencies)
+run:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Building complex application (transitive deps) ==="
+    nix-build -A complex_app && ./result
+
+# Test direct dependencies application
+run-direct:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Building direct dependencies application ==="
+    nix-build -A direct_app && ./result
+
+# Test all targets and applications
+test-all: run run-direct
+    @echo "=== Building all individual libraries ==="
+    nix-build -A base_utils
+    nix-build -A math_lib  
+    nix-build -A graphics_lib
+    nix-build -A engine_lib
+    @echo "=== Testing installs ==="
+    nix-build -A complex_app_install
+    nix-build -A direct_app_install
+
+# Check dependency structure in generated Nix
+check-deps:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Checking library dependencies ==="
+    @grep -E "(buildInputs.*base_utils|buildInputs.*math_lib)" default.nix || echo "Dependencies not found"
+    @echo "=== Checking string interpolation ==="
+    @grep -E '\$\{[^}]*\}' default.nix || echo "String interpolation not found"
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake

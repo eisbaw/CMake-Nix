@@ -1,0 +1,33 @@
+# Preprocessor Test
+# Tests complex preprocessor definitions and conditional compilation
+
+# Test Debug build
+run-debug:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Building Debug version ==="
+    nix-build -A preprocessor_app && ./result
+
+# Test Release build  
+run-release:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Building Release version ==="
+    nix-build -A preprocessor_app && ./result
+
+# Test both configurations
+run: run-debug run-release
+
+# Check preprocessor definitions in generated Nix
+check:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Checking for preprocessor definitions ==="
+    @grep -E "(VERSION_MAJOR|FEATURE_LOGGING|APP_NAME)" default.nix || echo "Definitions not found"
+    @echo "=== Checking include paths ==="
+    @grep -E "\-I.*include" default.nix || echo "Include paths not found"
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake

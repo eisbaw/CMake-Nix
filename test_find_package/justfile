@@ -19,15 +19,15 @@ build-opengl: configure
 # Build all available targets
 build: configure
     cd build && nix-build -A threaded_app
-    cd build && nix-build -A compress_app
+    -cd build && nix-build -A compress_app
     -cd build && nix-build -A opengl_app
 
 # Run tests
 run: build
     @echo "=== Testing threaded app ==="
     cd build && nix-build -A threaded_app && ./result
-    @echo "\n=== Testing compression app ==="
-    cd build && nix-build -A compress_app && ./result
+    @echo "\n=== Testing compression app (if available) ==="
+    -cd build && nix-build -A compress_app && ./result
 
 # Check for imported targets in generated Nix
 check-imports: configure

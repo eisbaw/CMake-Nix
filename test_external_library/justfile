@@ -1,0 +1,16 @@
+# External Library Test Project
+# Test linking against external system libraries
+
+# Generate Nix files for external library test
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build and run the math program
+run: generate
+    nix-build -A main && ./result
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake

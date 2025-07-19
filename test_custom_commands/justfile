@@ -1,0 +1,16 @@
+# Custom Commands Test Project
+# Test custom command support for generated files
+
+# Generate Nix files for custom commands test
+generate:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build and run the custom commands project  
+run: generate
+    nix-build -A app && ./result
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <set>
 
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
@@ -15,9 +16,18 @@
 #include "cmSystemTools.h"
 #include "cmake.h"
 #include "cmNixTargetGenerator.h"
+#include "cmNixCustomCommandGenerator.h"
+#include "cmCustomCommand.h"
 #include "cmListFileCache.h"
 #include "cmValue.h"
 #include "cmState.h"
+
+// String constants for performance optimization
+const std::string cmGlobalNixGenerator::DefaultConfig = "Release";
+const std::string cmGlobalNixGenerator::CLanguage = "C";
+const std::string cmGlobalNixGenerator::CXXLanguage = "CXX";
+const std::string cmGlobalNixGenerator::GccCompiler = "gcc";
+const std::string cmGlobalNixGenerator::ClangCompiler = "clang";
 
 cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   : cmGlobalCommonGenerator(cm)
@@ -92,11 +102,21 @@ void cmGlobalNixGenerator::WriteNixFile()
                 << "with import <nixpkgs> {};\n\n"
                 << "let\n";
 
+  // Collect and write custom command derivations first
+  this->CustomCommandOutputs = this->CollectCustomCommands();
+  this->WriteCustomCommandDerivations(nixFileStream);
+
+  // Collect install targets
+  this->CollectInstallTargets();
+
   // Write per-translation-unit derivations
   this->WritePerTranslationUnitDerivations(nixFileStream);
   
   // Write linking derivations
   this->WriteLinkingDerivations(nixFileStream);
+  
+  // Write install derivations in the let block  
+  this->WriteInstallRules(nixFileStream);
   
   nixFileStream << "in\n{\n";
   
@@ -112,6 +132,9 @@ void cmGlobalNixGenerator::WriteNixFile()
       }
     }
   }
+
+  // Write install outputs
+  this->WriteInstallOutputs(nixFileStream);
   
   nixFileStream << "}\n";
 }
@@ -131,6 +154,19 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         // Get source files for this target
         std::vector<cmSourceFile*> sources;
         target->GetSourceFiles(sources, "");
+        
+        // Pre-create target generator and cache configuration for efficiency
+        auto targetGen = cmNixTargetGenerator::New(target.get());
+        std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+        if (config.empty()) {
+          config = "Release";
+        }
+        
+        // Pre-compute and cache library dependencies for this target
+        std::pair<cmGeneratorTarget*, std::string> cacheKey = {target.get(), config};
+        if (this->LibraryDependencyCache.find(cacheKey) == this->LibraryDependencyCache.end()) {
+          this->LibraryDependencyCache[cacheKey] = targetGen->GetTargetLibraryDependencies(config);
+        }
         
         for (cmSourceFile* source : sources) {
           std::string const& lang = source->GetLanguage();
@@ -163,17 +199,31 @@ void cmGlobalNixGenerator::WriteLinkingDerivations(
 std::string cmGlobalNixGenerator::GetDerivationName(
   std::string const& targetName, std::string const& sourceFile) const
 {
-  if (sourceFile.empty()) {
-    return "link_" + targetName;
+  // Create cache key
+  std::string cacheKey = targetName + "|" + sourceFile;
+  
+  // Check cache first
+  auto it = this->DerivationNameCache.find(cacheKey);
+  if (it != this->DerivationNameCache.end()) {
+    return it->second;
   }
   
-  // Use just the filename, not the full path
-  std::string filename = cmSystemTools::GetFilenameName(sourceFile);
+  std::string result;
+  if (sourceFile.empty()) {
+    result = "link_" + targetName;
+  } else {
+    // Use just the filename, not the full path
+    std::string filename = cmSystemTools::GetFilenameName(sourceFile);
+    
+    // Convert filename to valid Nix identifier
+    std::string name = filename;
+    std::replace(name.begin(), name.end(), '.', '_');
+    result = targetName + "_" + name + "_o";
+  }
   
-  // Convert filename to valid Nix identifier
-  std::string name = filename;
-  std::replace(name.begin(), name.end(), '.', '_');
-  return targetName + "_" + name + "_o";
+  // Cache the result
+  this->DerivationNameCache[cacheKey] = result;
+  return result;
 }
 
 void cmGlobalNixGenerator::WriteObjectDerivation(
@@ -221,11 +271,35 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << objectName << "\";\n";
-  nixFileStream << "    src = ./.;\n";
   
-  // Get external library dependencies for compilation (headers)
-  auto targetGen = cmNixTargetGenerator::New(target);
-  std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
+  // Determine source path relative to build directory
+  std::string sourceDir = this->GetCMakeInstance()->GetHomeDirectory();
+  std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+  std::string srcPath = cmSystemTools::RelativePath(buildDir, sourceDir);
+  if (srcPath.empty()) {
+    srcPath = "./.";
+  } else {
+    // Remove trailing slash if present
+    if (!srcPath.empty() && srcPath.back() == '/') {
+      srcPath.pop_back();
+    }
+    srcPath = "./" + srcPath;
+  }
+  
+  nixFileStream << "    src = " << srcPath << ";\n";
+  
+  // Get external library dependencies for compilation (headers) - use cache
+  std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
+  std::vector<std::string> libraryDeps;
+  auto libCacheIt = this->LibraryDependencyCache.find(cacheKey);
+  if (libCacheIt != this->LibraryDependencyCache.end()) {
+    libraryDeps = libCacheIt->second;
+  } else {
+    // Fallback: compute and cache
+    auto targetGen = cmNixTargetGenerator::New(target);
+    libraryDeps = targetGen->GetTargetLibraryDependencies(config);
+    this->LibraryDependencyCache[cacheKey] = libraryDeps;
+  }
   
   // Build buildInputs list including external libraries for headers
   std::string compilerPkg = this->GetCompilerPackage(lang);
@@ -244,12 +318,26 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
     }
   }
+  
+  // Check if this source file is generated by a custom command
+  std::string customCommandDep;
+  auto it = this->CustomCommandOutputs.find(sourceFile);
+  if (it != this->CustomCommandOutputs.end()) {
+    customCommandDep = it->second;
+    nixFileStream << " " << customCommandDep;
+  }
+  
   nixFileStream << " ];\n";
   
   nixFileStream << "    dontFixup = true;\n";
   
-  // Add header dependencies - get them from target generator  
-  std::vector<std::string> headers = targetGen->GetSourceDependencies(source);
+  // Add header dependencies - use cached target generator or create new one
+  std::vector<std::string> headers;
+  if (libCacheIt != this->LibraryDependencyCache.end()) {
+    // We already have a target generator, reuse computation pattern
+    auto targetGen = cmNixTargetGenerator::New(target);
+    headers = targetGen->GetSourceDependencies(source);
+  }
   
   if (!headers.empty()) {
     nixFileStream << "    # Header dependencies\n";
@@ -262,8 +350,19 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   nixFileStream << "    # Configuration: " << config << "\n";
   nixFileStream << "    buildPhase = ''\n";
-  std::string relativePath = cmSystemTools::RelativePath(
-    this->GetCMakeInstance()->GetHomeOutputDirectory(), sourceFile);
+  
+  // Determine the source path - use custom command output if generated
+  std::string sourcePath;
+  if (!customCommandDep.empty()) {
+    // Source is generated by a custom command - reference from derivation output
+    std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
+    sourcePath = "${" + customCommandDep + "}/" + fileName;
+  } else {
+    // Regular source file - use relative path from source directory
+    std::string projectSourceDir = this->GetCMakeInstance()->GetHomeDirectory();
+    std::string relativePath = cmSystemTools::RelativePath(projectSourceDir, sourceFile);
+    sourcePath = relativePath;
+  }
   
   // Combine all flags: compile flags + defines + includes
   std::string allFlags;
@@ -282,7 +381,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   }
   
   std::string compilerCmd = this->GetCompilerCommand(lang);
-  nixFileStream << "      " << compilerCmd << " -c " << allFlags << " \"" << relativePath 
+  nixFileStream << "      " << compilerCmd << " -c " << allFlags << " \"" << sourcePath 
     << "\" -o \"$out\"\n";
   nixFileStream << "    '';\n";
   nixFileStream << "    installPhase = \"true\"; # No install needed for objects\n";
@@ -307,13 +406,23 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   nixFileStream << "    name = \"" << outputName << "\";\n";
   
-  // Get external library dependencies using target generator
-  auto targetGen = cmNixTargetGenerator::New(target);
+  // Get external library dependencies using cache
   std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
   if (config.empty()) {
     config = "Release";
   }
-  std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
+  
+  std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
+  std::vector<std::string> libraryDeps;
+  auto libCacheIt = this->LibraryDependencyCache.find(cacheKey);
+  if (libCacheIt != this->LibraryDependencyCache.end()) {
+    libraryDeps = libCacheIt->second;
+  } else {
+    // Fallback: compute and cache
+    auto targetGen = cmNixTargetGenerator::New(target);
+    libraryDeps = targetGen->GetTargetLibraryDependencies(config);
+    this->LibraryDependencyCache[cacheKey] = libraryDeps;
+  }
   
   // Get link implementation for dependency processing
   auto linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
@@ -388,6 +497,8 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
       if (item.Target && item.Target->IsImported()) {
         // This is an imported target from find_package
         std::string importedTargetName = item.Target->GetName();
+        // Need to create target generator for package mapper access
+        auto targetGen = cmNixTargetGenerator::New(target);
         std::string flags = targetGen->GetPackageMapper().GetLinkFlags(importedTargetName);
         if (!flags.empty()) {
           linkFlags += " " + flags;
@@ -457,6 +568,12 @@ std::vector<std::string> cmGlobalNixGenerator::GetSourceDependencies(
 
 std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) const
 {
+  // Check cache first
+  auto it = this->CompilerPackageCache.find(lang);
+  if (it != this->CompilerPackageCache.end()) {
+    return it->second;
+  }
+  
   cmake* cm = this->GetCMakeInstance();
   std::string compilerIdVar = "CMAKE_" + lang + "_COMPILER_ID";
   
@@ -466,34 +583,223 @@ std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) co
     compilerId = cm->GetCacheDefinition(compilerIdVar);
   }
   
+  std::string result;
   if (compilerId) {
     std::string id = *compilerId;
     if (id == "GNU") {
-      return "gcc";
+      result = "gcc";
     } else if (id == "Clang" || id == "AppleClang") {
-      return "clang";
+      result = "clang";
     } else if (id == "MSVC") {
       // For future Windows support
-      return "msvc";
+      result = "msvc";
+    } else {
+      // Default fallback - in Nix context, gcc is usually available
+      result = "gcc";
     }
+  } else {
+    // Default fallback - in Nix context, gcc is usually available
+    result = "gcc";
   }
   
-  // Default fallback - in Nix context, gcc is usually available
-  return "gcc";
+  // Cache the result
+  this->CompilerPackageCache[lang] = result;
+  return result;
 }
 
 std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) const
 {
+  // Check cache first
+  auto it = this->CompilerCommandCache.find(lang);
+  if (it != this->CompilerCommandCache.end()) {
+    return it->second;
+  }
+  
   // In Nix, we use the compiler from the Nix package
   // The actual command depends on the package and language
   std::string compilerPkg = this->GetCompilerPackage(lang);
   
+  std::string result;
   if (compilerPkg == "gcc") {
-    return (lang == "CXX") ? "g++" : "gcc";
+    result = (lang == "CXX") ? "g++" : "gcc";
   } else if (compilerPkg == "clang") {
-    return (lang == "CXX") ? "clang++" : "clang";
+    result = (lang == "CXX") ? "clang++" : "clang";
+  } else {
+    // Default fallback
+    result = (lang == "CXX") ? "g++" : "gcc";
   }
   
-  // Default fallback
-  return (lang == "CXX") ? "g++" : "gcc";
+  // Cache the result
+  this->CompilerCommandCache[lang] = result;
+  return result;
+}
+
+std::map<std::string, std::string> cmGlobalNixGenerator::CollectCustomCommands()
+{
+  std::map<std::string, std::string> outputToDerivation;
+  std::set<cmCustomCommand const*> processedCommands;
+  
+  // Note: std::map doesn't have reserve(), but std::unordered_map would
+  // For now, the std::map will resize as needed
+  
+  // Iterate through all targets to find custom commands
+  for (auto const& lg : this->LocalGenerators) {
+    auto const& targets = lg->GetGeneratorTargets();
+    for (auto const& target : targets) {
+      if (target->GetType() == cmStateEnums::EXECUTABLE ||
+          target->GetType() == cmStateEnums::STATIC_LIBRARY ||
+          target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+          target->GetType() == cmStateEnums::UTILITY) {
+        
+        // Get source files that might have custom commands
+        std::vector<cmSourceFile*> sources;
+        target->GetSourceFiles(sources, "");
+        
+        for (cmSourceFile* source : sources) {
+          cmCustomCommand const* cc = source->GetCustomCommand();
+          if (cc && processedCommands.find(cc) == processedCommands.end()) {
+            processedCommands.insert(cc);
+            
+            // Create custom command generator
+            std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+            if (config.empty()) {
+              config = "Release";
+            }
+            
+            cmNixCustomCommandGenerator ccGen(cc, target->GetLocalGenerator(), config);
+            std::string derivName = ccGen.GetDerivationName();
+            
+            // Map all outputs to this derivation
+            std::vector<std::string> outputs = ccGen.GetOutputs();
+            for (const std::string& output : outputs) {
+              outputToDerivation[output] = derivName;
+            }
+          }
+        }
+        
+        // Also check for PRE_BUILD, PRE_LINK, POST_BUILD commands
+        std::vector<cmCustomCommand> const& preBuildCommands = target->GetPreBuildCommands();
+        std::vector<cmCustomCommand> const& postBuildCommands = target->GetPostBuildCommands();
+        
+        // Note: These need special handling as they're not file-generating commands
+        // For now, we'll skip them and focus on OUTPUT-based custom commands
+      }
+    }
+  }
+  
+  return outputToDerivation;
+}
+
+void cmGlobalNixGenerator::WriteCustomCommandDerivations(
+  cmGeneratedFileStream& nixFileStream)
+{
+  if (this->CustomCommandOutputs.empty()) {
+    return;
+  }
+  
+  nixFileStream << "  # Custom command derivations\n";
+  
+  std::set<std::string> writtenDerivations;
+  
+  // Iterate through all targets again to write custom commands
+  for (auto const& lg : this->LocalGenerators) {
+    auto const& targets = lg->GetGeneratorTargets();
+    for (auto const& target : targets) {
+      if (target->GetType() == cmStateEnums::EXECUTABLE ||
+          target->GetType() == cmStateEnums::STATIC_LIBRARY ||
+          target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+          target->GetType() == cmStateEnums::UTILITY) {
+        
+        // Get source files that might have custom commands
+        std::vector<cmSourceFile*> sources;
+        target->GetSourceFiles(sources, "");
+        
+        for (cmSourceFile* source : sources) {
+          cmCustomCommand const* cc = source->GetCustomCommand();
+          if (cc) {
+            std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+            if (config.empty()) {
+              config = "Release";
+            }
+            
+            cmNixCustomCommandGenerator ccGen(cc, target->GetLocalGenerator(), config);
+            std::string derivName = ccGen.GetDerivationName();
+            
+            // Only write each derivation once
+            if (writtenDerivations.find(derivName) == writtenDerivations.end()) {
+              writtenDerivations.insert(derivName);
+              ccGen.Generate(nixFileStream);
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  nixFileStream << "\n";
+}
+
+void cmGlobalNixGenerator::WriteInstallOutputs(cmGeneratedFileStream& nixFileStream)
+{
+  for (cmGeneratorTarget* target : this->InstallTargets) {
+    std::string targetName = target->GetName();
+    std::string derivName = this->GetDerivationName(targetName);
+    std::string installDerivName = derivName + "_install";
+    
+    nixFileStream << "  \"" << targetName << "_install\" = " << installDerivName << ";\n";
+  }
+}
+
+void cmGlobalNixGenerator::CollectInstallTargets()
+{
+  this->InstallTargets.clear();
+  
+  for (auto const& lg : this->LocalGenerators) {
+    auto const& targets = lg->GetGeneratorTargets();
+    for (auto const& target : targets) {
+      // For now, add all targets that can be installed (executables and libraries)
+      // A more sophisticated implementation would check for actual install() commands
+      if (target->GetType() == cmStateEnums::EXECUTABLE ||
+          target->GetType() == cmStateEnums::STATIC_LIBRARY ||
+          target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+        this->InstallTargets.push_back(target.get());
+      }
+    }
+  }
+}
+
+void cmGlobalNixGenerator::WriteInstallRules(cmGeneratedFileStream& nixFileStream)
+{
+  if (this->InstallTargets.empty()) {
+    return;
+  }
+  
+  nixFileStream << "\n  # Install derivations\n";
+  
+  for (cmGeneratorTarget* target : this->InstallTargets) {
+    std::string targetName = target->GetName();
+    std::string derivName = this->GetDerivationName(targetName);
+    std::string installDerivName = derivName + "_install";
+    
+    nixFileStream << "  " << installDerivName << " = stdenv.mkDerivation {\n";
+    nixFileStream << "    name = \"" << targetName << "-install\";\n";
+    nixFileStream << "    src = " << derivName << ";\n";
+    nixFileStream << "    dontUnpack = true;\n";
+    nixFileStream << "    dontBuild = true;\n";
+    nixFileStream << "    dontConfigure = true;\n";
+    nixFileStream << "    installPhase = ''\n";
+    nixFileStream << "      mkdir -p $out/bin $out/lib $out/include\n";
+    
+    // Determine installation destination based on target type
+    if (target->GetType() == cmStateEnums::EXECUTABLE) {
+      nixFileStream << "      cp $src $out/bin/" << targetName << "\n";
+    } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+      nixFileStream << "      cp -r $src/* $out/lib/ 2>/dev/null || true\n";
+    } else if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
+      nixFileStream << "      cp $src $out/lib/lib" << targetName << ".a\n";
+    }
+    
+    nixFileStream << "    '';\n";
+    nixFileStream << "  };\n\n";
+  }
 } 

@@ -49,6 +49,24 @@ mod test_complex_build
 # CMake self-hosting test
 mod test_cmake_self_host
 
+# Multi-configuration build test
+mod test_multiconfig
+
+# Install rules test
+mod test_install_rules
+
+# Mixed language support test
+mod test_mixed_language
+
+# Preprocessor definitions test
+mod test_preprocessor
+
+# Complex dependencies test
+mod test_complex_dependencies
+
+# Package integration test
+mod test_package_integration
+
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
     ./bootstrap --parallel=$(nproc)
@@ -74,6 +92,12 @@ clean-test-projects:
     -just test_error_conditions::clean
     -just test_complex_build::clean
     -just test_cmake_self_host::clean
+    -just test_multiconfig::clean
+    -just test_install_rules::clean
+    -just test_mixed_language::clean
+    -just test_preprocessor::clean
+    -just test_complex_dependencies::clean
+    -just test_package_integration::clean
 
 # Clean build of CMake itself and test project cruft½
 clean: clean-test-projects
@@ -101,6 +125,12 @@ test-all:
     just test_error_conditions::run
     just test_complex_build::run
     -just test_cmake_self_host::run
+    just test_multiconfig::run
+    just test_install_rules::run
+    just test_mixed_language::run
+    just test_preprocessor::run
+    just test_complex_dependencies::run
+    just test_package_integration::run
     @echo "✅ All tests passed!"
 
 ########################################################

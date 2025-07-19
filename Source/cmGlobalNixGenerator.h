@@ -86,6 +86,15 @@ protected:
   void WriteLinkDerivation(cmGeneratedFileStream& nixFileStream, 
                           cmGeneratorTarget* target);
 
+  // Custom command support
+  void WriteCustomCommandDerivations(cmGeneratedFileStream& nixFileStream);
+  std::map<std::string, std::string> CollectCustomCommands();
+
+  // Install rule support
+  void WriteInstallRules(cmGeneratedFileStream& nixFileStream);
+  void WriteInstallOutputs(cmGeneratedFileStream& nixFileStream);
+  void CollectInstallTargets();
+
 private:
   std::string GetDerivationName(std::string const& targetName, 
                                std::string const& sourceFile = "") const;
@@ -94,4 +103,23 @@ private:
   // Compiler detection methods
   std::string GetCompilerPackage(const std::string& lang) const;
   std::string GetCompilerCommand(const std::string& lang) const;
+  
+  // Performance optimization: Cache frequently computed values
+  mutable std::map<std::string, std::string> CompilerPackageCache;
+  mutable std::map<std::string, std::string> CompilerCommandCache;
+  mutable std::map<std::pair<cmGeneratorTarget*, std::string>, std::vector<std::string>> LibraryDependencyCache;
+  mutable std::map<std::string, std::string> DerivationNameCache;
+  
+  // Install rule tracking
+  std::vector<cmGeneratorTarget*> InstallTargets;
+  
+  // Common string constants to avoid repeated allocations
+  static const std::string DefaultConfig;
+  static const std::string CLanguage;
+  static const std::string CXXLanguage;
+  static const std::string GccCompiler;
+  static const std::string ClangCompiler;
+  
+  // Map from output file to custom command derivation name
+  std::map<std::string, std::string> CustomCommandOutputs;
 }; 

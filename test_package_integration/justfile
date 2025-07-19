@@ -1,0 +1,36 @@
+# Package Integration Test
+# Tests external package integration and threading
+
+# Test the integration application
+run:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Building package integration application ==="
+    nix-build -A integration_app && ./result
+
+# Test the threaded library independently
+run-lib:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Building threaded library ==="
+    nix-build -A threaded_lib
+
+# Test all targets and installs
+test-all: run run-lib
+    @echo "=== Testing installs ==="
+    nix-build -A integration_app_install
+    nix-build -A threaded_lib_install
+
+# Check which packages were found and linked
+check-packages:
+    -rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    @echo "=== Checking linked packages ==="
+    @grep -E "(zlib|openssl|curl|libpng)" default.nix || echo "Optional packages not found"
+    @echo "=== Checking pthread linking ==="
+    @grep -E "pthread" default.nix || echo "Pthread not found"
+
+# Clean generated files
+clean:
+    -rm -f default.nix
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
