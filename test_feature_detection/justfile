@@ -1,0 +1,84 @@
+# Feature Detection Test Project
+# Tests C++11 feature detection with the Nix generator
+
+# Configure with Nix generator
+configure:
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug .
+
+# Build the feature test with nix-build
+build:
+    nix-build -A feature_test
+
+# Run the feature test executable
+run-test: build
+    ./result
+
+# Full test: configure, build, and run
+run: configure build run-test
+    @echo "✅ Feature detection test completed"
+
+# Show generated Nix file
+show-nix:
+    @echo "Generated default.nix:"
+    @cat default.nix
+
+# Show CMake cache for feature detection results
+show-cache:
+    @echo "CMake Cache entries related to features:"
+    @grep -i "feature\|cxx\|constexpr\|lambda" CMakeCache.txt || echo "No feature cache entries found"
+
+# Analyze feature detection
+analyze: configure
+    @echo "Feature Detection Analysis:"
+    @echo "=========================="
+    @echo ""
+    @echo "CMake CXX Compile Features:"
+    @grep "CMAKE_CXX_COMPILE_FEATURES" CMakeCache.txt || echo "Not found in cache"
+    @echo ""
+    @echo "Generated Nix derivations:"
+    @echo "------------------------"
+    just show-nix
+    @echo ""
+    @echo "Feature test compilation flags:"
+    @grep -A5 -B5 "buildPhase" default.nix || echo "No buildPhase found"
+
+# Test feature detection with different compilers
+test-gcc: 
+    @echo "Testing with GCC..."
+    ../bin/cmake -G Nix -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Debug .
+    just build
+    just run-test
+
+test-clang:
+    @echo "Testing with Clang..."
+    ../bin/cmake -G Nix -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug .
+    just build  
+    just run-test
+
+# Compare feature detection between generators
+compare-generators:
+    @echo "Feature detection comparison:"
+    @echo "============================="
+    @echo ""
+    @echo "1. Testing with Nix generator:"
+    ../bin/cmake -G Nix . > /tmp/nix_features.log 2>&1
+    @grep "Feature Detection Results" /tmp/nix_features.log -A10 || echo "No Nix feature results"
+    @echo ""
+    @echo "2. Testing with Unix Makefiles generator:"
+    ../bin/cmake -G "Unix Makefiles" . > /tmp/unix_features.log 2>&1  
+    @grep "Feature Detection Results" /tmp/unix_features.log -A10 || echo "No Unix feature results"
+    @echo ""
+    @echo "Nix generator output:"
+    @cat /tmp/nix_features.log
+    @echo ""
+    @echo "Unix Makefiles generator output:"
+    @cat /tmp/unix_features.log
+
+# Clean build artifacts
+clean:
+    -rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake default.nix result
+    -rm -f /tmp/nix_features.log /tmp/unix_features.log
+
+# Development cycle: clean, configure, analyze
+dev: clean configure analyze
+    @echo "🔍 Feature detection analysis complete"

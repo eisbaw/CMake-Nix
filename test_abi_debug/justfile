@@ -1,0 +1,60 @@
+# ABI Detection Debug Test
+
+# Test with Nix generator
+test-nix:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔍 Testing ABI detection with Nix generator..."
+    rm -rf build_nix
+    mkdir build_nix
+    cd build_nix
+    echo "Running cmake with debug output..."
+    ../../bin/cmake --debug-trycompile -G Nix ..
+    echo ""
+    echo "📋 CMakeCache.txt ABI variables:"
+    grep -E "(ABI|SIZEOF)" CMakeCache.txt || echo "No ABI variables found"
+
+# Test with Unix Makefiles for comparison
+test-unix:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔍 Testing ABI detection with Unix Makefiles..."
+    rm -rf build_unix
+    mkdir build_unix 
+    cd build_unix
+    echo "Running cmake with debug output..."
+    ../../bin/cmake --debug-trycompile -G "Unix Makefiles" ..
+    echo ""
+    echo "📋 CMakeCache.txt ABI variables:"
+    grep -E "(ABI|SIZEOF)" CMakeCache.txt || echo "No ABI variables found"
+
+# Compare both generators
+compare: test-unix test-nix
+    echo ""
+    echo "🔍 Comparison of ABI detection results:"
+    echo ""
+    echo "Unix Makefiles results:"
+    grep -E "(ABI|SIZEOF)" build_unix/CMakeCache.txt | head -10 || echo "No results"
+    echo ""
+    echo "Nix Generator results:" 
+    grep -E "(ABI|SIZEOF)" build_nix/CMakeCache.txt | head -10 || echo "No results"
+
+# Check try-compile artifacts
+check-artifacts:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔍 Checking try-compile artifacts..."
+    echo ""
+    if [ -d "build_nix/CMakeFiles" ]; then
+        echo "Nix generator try-compile directories:"
+        find build_nix/CMakeFiles -name "*TryCompile*" -type d 2>/dev/null || echo "None found"
+        echo ""
+    fi
+    if [ -d "build_unix/CMakeFiles" ]; then
+        echo "Unix Makefiles try-compile directories:"
+        find build_unix/CMakeFiles -name "*TryCompile*" -type d 2>/dev/null || echo "None found"
+    fi
+
+# Clean build artifacts
+clean:
+    rm -rf build_nix build_unix

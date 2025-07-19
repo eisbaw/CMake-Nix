@@ -62,11 +62,14 @@ void cmGlobalNixGenerator::Generate()
 std::vector<cmGlobalGenerator::GeneratedMakeCommand>
 cmGlobalNixGenerator::GenerateBuildCommand(
   std::string const& makeProgram, std::string const& /*projectName*/,
-  std::string const& /*projectDir*/,
+  std::string const& projectDir,
   std::vector<std::string> const& targetNames, std::string const& /*config*/,
   int /*jobs*/, bool /*verbose*/, cmBuildOptions const& /*buildOptions*/,
   std::vector<std::string> const& /*makeOptions*/)
 {
+  // Check if this is a try-compile (look for CMakeScratch in path)
+  bool isTryCompile = projectDir.find("CMakeScratch") != std::string::npos;
+  
   GeneratedMakeCommand makeCommand;
   
   // For Nix generator, we use nix-build as the build program
@@ -80,6 +83,31 @@ cmGlobalNixGenerator::GenerateBuildCommand(
     if (!tname.empty()) {
       makeCommand.Add("-A", tname);
     }
+  }
+  
+  // For try-compile, add post-build copy commands to move binaries from Nix store
+  if (isTryCompile && !targetNames.empty()) {
+    GeneratedMakeCommand copyCommand;
+    copyCommand.Add("sh");
+    copyCommand.Add("-c");
+    
+    std::string copyScript = "set -e; ";
+    for (auto const& tname : targetNames) {
+      if (!tname.empty()) {
+        // Read the target location file and copy the binary
+        copyScript += "if [ -f \"" + tname + "_loc\" ]; then ";
+        copyScript += "TARGET_LOCATION=$(cat \"" + tname + "_loc\"); ";
+        copyScript += "if [ -f \"result\" ]; then ";
+        copyScript += "STORE_PATH=$(readlink result); ";
+        copyScript += "cp \"$STORE_PATH\" \"$TARGET_LOCATION\" 2>/dev/null || true; ";
+        copyScript += "fi; fi; ";
+      }
+    }
+    copyScript += "true"; // Ensure script always succeeds
+    
+    copyCommand.Add(copyScript);
+    
+    return { std::move(makeCommand), std::move(copyCommand) };
   }
   
   return { std::move(makeCommand) };
@@ -272,21 +300,48 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << objectName << "\";\n";
   
-  // Determine source path relative to build directory
+  // Determine source path - check if this source file is external
   std::string sourceDir = this->GetCMakeInstance()->GetHomeDirectory();
   std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-  std::string srcPath = cmSystemTools::RelativePath(buildDir, sourceDir);
-  if (srcPath.empty()) {
-    srcPath = "./.";
-  } else {
-    // Remove trailing slash if present
-    if (!srcPath.empty() && srcPath.back() == '/') {
-      srcPath.pop_back();
-    }
-    srcPath = "./" + srcPath;
-  }
+  std::string projectSourceRelPath = cmSystemTools::RelativePath(buildDir, sourceDir);
+  std::string relativePath = cmSystemTools::RelativePath(sourceDir, sourceFile);
   
-  nixFileStream << "    src = " << srcPath << ";\n";
+  // Check if source file is external (outside project tree)
+  bool isExternalSource = (relativePath.find("../") == 0 || cmSystemTools::FileIsFullPath(relativePath));
+  
+  if (isExternalSource) {
+    // For external sources, create a composite source including both project and external file
+    nixFileStream << "    src = pkgs.runCommand \"composite-src\" {} ''\n";
+    nixFileStream << "      mkdir -p $out\n";
+    // Copy project source tree
+    if (projectSourceRelPath.empty()) {
+      nixFileStream << "      cp -r ${./.}/* $out/ 2>/dev/null || true\n";
+    } else {
+      nixFileStream << "      cp -r ${./" << projectSourceRelPath << "}/* $out/ 2>/dev/null || true\n";
+    }
+    // Copy external source file to build dir root
+    std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
+    nixFileStream << "      cp ${" << sourceFile << "} $out/" << fileName << "\n";
+    
+    // For ABI detection files, also copy the required header file
+    if (fileName.find("CMakeCCompilerABI.c") != std::string::npos ||
+        fileName.find("CMakeCXXCompilerABI.cpp") != std::string::npos) {
+      std::string sourceDir = cmSystemTools::GetFilenamePath(sourceFile);
+      nixFileStream << "      cp ${" << sourceDir << "/CMakeCompilerABI.h} $out/CMakeCompilerABI.h\n";
+    }
+    nixFileStream << "    '';\n";
+  } else {
+    // Regular project source
+    if (projectSourceRelPath.empty()) {
+      nixFileStream << "    src = ./.;\n";
+    } else {
+      // Remove trailing slash if present
+      if (!projectSourceRelPath.empty() && projectSourceRelPath.back() == '/') {
+        projectSourceRelPath.pop_back();
+      }
+      nixFileStream << "    src = ./" << projectSourceRelPath << ";\n";
+    }
+  }
   
   // Get external library dependencies for compilation (headers) - use cache
   std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
@@ -361,7 +416,16 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     // Regular source file - use relative path from source directory
     std::string projectSourceDir = this->GetCMakeInstance()->GetHomeDirectory();
     std::string relativePath = cmSystemTools::RelativePath(projectSourceDir, sourceFile);
-    sourcePath = relativePath;
+    
+    // Check if this is an external source file (outside project tree)
+    if (relativePath.find("../") == 0 || cmSystemTools::FileIsFullPath(relativePath)) {
+      // External source file - use just the filename, it will be copied to build dir
+      std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
+      sourcePath = fileName;
+    } else {
+      // Regular source file within project tree
+      sourcePath = relativePath;
+    }
   }
   
   // Combine all flags: compile flags + defines + includes

@@ -1,0 +1,242 @@
+# OpenCV Real-World Test Project
+# Tests our Nix generator against a large, complex C++ project with extensive CMake usage
+
+# Configure OpenCV with Nix generator (core only - most minimal)
+configure-core:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🎯 Configuring OpenCV with Nix generator (core modules only)..."
+    mkdir -p build
+    cd build
+    ../../bin/cmake -G Nix \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_LIST=core,imgproc,imgcodecs,highgui \
+        -DBUILD_EXAMPLES=OFF \
+        -DBUILD_TESTS=OFF \
+        -DBUILD_PERF_TESTS=OFF \
+        -DBUILD_opencv_apps=OFF \
+        -DBUILD_opencv_python2=OFF \
+        -DBUILD_opencv_python3=OFF \
+        -DWITH_CUDA=OFF \
+        -DWITH_OPENCL=OFF \
+        -DWITH_IPP=OFF \
+        -DWITH_TBB=OFF \
+        -DWITH_EIGEN=OFF \
+        -DWITH_LAPACK=OFF \
+        -DWITH_GTK=OFF \
+        -DWITH_QT=OFF \
+        ../ext/opencv
+
+# Configure OpenCV with Nix generator (minimal build)
+configure-minimal:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔧 Configuring OpenCV with Nix generator (minimal build)..."
+    mkdir -p build
+    cd build
+    ../../bin/cmake -G Nix \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_EXAMPLES=OFF \
+        -DBUILD_TESTS=OFF \
+        -DBUILD_PERF_TESTS=OFF \
+        -DBUILD_opencv_apps=OFF \
+        -DBUILD_opencv_python2=OFF \
+        -DBUILD_opencv_python3=OFF \
+        -DWITH_CUDA=OFF \
+        -DWITH_OPENCL=OFF \
+        -DWITH_IPP=OFF \
+        -DWITH_TBB=OFF \
+        -DWITH_EIGEN=OFF \
+        -DWITH_LAPACK=OFF \
+        ../ext/opencv
+
+# Configure OpenCV with Unix Makefiles for comparison
+configure-unix:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔄 Configuring OpenCV with Unix Makefiles (for comparison)..."
+    mkdir -p build_unix
+    cd build_unix
+    ../../bin/cmake -G "Unix Makefiles" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_LIST=core,imgproc,imgcodecs,highgui \
+        -DBUILD_EXAMPLES=OFF \
+        -DBUILD_TESTS=OFF \
+        -DBUILD_PERF_TESTS=OFF \
+        -DBUILD_opencv_apps=OFF \
+        -DBUILD_opencv_python2=OFF \
+        -DBUILD_opencv_python3=OFF \
+        -DWITH_CUDA=OFF \
+        -DWITH_OPENCL=OFF \
+        -DWITH_IPP=OFF \
+        -DWITH_TBB=OFF \
+        -DWITH_EIGEN=OFF \
+        -DWITH_LAPACK=OFF \
+        -DWITH_GTK=OFF \
+        -DWITH_QT=OFF \
+        ../ext/opencv
+
+# Try to build a small subset with nix-build
+build-core:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔨 Attempting to build OpenCV core with nix-build..."
+    if [ -f "build/default.nix" ]; then
+        cd build
+        echo "Building opencv_core library..."
+        nix-build -A opencv_core 2>&1 | head -100
+    else
+        echo "❌ No build/default.nix found. Run 'just configure-core' first."
+        exit 1
+    fi
+
+# Analyze the generated Nix file
+analyze-nix:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔍 Analyzing generated OpenCV Nix file..."
+    if [ -f "build/default.nix" ]; then
+        cd build
+        echo "📊 Nix file statistics:"
+        echo "  Total lines: $(wc -l < default.nix)"
+        echo "  Derivations: $(grep -c 'stdenv.mkDerivation' default.nix)"
+        echo "  Object files: $(grep -c '\.o = stdenv\.mkDerivation' default.nix)"
+        echo "  Libraries: $(grep -c 'lib.*= stdenv\.mkDerivation' default.nix)"
+        echo ""
+        echo "📝 First 50 lines of generated Nix:"
+        head -50 default.nix
+        echo ""
+        echo "📝 Target list (last 20 lines):"
+        tail -20 default.nix
+    else
+        echo "❌ No build/default.nix found. Run configuration first."
+    fi
+
+# Check CMake configuration output
+check-cmake-config:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "📋 Checking CMake configuration results..."
+    if [ -f "build/CMakeCache.txt" ]; then
+        cd build
+        echo "🎯 OpenCV Configuration Summary:"
+        grep "OpenCV_VERSION" CMakeCache.txt || echo "  Version: Not found"
+        grep "CMAKE_BUILD_TYPE" CMakeCache.txt || echo "  Build type: Not set"
+        echo ""
+        echo "📦 Enabled modules:"
+        grep "BUILD_opencv_" CMakeCache.txt | grep "=ON" | head -10
+        echo ""
+        echo "🔧 External dependencies:"
+        grep "HAVE_" CMakeCache.txt | grep "=1" | head -10
+        echo ""
+        echo "🚫 Disabled features:"
+        grep "WITH_" CMakeCache.txt | grep "=OFF" | head -5
+    else
+        echo "❌ No build/CMakeCache.txt found. Run configuration first."
+    fi
+
+# Quick configure and analyze (most common workflow)
+run: configure-core analyze-nix check-cmake-config
+    @echo "✅ OpenCV Nix generator test completed"
+
+# Test different configuration levels
+test-configs:
+    @echo "🧪 Testing different OpenCV configurations..."
+    @echo "1️⃣ Testing core-only configuration..."
+    just configure-core
+    just analyze-nix
+    @echo ""
+    @echo "2️⃣ Testing minimal configuration..."
+    just clean
+    just configure-minimal  
+    just analyze-nix
+    @echo ""
+    @echo "✅ Configuration tests completed"
+
+# Compare Nix vs Unix Makefiles generation time
+benchmark:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "⏱️ Benchmarking Nix vs Unix Makefiles generation..."
+    
+    echo "🔄 Testing Unix Makefiles generation time..."
+    just clean
+    time just configure-unix > /tmp/opencv_unix.log 2>&1
+    unix_time=$(tail -1 /tmp/opencv_unix.log)
+    
+    echo "🎯 Testing Nix generation time..."
+    just clean  
+    time just configure-core > /tmp/opencv_nix.log 2>&1
+    nix_time=$(tail -1 /tmp/opencv_nix.log)
+    
+    echo "📊 Results:"
+    echo "  Unix Makefiles: Check /tmp/opencv_unix.log"
+    echo "  Nix Generator: Check /tmp/opencv_nix.log"
+
+# Clean OpenCV build artifacts
+clean:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🧹 Cleaning OpenCV build artifacts..."
+    rm -rf build build_unix
+    rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
+    rm -f default.nix result
+    rm -f /tmp/opencv_*.log
+    # Don't clean the OpenCV source in ext/
+    echo "✅ OpenCV build artifacts cleaned"
+
+# Emergency clean (including OpenCV source)
+clean-all: clean
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "⚠️ Performing emergency clean (this will remove OpenCV source)..."
+    read -p "Are you sure? This will delete the OpenCV submodule. [y/N] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        cd ..
+        rm -rf test_opencv
+        echo "🗑️ OpenCV submodule removed. Need to re-add manually."
+    else
+        echo "❌ Emergency clean cancelled"
+    fi
+
+# Show OpenCV CMake options and help
+help-opencv:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "📚 OpenCV CMake Configuration Help"
+    echo "================================="
+    echo ""
+    echo "Key CMake options for OpenCV:"
+    echo "  -DBUILD_LIST=module1,module2  # Build only specific modules"
+    echo "  -DBUILD_EXAMPLES=OFF          # Skip examples"
+    echo "  -DBUILD_TESTS=OFF             # Skip tests"
+    echo "  -DWITH_CUDA=OFF               # Disable CUDA"
+    echo "  -DWITH_OPENCL=OFF             # Disable OpenCL"
+    echo "  -DWITH_IPP=OFF                # Disable Intel IPP"
+    echo "  -DWITH_TBB=OFF                # Disable Intel TBB"
+    echo ""
+    echo "Core modules (minimal build):"
+    echo "  core, imgproc, imgcodecs, highgui"
+    echo ""
+    echo "Full module list:"
+    echo "  core, imgproc, imgcodecs, videoio, highgui, video, calib3d, features2d,"
+    echo "  objdetect, dnn, ml, flann, photo, stitching, gapi"
+    echo ""
+    echo "Usage:"
+    echo "  just configure-core   # Minimal configuration"
+    echo "  just run             # Configure + analyze"
+    echo "  just benchmark       # Compare with Unix Makefiles"
+
+# Show directory structure
+show-structure:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "📁 OpenCV Test Directory Structure:"
+    echo "=================================="
+    tree -L 3 -a . || ls -la
+    echo ""
+    echo "📍 Key paths:"
+    echo "  Source: ext/opencv/"
+    echo "  Build:  build/"
+    echo "  Unix:   build_unix/"

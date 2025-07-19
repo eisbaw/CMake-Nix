@@ -67,6 +67,12 @@ mod test_complex_dependencies
 # Package integration test
 mod test_package_integration
 
+# Compiler feature detection test
+mod test_feature_detection
+
+# OpenCV real-world test (large C++ project)
+mod test_opencv
+
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
     ./bootstrap --parallel=$(nproc)
@@ -98,6 +104,8 @@ clean-test-projects:
     -just test_preprocessor::clean
     -just test_complex_dependencies::clean
     -just test_package_integration::clean
+    -just test_feature_detection::clean
+    -just test_opencv::clean
 
 # Clean build of CMake itself and test project cruft½
 clean: clean-test-projects
@@ -131,6 +139,8 @@ test-all:
     just test_preprocessor::run
     just test_complex_dependencies::run
     just test_package_integration::run
+    just test_feature_detection::run
+    -just test_opencv::run
     @echo "✅ All tests passed!"
 
 ########################################################
