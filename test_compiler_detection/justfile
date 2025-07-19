@@ -1,0 +1,39 @@
+# Test compiler detection with different compilers
+
+# Configure with Nix generator
+configure:
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build
+
+# Build all targets
+build: configure
+    cd build && nix-build -A c_program
+    cd build && nix-build -A cpp_program
+    cd build && nix-build -A mixed_program
+
+# Run all programs
+run: build
+    @echo "=== C Program ==="
+    cd build && ./result
+    @echo "\n=== C++ Program ===" 
+    cd build && nix-build -A cpp_program && ./result
+    @echo "\n=== Mixed Program ==="
+    cd build && nix-build -A mixed_program && ./result
+
+# Test with clang (if available)
+test-clang:
+    TEST_C_COMPILER=clang TEST_CXX_COMPILER=clang++ just configure
+    just build
+    just run
+
+# Check generated Nix file
+check-nix: configure
+    @echo "=== Checking compiler detection in default.nix ==="
+    @grep -E "buildInputs = \[" build/default.nix | head -5
+
+# Clean build directory
+clean:
+    rm -rf build
+
+# Run all tests
+test: clean run check-nix
+    @echo "\n✅ Compiler detection test passed!"

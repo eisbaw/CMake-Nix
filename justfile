@@ -16,6 +16,9 @@ mod test_implicit_headers
 # Manual OBJECT_DEPENDS configuration test
 mod test_explicit_headers
 
+# Compiler auto-detection test
+mod test_compiler_detection
+
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
     ./bootstrap --parallel=$(nproc)
@@ -30,6 +33,7 @@ clean-test-projects:
     -just test_headers::clean
     -just test_implicit_headers::clean
     -just test_explicit_headers::clean
+    -just test_compiler_detection::clean
 
 # Clean build of CMake itself and test project cruft½
 clean: clean-test-projects
@@ -46,6 +50,7 @@ test-all:
     just test_headers::run
     just test_implicit_headers::run
     just test_explicit_headers::run
+    just test_compiler_detection::run
     @echo "✅ All tests passed!"
 
 ########################################################

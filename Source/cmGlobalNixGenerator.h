@@ -90,4 +90,8 @@ private:
   std::string GetDerivationName(std::string const& targetName, 
                                std::string const& sourceFile = "") const;
   std::vector<std::string> GetSourceDependencies(std::string const& sourceFile) const;
+  
+  // Compiler detection methods
+  std::string GetCompilerPackage(const std::string& lang) const;
+  std::string GetCompilerCommand(const std::string& lang) const;
 }; 

@@ -16,6 +16,8 @@
 #include "cmake.h"
 #include "cmNixTargetGenerator.h"
 #include "cmListFileCache.h"
+#include "cmValue.h"
+#include "cmState.h"
 
 cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   : cmGlobalCommonGenerator(cm)
@@ -226,7 +228,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
   
   // Build buildInputs list including external libraries for headers
-  nixFileStream << "    buildInputs = [ gcc";
+  std::string compilerPkg = this->GetCompilerPackage(lang);
+  nixFileStream << "    buildInputs = [ " << compilerPkg;
   for (const std::string& lib : libraryDeps) {
     if (!lib.empty()) {
       nixFileStream << " (import " << lib << " { inherit pkgs; })";
@@ -259,7 +262,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   if (!defineFlags.empty()) allFlags += defineFlags + " ";
   if (!includeFlags.empty()) allFlags += includeFlags;
   
-  nixFileStream << "      gcc -c " << allFlags << " \"" << relativePath 
+  std::string compilerCmd = this->GetCompilerCommand(lang);
+  nixFileStream << "      " << compilerCmd << " -c " << allFlags << " \"" << relativePath 
     << "\" -o \"$out\"\n";
   nixFileStream << "    '';\n";
   nixFileStream << "    installPhase = \"true\"; # No install needed for objects\n";
@@ -283,8 +287,20 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   }
   std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
   
-  // Build buildInputs list including external libraries  
-  nixFileStream << "    buildInputs = [ gcc";
+  // Build buildInputs list including external libraries
+  // Determine the primary language for linking
+  std::string primaryLang = "C";
+  std::vector<cmSourceFile*> sources;
+  target->GetSourceFiles(sources, "");
+  for (cmSourceFile* source : sources) {
+    if (source->GetLanguage() == "CXX") {
+      primaryLang = "CXX";
+      break;  // C++ takes precedence
+    }
+  }
+  
+  std::string compilerPkg = this->GetCompilerPackage(primaryLang);
+  nixFileStream << "    buildInputs = [ " << compilerPkg;
   for (const std::string& lib : libraryDeps) {
     if (!lib.empty()) {
       nixFileStream << " (import " << lib << " { inherit pkgs; })";
@@ -294,9 +310,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   nixFileStream << "    dontUnpack = true;\n";  // No source to unpack
   
-  // Collect object file dependencies
-  std::vector<cmSourceFile*> sources;
-  target->GetSourceFiles(sources, "");
+  // Collect object file dependencies (reuse sources from above)
   
   nixFileStream << "    objects = [\n";
   for (cmSourceFile* source : sources) {
@@ -324,13 +338,14 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     }
   }
   
+  std::string linkCompilerCmd = this->GetCompilerCommand(primaryLang);
   nixFileStream << "    buildPhase = ''\n";
   if (target->GetType() == cmStateEnums::EXECUTABLE) {
-    nixFileStream << "      gcc $objects" << linkFlags << " -o \"$out\"\n";
+    nixFileStream << "      " << linkCompilerCmd << " $objects" << linkFlags << " -o \"$out\"\n";
   } else if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
     nixFileStream << "      ar rcs \"$out\" $objects\n";
   } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-    nixFileStream << "      gcc -shared $objects" << linkFlags << " -o \"$out\"\n";
+    nixFileStream << "      " << linkCompilerCmd << " -shared $objects" << linkFlags << " -o \"$out\"\n";
   }
   nixFileStream << "    '';\n";
   nixFileStream << "    installPhase = \"true\"; # No install needed\n";
@@ -343,4 +358,47 @@ std::vector<std::string> cmGlobalNixGenerator::GetSourceDependencies(
   // TODO: Implement header dependency tracking
   // This will use CMake's existing dependency analysis
   return {};
+}
+
+std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) const
+{
+  cmake* cm = this->GetCMakeInstance();
+  std::string compilerIdVar = "CMAKE_" + lang + "_COMPILER_ID";
+  
+  cmValue compilerId = cm->GetState()->GetGlobalProperty(compilerIdVar);
+  if (!compilerId) {
+    // Try to get from cache
+    compilerId = cm->GetCacheDefinition(compilerIdVar);
+  }
+  
+  if (compilerId) {
+    std::string id = *compilerId;
+    if (id == "GNU") {
+      return "gcc";
+    } else if (id == "Clang" || id == "AppleClang") {
+      return "clang";
+    } else if (id == "MSVC") {
+      // For future Windows support
+      return "msvc";
+    }
+  }
+  
+  // Default fallback - in Nix context, gcc is usually available
+  return "gcc";
+}
+
+std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) const
+{
+  // In Nix, we use the compiler from the Nix package
+  // The actual command depends on the package and language
+  std::string compilerPkg = this->GetCompilerPackage(lang);
+  
+  if (compilerPkg == "gcc") {
+    return (lang == "CXX") ? "g++" : "gcc";
+  } else if (compilerPkg == "clang") {
+    return (lang == "CXX") ? "clang++" : "clang";
+  }
+  
+  // Default fallback
+  return (lang == "CXX") ? "g++" : "gcc";
 } 
