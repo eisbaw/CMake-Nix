@@ -97,13 +97,13 @@ let
 
   link_app = stdenv.mkDerivation {
     name = "app";
-    buildInputs = [ gcc ];
+    buildInputs = [ gcc link_mylib ];
     dontUnpack = true;
     objects = [
       app_main_c_o
     ];
     buildPhase = ''
-      gcc $objects -o "$out"
+      gcc $objects ${link_mylib}/libmylib.so -o "$out"
     '';
     installPhase = "true"; # No install needed
   };
@@ -123,13 +123,13 @@ let
 
   link_mixed_app = stdenv.mkDerivation {
     name = "mixed_app";
-    buildInputs = [ gcc ];
+    buildInputs = [ gcc link_mylib ];
     dontUnpack = true;
     objects = [
       mixed_app_mixed_c_o
     ];
     buildPhase = ''
-      gcc $objects -o "$out"
+      gcc $objects ${link_mylib}/libmylib.so ${link_static_helper} -o "$out"
     '';
     installPhase = "true"; # No install needed
   };

@@ -1,0 +1,4 @@
+run:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    nix-build -A calculator && ./result

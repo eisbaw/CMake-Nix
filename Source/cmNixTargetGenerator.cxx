@@ -226,11 +226,11 @@ std::vector<std::string> cmNixTargetGenerator::GetManualDependencies(
   if (objectDependsValue) {
     cmExpandList(*objectDependsValue, dependencies);
     
-    // Convert to relative paths
-    std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
+    // Convert to relative paths from top-level source directory (for Nix generation)
+    std::string topSourceDir = this->GetMakefile()->GetHomeDirectory();
     for (std::string& dep : dependencies) {
       if (cmSystemTools::FileIsFullPath(dep)) {
-        std::string relPath = cmSystemTools::RelativePath(sourceDir, dep);
+        std::string relPath = cmSystemTools::RelativePath(topSourceDir, dep);
         if (!relPath.empty()) {
           dep = relPath;
         }
@@ -264,9 +264,9 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithRegex(
       // Try to resolve include to full path
       std::string fullPath = this->ResolveIncludePath(headerName);
       if (!fullPath.empty()) {
-        // Convert to relative path
-        std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
-        std::string relPath = cmSystemTools::RelativePath(sourceDir, fullPath);
+        // Convert to relative path from top-level source directory (for Nix generation)
+        std::string topSourceDir = this->GetMakefile()->GetHomeDirectory();
+        std::string relPath = cmSystemTools::RelativePath(topSourceDir, fullPath);
         dependencies.push_back(!relPath.empty() ? relPath : fullPath);
       }
     }
@@ -349,9 +349,9 @@ std::vector<std::string> cmNixTargetGenerator::ParseCompilerDependencyOutput(
     while (depsStream >> depFile) {
       // Skip the source file itself, only add headers
       if (depFile != source->GetFullPath() && !depFile.empty()) {
-        // Convert to relative path
-        std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
-        std::string relPath = cmSystemTools::RelativePath(sourceDir, depFile);
+        // Convert to relative path from top-level source directory (for Nix generation)
+        std::string topSourceDir = this->GetMakefile()->GetHomeDirectory();
+        std::string relPath = cmSystemTools::RelativePath(topSourceDir, depFile);
         dependencies.push_back(!relPath.empty() ? relPath : depFile);
       }
     }
