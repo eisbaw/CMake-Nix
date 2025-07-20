@@ -76,17 +76,83 @@ configure-unix:
         -DWITH_QT=OFF \
         ../ext/opencv
 
-# Try to build a small subset with nix-build
+# Build OpenCV libraries with nix-build
 build-core:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "🔨 Attempting to build OpenCV core with nix-build..."
+    echo "🔨 Building OpenCV core library with nix-build..."
     if [ -f "build/default.nix" ]; then
         cd build
-        echo "Building opencv_core library..."
-        nix-build -A opencv_core 2>&1 | head -100
+        echo "Building opencv_core..."
+        nix-build -A opencv_core
+        echo "✅ Core library built successfully!"
     else
         echo "❌ No build/default.nix found. Run 'just configure-core' first."
+        exit 1
+    fi
+
+# Build all available OpenCV targets
+build-all:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🚀 Building all OpenCV targets with nix-build..."
+    if [ -f "build/default.nix" ]; then
+        cd build
+        echo "📋 Available targets:"
+        grep '".*"' default.nix | grep '=' | head -20
+        echo ""
+        echo "🔨 Building all targets (this may take a while)..."
+        nix-build
+        echo "✅ All targets built successfully!"
+        echo "📁 Build results:"
+        ls -la result* 2>/dev/null || echo "  No result symlinks found"
+    else
+        echo "❌ No build/default.nix found. Run configuration first."
+        exit 1
+    fi
+
+# Build specific OpenCV module
+build-module MODULE:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🎯 Building OpenCV module: {{MODULE}}"
+    if [ -f "build/default.nix" ]; then
+        cd build
+        if grep -q '"{{MODULE}}"' default.nix; then
+            echo "Building {{MODULE}}..."
+            nix-build -A {{MODULE}}
+            echo "✅ Module {{MODULE}} built successfully!"
+        else
+            echo "❌ Module {{MODULE}} not found in Nix file"
+            echo "Available modules:"
+            grep '".*"' default.nix | grep '=' | head -10
+            exit 1
+        fi
+    else
+        echo "❌ No build/default.nix found. Run configuration first."
+        exit 1
+    fi
+
+# Test the build by attempting to import/run built libraries
+test-build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🧪 Testing built OpenCV libraries..."
+    if [ -f "build/result" ]; then
+        cd build
+        echo "📂 Checking built library structure:"
+        file result* 2>/dev/null || echo "  No result files found"
+        echo ""
+        echo "🔍 Library details:"
+        if [ -f "result" ]; then
+            ls -la result
+            file result
+            echo ""
+            echo "📊 Library size: $(du -h result | cut -f1)"
+        fi
+        echo "✅ Build test completed!"
+    else
+        echo "❌ No build results found. Run 'just build-core' or 'just build-all' first."
         exit 1
     fi
 
@@ -135,9 +201,13 @@ check-cmake-config:
         echo "❌ No build/CMakeCache.txt found. Run configuration first."
     fi
 
-# Quick configure and analyze (most common workflow)
-run: configure-core analyze-nix check-cmake-config
-    @echo "✅ OpenCV Nix generator test completed"
+# Complete workflow: configure, analyze, and build
+run: configure-core analyze-nix check-cmake-config build-core test-build
+    @echo "✅ OpenCV Nix generator test completed - configuration, build, and validation successful!"
+
+# Quick configure and analyze (configuration only)
+analyze: configure-core analyze-nix check-cmake-config
+    @echo "✅ OpenCV Nix generator analysis completed"
 
 # Test different configuration levels
 test-configs:

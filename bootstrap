@@ -326,6 +326,7 @@ CMAKE_CXX_SOURCES="\
   cmConfigureFileCommand \
   cmContinueCommand \
   cmCoreTryCompile \
+  cmTryCompileExecutor \
   cmCreateTestSourceList \
   cmCryptoHash \
   cmCustomCommand \

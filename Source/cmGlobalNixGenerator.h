@@ -75,6 +75,10 @@ public:
     cmBuildOptions const& buildOptions = cmBuildOptions(),
     std::vector<std::string> const& makeOptions =
       std::vector<std::string>()) override;
+  
+  // Batch try_compile operations for parallel execution
+  void BeginTryCompileBatch();
+  void EndTryCompileBatch();
 
 protected:
   void WriteNixFile();

@@ -572,6 +572,8 @@ add_library(
   cmContinueCommand.h
   cmCoreTryCompile.cxx
   cmCoreTryCompile.h
+  cmTryCompileExecutor.cxx
+  cmTryCompileExecutor.h
   cmCreateTestSourceList.cxx
   cmCreateTestSourceList.h
   cmDefinePropertyCommand.cxx
@@ -784,6 +786,7 @@ add_library(
   # Nix support
   cmGlobalNixGenerator.cxx
   cmGlobalNixGenerator.h
+  cmGlobalNixGenerator_ParallelTryCompile.cxx
   cmLocalNixGenerator.cxx
   cmLocalNixGenerator.h
   cmNixTargetGenerator.cxx
