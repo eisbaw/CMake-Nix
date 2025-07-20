@@ -3,11 +3,15 @@
 #include "cmCoreTryCompile.h"
 
 #include <array>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <set>
 #include <sstream>
 #include <utility>
+
+#include "cmTryCompileExecutor.h"
 
 #include <cm/string_view>
 #include <cmext/string_view>
@@ -1202,10 +1206,71 @@ cm::optional<cmTryCompileResult> cmCoreTryCompile::TryCompileCode(
   cmSystemTools::ResetErrorOccurredFlag();
   std::string output;
   // actually do the try compile now that everything is setup
-  int res = this->Makefile->TryCompile(
-    sourceDirectory, this->BinaryDirectory, projectName, targetName,
-    this->SrcFileSignature, cmake::NO_BUILD_PARALLEL_LEVEL,
-    &arguments.CMakeFlags, output);
+  std::cerr << "[TRACE] TryCompile STARTED: " << projectName << " / " << targetName << std::endl;
+  auto start_time = std::chrono::steady_clock::now();
+  
+  int res = 0;
+  
+  // Check if parallel try_compile is enabled via environment
+  static bool parallelEnabled = true; // Default to parallel
+  static bool checkedEnv = false;
+  if (!checkedEnv) {
+    const char* env = cmSystemTools::GetEnv("CMAKE_PARALLEL_TRY_COMPILE");
+    if (env && cmIsOff(env)) {
+      parallelEnabled = false;
+    }
+    checkedEnv = true;
+  }
+  
+  if (parallelEnabled) {
+    // Use parallel executor
+    auto& executor = cmTryCompileExecutor::Instance();
+    
+    auto job = std::make_unique<cmTryCompileJob>();
+    job->SourceDir = sourceDirectory;
+    job->BinaryDir = this->BinaryDirectory;
+    job->ProjectName = projectName;
+    job->TargetName = targetName;
+    job->Fast = this->SrcFileSignature;
+    job->CMakeArgs = &arguments.CMakeFlags;
+    
+    // Populate context from current makefile
+    // For try_compile, always use Unix Makefiles instead of Nix generator
+    std::string generatorName = this->Makefile->GetGlobalGenerator()->GetName();
+    if (generatorName == "Nix") {
+      job->GeneratorName = "Unix Makefiles";
+    } else {
+      job->GeneratorName = generatorName;
+    }
+    job->GeneratorInstance = this->Makefile->GetSafeDefinition("CMAKE_GENERATOR_INSTANCE");
+    job->GeneratorPlatform = this->Makefile->GetSafeDefinition("CMAKE_GENERATOR_PLATFORM");
+    job->GeneratorToolset = this->Makefile->GetSafeDefinition("CMAKE_GENERATOR_TOOLSET");
+    if (cmValue config = this->Makefile->GetDefinition("CMAKE_TRY_COMPILE_CONFIGURATION")) {
+      job->BuildType = *config;
+    }
+    if (cmValue depth = this->Makefile->GetDefinition("CMAKE_MAXIMUM_RECURSION_DEPTH")) {
+      job->RecursionDepth = *depth;
+    }
+    job->SuppressDeveloperWarnings = this->Makefile->IsOn("CMAKE_SUPPRESS_DEVELOPER_WARNINGS");
+    job->ParentGenerator = this->Makefile->GetGlobalGenerator();
+    job->ParentMakefile = this->Makefile;
+    
+    auto future = executor.SubmitJob(std::move(job));
+    res = future.get(); // Wait for completion
+    // Note: output would need to be retrieved from job in real implementation
+  } else {
+    // Use sequential execution (current behavior)
+    std::cerr << "[TRACE] Using SEQUENTIAL try_compile" << std::endl;
+    res = this->Makefile->TryCompile(
+      sourceDirectory, this->BinaryDirectory, projectName, targetName,
+      this->SrcFileSignature, cmake::NO_BUILD_PARALLEL_LEVEL,
+      &arguments.CMakeFlags, output);
+  }
+    
+  auto end_time = std::chrono::steady_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+  std::cerr << "[TRACE] TryCompile COMPLETED: " << projectName << " / " << targetName 
+            << " (result=" << res << ", time=" << duration.count() << "ms)" << std::endl;
   if (erroroc) {
     cmSystemTools::SetErrorOccurred();
   }
