@@ -90,8 +90,24 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   // For Nix generator, we use nix-build as the build program
   makeCommand.Add(this->SelectMakeProgram(makeProgram, "nix-build"));
   
-  // Add default.nix file
-  makeCommand.Add("default.nix");
+  // For try_compile, look for default.nix in the scratch directory without suffix
+  if (isTryCompile) {
+    // Extract the base scratch directory (remove numeric suffix if present)
+    std::string scratchDir = projectDir;
+    size_t underscorePos = scratchDir.find_last_of('_');
+    if (underscorePos != std::string::npos) {
+      // Check if everything after the underscore is numeric
+      std::string suffix = scratchDir.substr(underscorePos + 1);
+      bool isNumeric = !suffix.empty() && std::all_of(suffix.begin(), suffix.end(), ::isdigit);
+      if (isNumeric) {
+        scratchDir = scratchDir.substr(0, underscorePos);
+      }
+    }
+    makeCommand.Add(scratchDir + "/default.nix");
+  } else {
+    // Add default.nix file  
+    makeCommand.Add("default.nix");
+  }
   
   // Add target names as attribute paths  
   for (auto const& tname : targetNames) {
@@ -707,9 +723,10 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     nixFileStream << "      COPY_DEST=\"" << buildDir << "/" << targetName << "\"\n";
     nixFileStream << "      cp \"$out\" \"$COPY_DEST\"\n";
     nixFileStream << "      echo '[NIX-TRACE] Copied try_compile output to: '$COPY_DEST\n";
-    nixFileStream << "      # Write location file to CMake build directory where it expects it\n";
+    nixFileStream << "      # Write location file that CMake expects to find the executable path\n";
     nixFileStream << "      echo \"$COPY_DEST\" > \"" << buildDir << "/" << targetName << "_loc\"\n";
-    nixFileStream << "      echo '[NIX-TRACE] Wrote location file to: " << buildDir << "/" << targetName << "_loc with content: '$COPY_DEST\n";
+    nixFileStream << "      echo '[NIX-TRACE] Wrote location file: " << buildDir << "/" << targetName << "_loc'\n";
+    nixFileStream << "      echo '[NIX-TRACE] Location file contains: '$COPY_DEST\n";
     nixFileStream << "    '';\n";
   }
   

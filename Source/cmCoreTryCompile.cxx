@@ -1235,10 +1235,16 @@ cm::optional<cmTryCompileResult> cmCoreTryCompile::TryCompileCode(
     job->CMakeArgs = &arguments.CMakeFlags;
     
     // Populate context from current makefile
-    // For try_compile, always use Unix Makefiles instead of Nix generator
+    // For try_compile, use Nix generator when COPY_FILE is needed, otherwise use Unix Makefiles
     std::string generatorName = this->Makefile->GetGlobalGenerator()->GetName();
     if (generatorName == "Nix") {
-      job->GeneratorName = "Unix Makefiles";
+      if (arguments.CopyFileTo.has_value()) {
+        // CheckTypeSize and similar modules need COPY_FILE to work, so use Nix generator
+        job->GeneratorName = "Nix";
+      } else {
+        // For normal try_compile without COPY_FILE, use Unix Makefiles for speed
+        job->GeneratorName = "Unix Makefiles";
+      }
     } else {
       job->GeneratorName = generatorName;
     }
