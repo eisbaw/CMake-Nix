@@ -601,6 +601,10 @@
 #  endif
 #endif
 
+/* CMake Nix backend fix: force curl_off_t to be 8 bytes */
+#ifndef SIZEOF_CURL_OFF_T
+#define SIZEOF_CURL_OFF_T 8
+#endif
 #if (SIZEOF_CURL_OFF_T < 8)
 #error "too small curl_off_t"
 #else

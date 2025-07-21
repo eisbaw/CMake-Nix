@@ -72,7 +72,7 @@ mod test_opencv
 
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
-    ./bootstrap --parallel=$(nproc) -- -DCMAKE_USE_OPENSSL=OFF
+    ./bootstrap --parallel=$(nproc) --no-system-curl -- -DCMAKE_USE_OPENSSL=OFF -DCMAKE_USE_SYSTEM_ZLIB=OFF
 
 # Build CMake with Nix generator
 build:
