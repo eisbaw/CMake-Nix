@@ -825,7 +825,7 @@ ${SIZEOF_TIME_T_CODE}
 # elif SIZEOF_LONG_LONG == SIZEOF_SIZE_T
    typedef long long ssize_t;
 # elif SIZEOF___INT64 == SIZEOF_SIZE_T
-   typedef __int64 ssize_t;
+   
 # else
    typedef int ssize_t;
 # endif
