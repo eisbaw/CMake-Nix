@@ -126,4 +126,31 @@ private:
   
   // Map from output file to custom command derivation name
   std::map<std::string, std::string> CustomCommandOutputs;
+  
+  // Dependency graph infrastructure for transitive dependency resolution
+  class cmNixDependencyNode {
+  public:
+    std::string targetName;
+    cmStateEnums::TargetType type;
+    std::vector<std::string> directDependencies;
+    mutable std::set<std::string> transitiveDependencies; // cached
+    mutable bool transitiveDepsComputed = false;
+  };
+  
+  class cmNixDependencyGraph {
+    std::map<std::string, cmNixDependencyNode> nodes;
+    
+  public:
+    void AddTarget(const std::string& name, cmGeneratorTarget* target);
+    void AddDependency(const std::string& from, const std::string& to);
+    std::set<std::string> GetTransitiveSharedLibraries(const std::string& target) const;
+    bool HasCircularDependency() const;
+    void Clear();
+  };
+  
+  // Dependency graph instance
+  mutable cmNixDependencyGraph DependencyGraph;
+  
+  // Build dependency graph from all targets
+  void BuildDependencyGraph();
 }; 

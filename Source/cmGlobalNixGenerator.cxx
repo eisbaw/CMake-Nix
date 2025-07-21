@@ -59,6 +59,9 @@ void cmGlobalNixGenerator::Generate()
   
   std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
   
+  // Build dependency graph for transitive dependency resolution
+  this->BuildDependencyGraph();
+  
   // Generate our Nix output
   this->WriteNixFile();
   
@@ -615,16 +618,30 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     }
   }
   
-  // Add CMake target dependencies (only shared libraries, not static)
+  // Get transitive shared library dependencies (exclude those already direct)
+  std::set<std::string> transitiveDeps = this->DependencyGraph.GetTransitiveSharedLibraries(targetName);
+  std::set<std::string> directSharedDeps;
+  
+  // Add direct CMake target dependencies (only shared libraries)
   if (linkImpl) {
     for (const cmLinkItem& item : linkImpl->Libraries) {
       if (item.Target && !item.Target->IsImported()) {
         // Only add shared libraries to buildInputs, not static libraries
         if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-          std::string depDerivName = this->GetDerivationName(item.Target->GetName());
+          std::string depTargetName = item.Target->GetName();
+          std::string depDerivName = this->GetDerivationName(depTargetName);
           nixFileStream << " " << depDerivName;
+          directSharedDeps.insert(depTargetName); // Track direct deps to avoid duplication
         }
       }
+    }
+  }
+  
+  // Add transitive shared library dependencies to buildInputs (excluding direct ones)
+  for (const std::string& depTarget : transitiveDeps) {
+    if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
+      std::string depDerivName = this->GetDerivationName(depTarget);
+      nixFileStream << " " << depDerivName;
     }
   }
   
@@ -678,6 +695,14 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
         std::string libName = item.AsStr();
         linkFlags += " -l" + libName;
       }
+    }
+  }
+  
+  // Add transitive shared library dependencies to linkFlags (excluding direct ones)
+  for (const std::string& depTarget : transitiveDeps) {
+    if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
+      std::string depDerivName = this->GetDerivationName(depTarget);
+      linkFlags += " ${" + depDerivName + "}/lib" + depTarget + ".so";
     }
   }
   
@@ -980,4 +1005,143 @@ void cmGlobalNixGenerator::WriteInstallRules(cmGeneratedFileStream& nixFileStrea
     nixFileStream << "    '';\n";
     nixFileStream << "  };\n\n";
   }
+}
+
+// Dependency graph implementation
+void cmGlobalNixGenerator::BuildDependencyGraph() {
+  // Clear any existing graph
+  this->DependencyGraph.Clear();
+  
+  // Add all targets to the graph
+  for (const auto& lg : this->LocalGenerators) {
+    for (const auto& target : lg->GetGeneratorTargets()) {
+      this->DependencyGraph.AddTarget(target->GetName(), target.get());
+    }
+  }
+  
+  // Add dependencies
+  std::string config = "Release"; // Default config for dependency analysis
+  for (const auto& lg : this->LocalGenerators) {
+    for (const auto& target : lg->GetGeneratorTargets()) {
+      auto linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
+      if (linkImpl) {
+        for (const cmLinkItem& item : linkImpl->Libraries) {
+          if (item.Target && !item.Target->IsImported()) {
+            // Add dependency from target to item.Target
+            this->DependencyGraph.AddDependency(target->GetName(), item.Target->GetName());
+          }
+        }
+      }
+    }
+  }
+}
+
+void cmGlobalNixGenerator::cmNixDependencyGraph::AddTarget(const std::string& name, cmGeneratorTarget* target) {
+  cmNixDependencyNode node;
+  node.targetName = name;
+  node.type = target->GetType();
+  nodes[name] = node;
+}
+
+void cmGlobalNixGenerator::cmNixDependencyGraph::AddDependency(const std::string& from, const std::string& to) {
+  // Add 'to' as a direct dependency of 'from'
+  auto it = nodes.find(from);
+  if (it != nodes.end()) {
+    it->second.directDependencies.push_back(to);
+    // Clear cached transitive dependencies since graph has changed
+    it->second.transitiveDepsComputed = false;
+    it->second.transitiveDependencies.clear();
+  }
+}
+
+std::set<std::string> cmGlobalNixGenerator::cmNixDependencyGraph::GetTransitiveSharedLibraries(const std::string& target) const {
+  auto it = nodes.find(target);
+  if (it == nodes.end()) {
+    return {};
+  }
+  
+  auto& node = it->second;
+  
+  // Return cached result if available
+  if (node.transitiveDepsComputed) {
+    return node.transitiveDependencies;
+  }
+  
+  // Compute transitive dependencies using DFS
+  std::set<std::string> visited;
+  std::set<std::string> result;
+  std::vector<std::string> stack;
+  
+  stack.push_back(target);
+  
+  while (!stack.empty()) {
+    std::string current = stack.back();
+    stack.pop_back();
+    
+    if (visited.count(current)) continue;
+    visited.insert(current);
+    
+    auto currentIt = nodes.find(current);
+    if (currentIt == nodes.end()) continue;
+    
+    auto& currentNode = currentIt->second;
+    
+    // If this is a shared library (and not the starting target), include it
+    if (current != target && currentNode.type == cmStateEnums::SHARED_LIBRARY) {
+      result.insert(current);
+    }
+    
+    // Add direct dependencies to stack
+    for (const auto& dep : currentNode.directDependencies) {
+      if (!visited.count(dep)) {
+        stack.push_back(dep);
+      }
+    }
+  }
+  
+  // Cache the result
+  node.transitiveDependencies = result;
+  node.transitiveDepsComputed = true;
+  
+  return result;
+}
+
+bool cmGlobalNixGenerator::cmNixDependencyGraph::HasCircularDependency() const {
+  // Simple cycle detection using DFS
+  std::set<std::string> visited;
+  std::set<std::string> recursionStack;
+  
+  for (const auto& pair : nodes) {
+    if (visited.find(pair.first) == visited.end()) {
+      std::function<bool(const std::string&)> dfs = [&](const std::string& node) -> bool {
+        visited.insert(node);
+        recursionStack.insert(node);
+        
+        auto it = nodes.find(node);
+        if (it != nodes.end()) {
+          for (const auto& dep : it->second.directDependencies) {
+            if (recursionStack.count(dep)) {
+              return true; // Back edge found - cycle detected
+            }
+            if (visited.find(dep) == visited.end() && dfs(dep)) {
+              return true;
+            }
+          }
+        }
+        
+        recursionStack.erase(node);
+        return false;
+      };
+      
+      if (dfs(pair.first)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+void cmGlobalNixGenerator::cmNixDependencyGraph::Clear() {
+  nodes.clear();
 } 
