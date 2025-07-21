@@ -519,6 +519,14 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
   std::string projectSourceRelPath = cmSystemTools::RelativePath(buildDir, sourceDir);
   
+  // Check if this is a try_compile
+  bool isTryCompile = buildDir.find("CMakeScratch") != std::string::npos;
+  
+  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+            << " WriteLinkDerivation for target: " << targetName
+            << " buildDir: " << buildDir
+            << " isTryCompile: " << (isTryCompile ? "true" : "false") << std::endl;
+  
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
   
   // Generate appropriate name for target type

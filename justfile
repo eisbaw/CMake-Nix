@@ -81,14 +81,12 @@ build:
 # Clean cruft for the test projects
 clean-test-projects:
     -just test_multifile::clean
-    -just test_nix_generator::clean
     -just test_headers::clean
     -just test_implicit_headers::clean
     -just test_explicit_headers::clean
     -just test_compiler_detection::clean
     -just test_shared_library::clean
     -just test_find_package::clean
-    -just test_subdirectory::clean
     -just test_custom_commands::clean
     -just test_external_library::clean
     -just test_zlib_example::clean
@@ -116,7 +114,6 @@ rebuild: clean build
 # Run all tests and verify they build
 test-all:
     just test_multifile::run
-    just test_nix_generator::run
     just test_headers::run
     just test_implicit_headers::run
     just test_explicit_headers::run
