@@ -177,6 +177,15 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
         set(CMAKE_${lang}_SIZEOF_DATA_PTR "${ABI_SIZEOF_DPTR}" PARENT_SCOPE)
       elseif(CMAKE_${lang}_SIZEOF_DATA_PTR_DEFAULT)
         set(CMAKE_${lang}_SIZEOF_DATA_PTR "${CMAKE_${lang}_SIZEOF_DATA_PTR_DEFAULT}" PARENT_SCOPE)
+      elseif(CMAKE_GENERATOR STREQUAL "Nix")
+        # Fallback for Nix generator when ABI detection fails
+        message(STATUS "ABI detection failed with Nix generator, using default pointer size")
+        if(CMAKE_SIZEOF_VOID_P)
+          set(CMAKE_${lang}_SIZEOF_DATA_PTR "${CMAKE_SIZEOF_VOID_P}" PARENT_SCOPE)
+        else()
+          # Default to 8 bytes (64-bit) for most modern systems
+          set(CMAKE_${lang}_SIZEOF_DATA_PTR "8" PARENT_SCOPE)
+        endif()
       endif()
 
       if(ABI_BYTE_ORDER)

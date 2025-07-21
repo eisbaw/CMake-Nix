@@ -696,16 +696,20 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   }
   nixFileStream << "    '';\n";
   
-  // For try_compile, write the target location file where CMake expects it
+  // For try_compile, copy the output file where CMake expects it for COPY_FILE
   if (isTryCompile) {
     std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
-              << " Adding try_compile location file creation for: " << targetName << std::endl;
+              << " Adding try_compile output file handling for: " << targetName << std::endl;
     
-    nixFileStream << "    # Write target location for try_compile\n";
+    nixFileStream << "    # Handle try_compile COPY_FILE requirement\n";
     nixFileStream << "    postBuildPhase = ''\n";
+    nixFileStream << "      # Create output location in build directory for CMake COPY_FILE\n";
+    nixFileStream << "      COPY_DEST=\"" << buildDir << "/" << targetName << "\"\n";
+    nixFileStream << "      cp \"$out\" \"$COPY_DEST\"\n";
+    nixFileStream << "      echo '[NIX-TRACE] Copied try_compile output to: '$COPY_DEST\n";
     nixFileStream << "      # Write location file to CMake build directory where it expects it\n";
-    nixFileStream << "      echo \"$out\" > \"" << buildDir << "/" << targetName << "_loc\"\n";
-    nixFileStream << "      echo '[NIX-TRACE] Wrote location file to: " << buildDir << "/" << targetName << "_loc with content: '$out\n";
+    nixFileStream << "      echo \"$COPY_DEST\" > \"" << buildDir << "/" << targetName << "_loc\"\n";
+    nixFileStream << "      echo '[NIX-TRACE] Wrote location file to: " << buildDir << "/" << targetName << "_loc with content: '$COPY_DEST\n";
     nixFileStream << "    '';\n";
   }
   

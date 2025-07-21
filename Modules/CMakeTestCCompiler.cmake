@@ -24,6 +24,13 @@ unset(CMAKE_C_COMPILER_WORKS CACHE)
 # Try to identify the ABI and configure it into CMakeCCompiler.cmake
 include(${CMAKE_ROOT}/Modules/CMakeDetermineCompilerABI.cmake)
 CMAKE_DETERMINE_COMPILER_ABI(C ${CMAKE_ROOT}/Modules/CMakeCCompilerABI.c)
+
+# Fallback for Nix generator when CMAKE_C_SIZEOF_DATA_PTR is not set
+if(NOT CMAKE_C_SIZEOF_DATA_PTR AND CMAKE_GENERATOR STREQUAL "Nix")
+  message(STATUS "Setting fallback CMAKE_C_SIZEOF_DATA_PTR for Nix generator")
+  set(CMAKE_C_SIZEOF_DATA_PTR "8")
+endif()
+
 if(CMAKE_C_ABI_COMPILED)
   # The compiler worked so skip dedicated test below.
   set(CMAKE_C_COMPILER_WORKS TRUE)
