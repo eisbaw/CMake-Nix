@@ -338,14 +338,14 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   nixFileStream << "    name = \"" << objectName << "\";\n";
   
   // Determine source path - check if this source file is external
-  std::string sourceDir = this->GetCMakeInstance()->GetHomeDirectory();
+  std::string currentSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
   std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
   // Since Nix file is now in source directory, use current directory as base
   std::string projectSourceRelPath = ".";
-  std::string relativePath = cmSystemTools::RelativePath(sourceDir, sourceFile);
+  std::string initialRelativePath = cmSystemTools::RelativePath(this->GetCMakeInstance()->GetHomeDirectory(), sourceFile);
   
   // Check if source file is external (outside project tree)
-  bool isExternalSource = (relativePath.find("../") == 0 || cmSystemTools::FileIsFullPath(relativePath));
+  bool isExternalSource = (initialRelativePath.find("../") == 0 || cmSystemTools::FileIsFullPath(initialRelativePath));
   
   if (isExternalSource) {
     // For external sources, create a composite source including both project and external file
@@ -364,8 +364,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     // For ABI detection files, also copy the required header file
     if (fileName.find("CMakeCCompilerABI.c") != std::string::npos ||
         fileName.find("CMakeCXXCompilerABI.cpp") != std::string::npos) {
-      std::string sourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-      nixFileStream << "      cp ${" << sourceDir << "/CMakeCompilerABI.h} $out/CMakeCompilerABI.h\n";
+      std::string abiSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
+      nixFileStream << "      cp ${" << abiSourceDir << "/CMakeCompilerABI.h} $out/CMakeCompilerABI.h\n";
     }
     nixFileStream << "    '';\n";
   } else {
@@ -471,16 +471,17 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   } else {
     // All files (source and generated) - use relative path from source directory
     std::string projectSourceDir = this->GetCMakeInstance()->GetHomeDirectory();
-    std::string relativePath = cmSystemTools::RelativePath(projectSourceDir, sourceFile);
+    std::string sourceFileRelativePath = cmSystemTools::RelativePath(projectSourceDir, sourceFile);
     
     // Check if this is an external file (outside project tree)
-    if (relativePath.find("../") == 0 || cmSystemTools::FileIsFullPath(relativePath)) {
+    if (sourceFileRelativePath.find("../") == 0 || cmSystemTools::FileIsFullPath(sourceFileRelativePath)) {
       // External file - use just the filename, it will be copied to source dir
       std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
       sourcePath = fileName;
-    } else {
+    }
+    else {
       // File within project tree (source or generated)
-      sourcePath = relativePath;
+      sourcePath = sourceFileRelativePath;
     }
   }
   
@@ -507,6 +508,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   nixFileStream << "    installPhase = \"true\"; # No install needed for objects\n";
   nixFileStream << "  };\n\n";
 }
+
+
 
 void cmGlobalNixGenerator::WriteLinkDerivation(
   cmGeneratedFileStream& nixFileStream, cmGeneratorTarget* target)
@@ -831,7 +834,9 @@ std::map<std::string, std::string> cmGlobalNixGenerator::CollectCustomCommands()
         
         // Also check for PRE_BUILD, PRE_LINK, POST_BUILD commands
         std::vector<cmCustomCommand> const& preBuildCommands = target->GetPreBuildCommands();
+        (void)preBuildCommands;
         std::vector<cmCustomCommand> const& postBuildCommands = target->GetPostBuildCommands();
+        (void)postBuildCommands;
         
         // Note: These need special handling as they're not file-generating commands
         // For now, we'll skip them and focus on OUTPUT-based custom commands
