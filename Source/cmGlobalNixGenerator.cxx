@@ -52,11 +52,17 @@ cmDocumentationEntry cmGlobalNixGenerator::GetDocumentation()
 
 void cmGlobalNixGenerator::Generate()
 {
+  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() started" << std::endl;
+  
   // First call the parent Generate to set up targets
   this->cmGlobalGenerator::Generate();
   
+  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
+  
   // Generate our Nix output
   this->WriteNixFile();
+  
+  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() completed" << std::endl;
 }
 
 std::vector<cmGlobalGenerator::GeneratedMakeCommand>
@@ -69,6 +75,15 @@ cmGlobalNixGenerator::GenerateBuildCommand(
 {
   // Check if this is a try-compile (look for CMakeScratch in path)
   bool isTryCompile = projectDir.find("CMakeScratch") != std::string::npos;
+  
+  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+            << " GenerateBuildCommand() called for projectDir: " << projectDir
+            << " isTryCompile: " << (isTryCompile ? "true" : "false")
+            << " targetNames: ";
+  for (const auto& t : targetNames) {
+    std::cerr << t << " ";
+  }
+  std::cerr << std::endl;
   
   GeneratedMakeCommand makeCommand;
   
@@ -87,6 +102,9 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   
   // For try-compile, add post-build copy commands to move binaries from Nix store
   if (isTryCompile && !targetNames.empty()) {
+    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+              << " Generating try-compile copy commands" << std::endl;
+    
     GeneratedMakeCommand copyCommand;
     copyCommand.Add("sh");
     copyCommand.Add("-c");
@@ -94,13 +112,19 @@ cmGlobalNixGenerator::GenerateBuildCommand(
     std::string copyScript = "set -e; ";
     for (auto const& tname : targetNames) {
       if (!tname.empty()) {
+        std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+                  << " Adding copy command for target: " << tname << std::endl;
+        
         // Read the target location file and copy the binary
         copyScript += "if [ -f \"" + tname + "_loc\" ]; then ";
         copyScript += "TARGET_LOCATION=$(cat \"" + tname + "_loc\"); ";
+        copyScript += "echo '[NIX-TRACE] Target location: '$TARGET_LOCATION; ";
         copyScript += "if [ -f \"result\" ]; then ";
         copyScript += "STORE_PATH=$(readlink result); ";
-        copyScript += "cp \"$STORE_PATH\" \"$TARGET_LOCATION\" 2>/dev/null || true; ";
-        copyScript += "fi; fi; ";
+        copyScript += "echo '[NIX-TRACE] Store path: '$STORE_PATH; ";
+        copyScript += "cp \"$STORE_PATH\" \"$TARGET_LOCATION\" 2>/dev/null || echo '[NIX-TRACE] Copy failed'; ";
+        copyScript += "else echo '[NIX-TRACE] No result symlink found'; fi; ";
+        copyScript += "else echo '[NIX-TRACE] No location file for " + tname + "'; fi; ";
       }
     }
     copyScript += "true"; // Ensure script always succeeds
@@ -117,6 +141,9 @@ void cmGlobalNixGenerator::WriteNixFile()
 {
   std::string nixFile = this->GetCMakeInstance()->GetHomeDirectory();
   nixFile += "/default.nix";
+  
+  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+            << " WriteNixFile() writing to: " << nixFile << std::endl;
   
   cmGeneratedFileStream nixFileStream(nixFile);
   nixFileStream.SetCopyIfDifferent(true);
@@ -657,6 +684,19 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     }
   }
   nixFileStream << "    '';\n";
+  
+  // For try_compile, write the target location file
+  if (isTryCompile) {
+    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+              << " Adding try_compile location file creation for: " << targetName << std::endl;
+    
+    nixFileStream << "    # Write target location for try_compile\n";
+    nixFileStream << "    postBuildPhase = ''\n";
+    nixFileStream << "      echo \"$out\" > " << targetName << "_loc\n";
+    nixFileStream << "      echo '[NIX-TRACE] Wrote location file: '" << targetName << "_loc with content: $out\n";
+    nixFileStream << "    '';\n";
+  }
+  
   nixFileStream << "    installPhase = \"true\"; # No install needed\n";
   nixFileStream << "  };\n\n";
 }

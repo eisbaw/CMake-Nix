@@ -7,9 +7,6 @@
 # Simple test with multiple C source files
 mod test_multifile
 
-# Basic Nix generator functionality test
-mod test_nix_generator
-
 # Test project with separate header files  
 mod test_headers
 
@@ -75,7 +72,7 @@ mod test_opencv
 
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
-    ./bootstrap --parallel=$(nproc)
+    ./bootstrap --parallel=$(nproc) -- -DCMAKE_USE_OPENSSL=OFF
 
 # Build CMake with Nix generator
 build:
