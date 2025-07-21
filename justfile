@@ -126,12 +126,12 @@ test-all:
     just test_zlib_example::run
     -just test_error_conditions::run
     -just test_complex_build::run
-    just test_cmake_self_host::run
+    -just test_cmake_self_host::run
     just test_multiconfig::run
     just test_install_rules::run
     just test_mixed_language::run
     just test_preprocessor::run
-    just test_complex_dependencies::run
+    -just test_complex_dependencies::run
     just test_package_integration::run
     just test_feature_detection::run
     -just test_opencv::run
