@@ -149,6 +149,7 @@ test-all:
     just test_package_integration::run
     just test_feature_detection::run
     just test_object_library::run
+    just test_module_library::run
     just test_compile_language_expr::run
     just test_interface_library::run
     just test_json_library::run
@@ -162,3 +163,6 @@ test-all:
 # Quick development cycle: build, test, and show results
 dev: build test-all
     @echo "🚀 Development cycle complete"
+
+# Module library test
+mod test_module_library

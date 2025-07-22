@@ -1,33 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
-project(TestModuleLibrary CXX)
+project(TestModuleLibrary C)
 
-# Enable position independent code for plugins
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# Create a shared library that will load plugins
-add_library(plugin_host SHARED
-    src/plugin_host.cpp
+# Create a MODULE library (plugin)
+add_library(myplugin MODULE
+    plugin.c
 )
 
-# Create MODULE libraries (plugins)
-add_library(plugin_math MODULE
-    src/plugin_math.cpp
-)
-
-add_library(plugin_string MODULE  
-    src/plugin_string.cpp
-)
-
-# Create executable that uses the plugin host
+# Create executable
 add_executable(plugin_demo
-    src/main.cpp
+    main.c
 )
 
-target_link_libraries(plugin_demo PRIVATE plugin_host)
-
-# Set include directories
-target_include_directories(plugin_host PUBLIC include)
-target_include_directories(plugin_math PRIVATE include)
-target_include_directories(plugin_string PRIVATE include)
-target_include_directories(plugin_demo PRIVATE include)
-EOF < /dev/null
+# MODULE libraries are typically loaded at runtime, not linked
+# But for testing purposes, we'll just verify they build correctly

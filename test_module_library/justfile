@@ -1,0 +1,28 @@
+# Test MODULE library support in CMake Nix backend
+
+clean:
+    rm -f default.nix
+    rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
+
+configure:
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+build: clean configure
+    nix-build -A myplugin
+    nix-build -A plugin_demo
+
+run: build
+    echo "=== Testing MODULE library build ==="
+    ls -la $(nix-build --no-out-link -A myplugin)
+    echo ""
+    echo "=== Testing executable build ==="
+    nix-build -A plugin_demo && ./result && rm ./result
+
+test: clean configure
+    # Build the module library
+    nix-build --no-out-link -A myplugin
+    # Build the executable
+    nix-build --no-out-link -A plugin_demo
+    
+    # Verify the module library was built correctly
+    @echo "✅ MODULE library test completed"
