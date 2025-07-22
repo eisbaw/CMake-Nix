@@ -22,9 +22,11 @@ target_compile_definitions(mixed_lang_app PRIVATE
 )
 
 # Test compile options
+# Note: The Nix generator doesn't support $<COMPILE_LANGUAGE:...> expressions yet
+# So we set flags globally for now
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 target_compile_options(mixed_lang_app PRIVATE
-    $<$<COMPILE_LANGUAGE:C>:-std=c99>
-    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
     -Wall
     -Wextra
 )
