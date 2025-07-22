@@ -223,7 +223,8 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
     for (auto const& target : targets) {
       if (target->GetType() == cmStateEnums::EXECUTABLE ||
           target->GetType() == cmStateEnums::STATIC_LIBRARY ||
-          target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+          target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+          target->GetType() == cmStateEnums::OBJECT_LIBRARY) {
         
         // Get source files for this target
         std::vector<cmSourceFile*> sources;
@@ -663,6 +664,43 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
       nixFileStream << "      " << objDerivName << "\n";
     }
   }
+  
+  // Add object files from OBJECT libraries referenced by $<TARGET_OBJECTS:...>
+  std::vector<cmSourceFile const*> externalObjects;
+  target->GetExternalObjects(externalObjects, config);
+  for (cmSourceFile const* source : externalObjects) {
+    // External objects come from OBJECT libraries
+    // The path ends with .o but we need to find the corresponding source file
+    std::string objectFile = source->GetFullPath();
+    
+    // Remove .o extension to get the source file path
+    std::string sourceFile = objectFile;
+    if (sourceFile.size() > 2 && sourceFile.substr(sourceFile.size() - 2) == ".o") {
+      sourceFile = sourceFile.substr(0, sourceFile.size() - 2);
+    }
+    
+    // Find the OBJECT library that contains this source
+    for (auto const& lg : this->LocalGenerators) {
+      auto const& targets = lg->GetGeneratorTargets();
+      for (auto const& objTarget : targets) {
+        if (objTarget->GetType() == cmStateEnums::OBJECT_LIBRARY) {
+          std::vector<cmSourceFile*> objSources;
+          objTarget->GetSourceFiles(objSources, config);
+          for (cmSourceFile* objSource : objSources) {
+            if (objSource->GetFullPath() == sourceFile) {
+              // Found the OBJECT library that contains this source
+              std::string objDerivName = this->GetDerivationName(
+                objTarget->GetName(), sourceFile);
+              nixFileStream << "      " << objDerivName << "\n";
+              goto next_external_object;
+            }
+          }
+        }
+      }
+    }
+    next_external_object:;
+  }
+  
   nixFileStream << "    ];\n";
   
   // Target dependencies will be referenced directly in link flags
@@ -967,7 +1005,8 @@ void cmGlobalNixGenerator::CollectInstallTargets()
       // A more sophisticated implementation would check for actual install() commands
       if (target->GetType() == cmStateEnums::EXECUTABLE ||
           target->GetType() == cmStateEnums::STATIC_LIBRARY ||
-          target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+          target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+          target->GetType() == cmStateEnums::OBJECT_LIBRARY) {
         this->InstallTargets.push_back(target.get());
       }
     }
