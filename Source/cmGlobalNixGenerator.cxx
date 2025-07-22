@@ -983,6 +983,12 @@ std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) co
   if (lang == "CUDA") {
     // CUDA requires special package
     result = "cudatoolkit";
+  } else if (lang == "Swift") {
+    // Swift requires special package
+    result = "swift";
+  } else if (lang == "ASM_NASM") {
+    // NASM requires special package
+    result = "nasm";
   } else if (compilerId) {
     std::string id = *compilerId;
     if (id == "GNU") {
@@ -1048,6 +1054,15 @@ std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) co
     }
   } else if (lang == "CUDA") {
     result = "nvcc"; // NVIDIA CUDA compiler
+  } else if (lang == "Swift") {
+    result = "swiftc"; // Swift compiler
+  } else if (lang == "ASM" || lang == "ASM-ATT") {
+    // Assembly language - use the same compiler as C
+    result = (compilerPkg == "clang") ? "clang" : "gcc";
+  } else if (lang == "ASM_NASM") {
+    result = "nasm"; // NASM assembler
+  } else if (lang == "ASM_MASM") {
+    result = "ml"; // MASM assembler (for Windows compatibility)
   } else if (compilerPkg == "gcc") {
     result = (lang == "CXX") ? "g++" : "gcc";
   } else if (compilerPkg == "clang") {
