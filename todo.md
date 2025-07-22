@@ -52,7 +52,7 @@ DONE: Add multi-language support for Fortran and CUDA
 2. DONE: **Multi-Configuration Support**: Ninja has multi-config variant, Nix is single-config only - Implemented cmGlobalNixMultiGenerator  
 3. DONE: **Response Files**: For very long command lines (not needed for Nix - build commands are in derivation scripts, not command lines)
 4. DONE: **Install Rule Error Handling**: Need to handle missing/invalid install generators gracefully - Already implemented with default destinations
-5. **Additional Language Support**: HIP, ISPC, Swift, Assembly, C++ modules
+5. DONE: **Additional Language Support**: Swift and Assembly (ASM, ASM-ATT, ASM_NASM, ASM_MASM) added. HIP, ISPC, C++ modules still pending
 
 ### ADDITIONAL MISSING FEATURES (Medium/Low Priority):
 
