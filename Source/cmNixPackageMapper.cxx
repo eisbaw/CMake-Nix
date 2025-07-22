@@ -2,73 +2,107 @@
    file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmNixPackageMapper.h"
 
-#include <map>
-#include <string>
+#include <algorithm>
 
-// Map CMake package names to Nix packages
-const std::map<std::string, std::string> cmNixPackageMapper::PackageMap = {
-  {"Threads", ""},        // Built into compiler, no extra package needed
-  {"ZLIB", "zlib"},       
-  {"OpenGL", "libGL"},    
-  {"GLUT", "freeglut"},   
-  {"X11", "xorg.libX11"}, 
-  {"PNG", "libpng"},      
-  {"JPEG", "libjpeg"},    
-  {"CURL", "curl"},       
-  {"OpenSSL", "openssl"}, 
-  {"Boost", "boost"},     
-  {"Qt5", "qt5"},         
-  {"GTK3", "gtk3"},       
-  {"SDL2", "SDL2"},
-  {"PkgConfig", "pkg-config"}
-};
-
-// Map imported targets to Nix packages  
-const std::map<std::string, std::string> cmNixPackageMapper::TargetMap = {
-  {"Threads::Threads", ""},           // Built into compiler
-  {"ZLIB::ZLIB", "zlib"},
-  {"OpenGL::GL", "libGL"},
-  {"OpenGL::GLU", "libGLU"},
-  {"GLUT::GLUT", "freeglut"},
-  {"X11::X11", "xorg.libX11"},
-  {"PNG::PNG", "libpng"},
-  {"JPEG::JPEG", "libjpeg"},
-  {"CURL::libcurl", "curl"},
-  {"OpenSSL::SSL", "openssl"},
-  {"OpenSSL::Crypto", "openssl"},
-  {"PkgConfig::pkgconf", "pkg-config"}
-};
-
-// Map imported targets to required link flags
-const std::map<std::string, std::string> cmNixPackageMapper::LinkFlagsMap = {
-  {"Threads::Threads", "-lpthread"},
-  {"ZLIB::ZLIB", "-lz"},
-  {"OpenGL::GL", "-lGL"},
-  {"OpenGL::GLU", "-lGLU"},
-  {"GLUT::GLUT", "-lglut"},
-  {"X11::X11", "-lX11"},
-  {"PNG::PNG", "-lpng"},
-  {"JPEG::JPEG", "-ljpeg"},
-  {"CURL::libcurl", "-lcurl"},
-  {"OpenSSL::SSL", "-lssl"},
-  {"OpenSSL::Crypto", "-lcrypto"},
-  {"PkgConfig::pkgconf", ""}
-};
-
-std::string cmNixPackageMapper::GetNixPackage(const std::string& cmakePackage) const
+cmNixPackageMapper::cmNixPackageMapper()
 {
-  auto it = PackageMap.find(cmakePackage);
-  return (it != PackageMap.end()) ? it->second : "";
+  this->InitializeMappings();
 }
 
-std::string cmNixPackageMapper::GetNixPackageForTarget(const std::string& importedTarget) const
+void cmNixPackageMapper::InitializeMappings()
 {
-  auto it = TargetMap.find(importedTarget);
-  return (it != TargetMap.end()) ? it->second : "";
+  // Map common CMake imported targets to Nix packages
+  this->TargetToNixPackage = {
+    // Built into compiler - no package needed
+    {"Threads::Threads", ""},
+    
+    // OpenGL
+    {"OpenGL::GL", "libGL"},
+    {"OpenGL::GLU", "libGLU"},
+    {"OpenGL::GLEW", "glew"},
+    {"GLFW", "glfw"},
+    
+    // Math and system libraries
+    {"m", "glibc"},
+    {"pthread", "glibc"},
+    {"dl", "glibc"},
+    {"rt", "glibc"},
+    
+    // Common development libraries
+    {"ZLIB::ZLIB", "zlib"},
+    {"PNG::PNG", "libpng"},
+    {"JPEG::JPEG", "libjpeg"},
+    {"OpenSSL::SSL", "openssl"},
+    {"OpenSSL::Crypto", "openssl"},
+    
+    // Audio/Video
+    {"SDL2::SDL2", "SDL2"},
+    {"SDL2_image::SDL2_image", "SDL2_image"},
+    {"SDL2_mixer::SDL2_mixer", "SDL2_mixer"},
+    {"SDL2_ttf::SDL2_ttf", "SDL2_ttf"},
+    
+    // Network
+    {"CURL::libcurl", "curl"},
+    
+    // Database
+    {"SQLite::SQLite3", "sqlite"},
+    
+    // Development tools
+    {"Boost::boost", "boost"},
+    {"Protobuf::Protobuf", "protobuf"},
+  };
+
+  this->TargetToLinkFlags = {
+    {"Threads::Threads", "-lpthread"},
+    {"OpenGL::GL", "-lGL"},
+    {"OpenGL::GLU", "-lGLU"},
+    {"OpenGL::GLEW", "-lGLEW"},
+    {"GLFW", "-lglfw"},
+    {"m", "-lm"},
+    {"pthread", "-lpthread"},
+    {"dl", "-ldl"},
+    {"rt", "-lrt"},
+    {"ZLIB::ZLIB", "-lz"},
+    {"PNG::PNG", "-lpng"},
+    {"JPEG::JPEG", "-ljpeg"},
+    {"OpenSSL::SSL", "-lssl"},
+    {"OpenSSL::Crypto", "-lcrypto"},
+    {"SDL2::SDL2", "-lSDL2"},
+    {"SDL2_image::SDL2_image", "-lSDL2_image"},
+    {"SDL2_mixer::SDL2_mixer", "-lSDL2_mixer"},
+    {"SDL2_ttf::SDL2_ttf", "-lSDL2_ttf"},
+    {"CURL::libcurl", "-lcurl"},
+    {"SQLite::SQLite3", "-lsqlite3"},
+  };
 }
 
-std::string cmNixPackageMapper::GetLinkFlags(const std::string& importedTarget) const
+std::string cmNixPackageMapper::GetNixPackageForTarget(std::string const& targetName) const
 {
-  auto it = LinkFlagsMap.find(importedTarget);
-  return (it != LinkFlagsMap.end()) ? it->second : "";
+  auto it = this->TargetToNixPackage.find(targetName);
+  if (it != this->TargetToNixPackage.end()) {
+    return it->second;
+  }
+  
+  // Try some heuristics for common patterns
+  if (targetName.find("::") != std::string::npos) {
+    // CMake imported target format (e.g., "MyLib::MyLib")
+    size_t pos = targetName.find("::");
+    std::string baseName = targetName.substr(0, pos);
+    std::transform(baseName.begin(), baseName.end(), baseName.begin(), ::tolower);
+    return baseName;
+  }
+  
+  // Default: assume library name maps directly to Nix package name
+  std::string mapped = targetName;
+  std::transform(mapped.begin(), mapped.end(), mapped.begin(), ::tolower);
+  return mapped;
+}
+
+std::string cmNixPackageMapper::GetLinkFlags(std::string const& targetName) const
+{
+  auto it = this->TargetToLinkFlags.find(targetName);
+  if (it != this->TargetToLinkFlags.end()) {
+    return it->second;
+  }
+  return "";
 }
