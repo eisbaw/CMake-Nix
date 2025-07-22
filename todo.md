@@ -12,6 +12,8 @@ DONE: Fix what is reported in UNSUPPORTED_FEATURES.md - OBJECT library support f
 
 Fix what is reported in CODE_REVIEW_FINDINGS.md
 
+Check for uncomitted files. Consider if they should be added. Test cases should be added to justfile and follow pattern to the other test cases.
+
 Search the web for cmake C/C++ open-source projects. Add a medium-sized popular cmake-based project as a new test case. Use cmake nix generator backend to build it.
 
 Self-host cmake: adapt bootstrap so we can build cmake with Nix generator.
