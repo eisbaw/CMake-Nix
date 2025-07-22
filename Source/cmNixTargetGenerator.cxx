@@ -62,9 +62,9 @@ void cmNixTargetGenerator::WriteObjectDerivations()
   cmGlobalNixGenerator* globalGenerator = static_cast<cmGlobalNixGenerator*>(this->GetLocalGenerator()->GetGlobalGenerator());
 
   for (cmSourceFile* source : sources) {
-    // Process C/C++/Fortran/CUDA source files
+    // Process C/C++/Fortran/CUDA/Swift/ASM source files
     std::string const& lang = source->GetLanguage();
-    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA") {
+    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || lang == "Swift" || lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
       std::vector<std::string> dependencies = this->GetSourceDependencies(source);
       globalGenerator->AddObjectDerivation(this->GetTargetName(), this->GetDerivationName(source), source->GetFullPath(), this->GetObjectFileName(source), lang, dependencies);
     }
@@ -89,7 +89,7 @@ void cmNixTargetGenerator::WriteLinkDerivation()
   std::vector<std::string> objectDeps;
   for (cmSourceFile* source : sources) {
     std::string const& lang = source->GetLanguage();
-    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA") {
+    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || lang == "Swift" || lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
       objectDeps.push_back(this->GetDerivationName(source));
     }
   }
