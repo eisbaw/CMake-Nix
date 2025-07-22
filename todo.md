@@ -30,7 +30,7 @@ DONE: Self-host cmake: adapt bootstrap so we can build cmake with Nix generator.
 
 1. **Generator Expressions Support**: Ninja fully supports CMake generator expressions ($<...>) for compile definitions, includes, and flags. Nix generator has no generator expression evaluation.
 
-2. **Custom Command Dependencies**: Object derivations don't properly depend on custom command derivations for generated files. Custom command support needs major work for dependency tracking between derivations.
+2. DONE: **Custom Command Dependencies**: Object derivations don't properly depend on custom command derivations for generated files. Custom command support needs major work for dependency tracking between derivations. - Fixed with topological sort and proper dependency tracking
 
 3. **Header Dependency Tracking**: GetSourceDependencies() returns empty vector. Ninja has comprehensive depfile support (gcc-style deps, dyndeps).
 
