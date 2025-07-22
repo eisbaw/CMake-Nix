@@ -32,7 +32,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     nixFileStream << " " << depDerivName;
   }
   
-  nixFileStream << " ];\n";
+  nixFileStream << "];\n";
   nixFileStream << "    phases = [ \"buildPhase\" ];\n";
   nixFileStream << "    buildPhase = ''\n";
   nixFileStream << "      mkdir -p $out\n";

@@ -1,5 +1,7 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
+Fix review comments posted as git notes. Run git log -1 to see.
+
 DONE: Fix this: The Nix generator doesn't support $<COMPILE_LANGUAGE:...> expressions yet
 
 DONE: Look for other unsupported features in Nix generator. (See UNSUPPORTED_FEATURES.md)

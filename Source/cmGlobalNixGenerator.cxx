@@ -261,12 +261,47 @@ void cmGlobalNixGenerator::WriteNixFile()
     }
   }
   
+  // Check for cycles - if not all commands were processed, there's a cycle
+  if (orderedCommands.size() != this->CustomCommands.size()) {
+    std::ostringstream msg;
+    msg << "CMake Error: Cyclic dependency detected in custom commands. ";
+    msg << "Processed " << orderedCommands.size() << " of " 
+        << this->CustomCommands.size() << " commands.\n";
+    msg << "Commands with unresolved dependencies:\n";
+    
+    // Find which commands weren't processed
+    std::set<std::string> processedNames;
+    for (const CustomCommandInfo* info : orderedCommands) {
+      processedNames.insert(info->DerivationName);
+    }
+    
+    for (const auto& info : this->CustomCommands) {
+      if (processedNames.find(info.DerivationName) == processedNames.end()) {
+        msg << "  - " << info.DerivationName << " (depends on:";
+        for (const std::string& dep : info.Depends) {
+          auto depIt = this->CustomCommandOutputs.find(dep);
+          if (depIt != this->CustomCommandOutputs.end()) {
+            msg << " " << depIt->second;
+          }
+        }
+        msg << ")\n";
+      }
+    }
+    
+    this->GetCMakeInstance()->IssueMessage(MessageType::FATAL_ERROR, msg.str());
+    return;
+  }
+  
   // Write commands in order
   for (const CustomCommandInfo* info : orderedCommands) {
     try {
-      std::string config = this->GetCMakeInstance()->GetGlobalGenerator()->GetMakefiles()[0]->GetSafeDefinition("CMAKE_BUILD_TYPE");
-      if (config.empty()) {
-        config = "Release";
+      std::string config = "Release";
+      const auto& makefiles = this->GetCMakeInstance()->GetGlobalGenerator()->GetMakefiles();
+      if (!makefiles.empty()) {
+        config = makefiles[0]->GetSafeDefinition("CMAKE_BUILD_TYPE");
+        if (config.empty()) {
+          config = "Release";
+        }
       }
       cmNixCustomCommandGenerator ccg(info->Command, info->LocalGen, config);
       ccg.Generate(nixFileStream);
@@ -944,8 +979,6 @@ std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) co
       result = "intel-compiler";
     } else if (id == "PGI") {
       result = "pgi";
-    } else if (id == "NVIDIA") {
-      result = "cudatoolkit"; // NVIDIA CUDA compiler
     } else if (id == "MSVC") {
       // For future Windows support
       result = "msvc";
