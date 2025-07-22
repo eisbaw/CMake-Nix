@@ -118,6 +118,7 @@
 #if !defined(CMAKE_BOOTSTRAP)
 #  include "cmGlobalNinjaGenerator.h"
 #  include "cmGlobalNixGenerator.h"
+#  include "cmGlobalNixMultiGenerator.h"
 #  include "cmGlobalUnixMakefileGenerator3.h"
 #elif defined(CMAKE_BOOTSTRAP_MAKEFILES)
 #  include "cmGlobalUnixMakefileGenerator3.h"
@@ -3235,6 +3236,7 @@ void cmake::AddDefaultGenerators()
   this->Generators.push_back(cmGlobalNinjaGenerator::NewFactory());
   this->Generators.push_back(cmGlobalNinjaMultiGenerator::NewFactory());
   this->Generators.push_back(cmGlobalNixGenerator::NewFactory());
+  this->Generators.push_back(cmGlobalNixMultiGenerator::NewFactory());
 #elif defined(CMAKE_BOOTSTRAP_NINJA)
   this->Generators.push_back(cmGlobalNinjaGenerator::NewFactory());
 #elif defined(CMAKE_BOOTSTRAP_MAKEFILES)

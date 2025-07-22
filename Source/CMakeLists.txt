@@ -787,6 +787,8 @@ add_library(
   cmGlobalNixGenerator.cxx
   cmGlobalNixGenerator.h
   cmGlobalNixGenerator_ParallelTryCompile.cxx
+  cmGlobalNixMultiGenerator.cxx
+  cmGlobalNixMultiGenerator.h
   cmLocalNixGenerator.cxx
   cmLocalNixGenerator.h
   cmNixTargetGenerator.cxx

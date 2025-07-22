@@ -83,10 +83,10 @@ public:
   void AddObjectDerivation(std::string const& targetName, std::string const& derivationName, std::string const& sourceFile, std::string const& objectFileName, std::string const& language, std::vector<std::string> const& dependencies);
 
 protected:
-  void WriteNixFile();
+  virtual void WriteNixFile();
   void WriteDerivations();
-  void WritePerTranslationUnitDerivations(cmGeneratedFileStream& nixFileStream);
-  void WriteLinkingDerivations(cmGeneratedFileStream& nixFileStream);
+  virtual void WritePerTranslationUnitDerivations(cmGeneratedFileStream& nixFileStream);
+  virtual void WriteLinkingDerivations(cmGeneratedFileStream& nixFileStream);
   void WriteObjectDerivation(cmGeneratedFileStream& nixFileStream, 
                             cmGeneratorTarget* target, cmSourceFile* source);
   void WriteLinkDerivation(cmGeneratedFileStream& nixFileStream, 
@@ -103,6 +103,7 @@ protected:
   void WriteLinkDerivationObjects(cmGeneratedFileStream& nixFileStream,
                                   cmGeneratorTarget* target,
                                   const std::string& config);
+protected:
   std::string GetLinkFlags(cmGeneratorTarget* target,
                           const std::string& config);
   void WriteLinkDerivationBuildPhase(cmGeneratedFileStream& nixFileStream,
@@ -119,18 +120,21 @@ protected:
   void WriteInstallOutputs(cmGeneratedFileStream& nixFileStream);
   void CollectInstallTargets();
 
-private:
+protected:
   std::string GetDerivationName(std::string const& targetName, 
                                std::string const& sourceFile = "") const;
-  std::vector<std::string> GetSourceDependencies(std::string const& sourceFile) const;
-  
+
+protected:
   // Compiler detection methods
   std::string GetCompilerPackage(const std::string& lang) const;
+
+private:
+  std::vector<std::string> GetSourceDependencies(std::string const& sourceFile) const;
   std::string GetCompilerCommand(const std::string& lang) const;
   
   // Configuration handling
   std::string GetBuildConfiguration(cmGeneratorTarget* target) const;
-  
+protected:
   // Platform abstraction helpers
   std::string GetObjectFileExtension() const { return ".o"; }
   std::string GetStaticLibraryExtension() const { return ".a"; }
@@ -139,6 +143,8 @@ private:
   std::string GetInstallBinDir() const { return "bin"; }
   std::string GetInstallLibDir() const { return "lib"; }
   std::string GetInstallIncludeDir() const { return "include"; }
+
+private:
   
   // Performance optimization: Cache frequently computed values
   mutable std::map<std::string, std::string> CompilerPackageCache;
