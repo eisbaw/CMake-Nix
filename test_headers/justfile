@@ -18,15 +18,15 @@ generate-release:
 
 # Build and run the test project
 run: generate
-    nix-build -A test_headers && ./result
+    nix-build -A test_headers && ./result && rm ./result
 
 # Build and run Debug configuration
 run-debug: generate-debug
-    nix-build -A test_headers && ./result
+    nix-build -A test_headers && ./result && rm ./result
 
 # Build and run Release configuration
 run-release: generate-release
-    nix-build -A test_headers && ./result
+    nix-build -A test_headers && ./result && rm ./result
 
 # Clean generated files
 clean:

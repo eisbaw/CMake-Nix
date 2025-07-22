@@ -13,11 +13,11 @@ generate-debug:
 
 # Build and run the calc app
 run: generate
-    nix-build -A calc_app && ./result
+    nix-build -A calc_app && ./result && rm ./result
 
 # Build and run Debug configuration
 run-debug: generate-debug
-    nix-build -A calc_app && ./result
+    nix-build -A calc_app && ./result && rm ./result
 
 # Clean generated files
 clean:

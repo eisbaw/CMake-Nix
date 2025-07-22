@@ -25,9 +25,9 @@ build: configure
 # Run tests
 run: build
     @echo "=== Testing threaded app ==="
-    nix-build -A threaded_app && ./result
+    nix-build -A threaded_app && ./result && rm ./result
     @echo "\n=== Testing compression app (if available) ==="
-    -nix-build -A compress_app && ./result
+    -nix-build -A compress_app && ./result && rm ./result
 
 # Check for imported targets in generated Nix
 check-imports: configure

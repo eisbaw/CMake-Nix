@@ -8,7 +8,7 @@ generate:
 
 # Build and run the compression demo
 run: generate
-    nix-build -A compress_demo && ./result
+    nix-build -A compress_demo && ./result && rm ./result
 
 # Clean generated files
 clean:

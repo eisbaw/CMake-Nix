@@ -9,7 +9,7 @@ generate:
 # Build all targets
 run: generate
     @echo "=== Building complex mixed language application ==="
-    nix-build -A mixed_lang_app && ./result
+    nix-build -A mixed_lang_app && ./result && rm ./result
     @echo "\n=== Building static library ==="
     nix-build -A complex_lib
     @echo "\n=== Building shared library ==="

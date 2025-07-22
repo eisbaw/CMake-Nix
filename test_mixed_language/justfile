@@ -6,7 +6,7 @@ run:
     -rm -f default.nix
     ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
     @echo "=== Building mixed language application ==="
-    nix-build -A mixed_app && ./result
+    nix-build -A mixed_app && ./result && rm ./result
 
 # Test all targets
 test-all: run

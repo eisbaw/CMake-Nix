@@ -11,7 +11,7 @@ configure:
 
 # Build and run the test
 run: clean configure
-    nix-build -A app && ./result
+    nix-build -A app && ./result && rm ./result
 
 # Build and test all targets
 test: run

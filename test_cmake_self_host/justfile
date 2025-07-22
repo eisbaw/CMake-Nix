@@ -11,7 +11,7 @@ run: generate
     @echo "=== Building CMake core library ==="
     nix-build -A cmake_core
     @echo "\n=== Building CMake test app ==="
-    nix-build -A cmake_test_app && ./result
+    nix-build -A cmake_test_app && ./result && rm ./result
 
 # Check generated Nix for complex dependencies
 check-complexity: generate

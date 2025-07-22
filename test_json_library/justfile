@@ -12,7 +12,7 @@ configure:
 # Build and run the test
 run: clean configure
     @echo "=== Building JSON library example ==="
-    nix-build -A json_example && ./result
+    nix-build -A json_example && ./result && rm ./result
 
 # Build and test all targets
 test: run

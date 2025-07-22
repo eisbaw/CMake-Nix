@@ -9,7 +9,7 @@ generate:
 # Build all targets
 run: generate
     @echo "=== Building main executable ==="
-    nix-build -A install_app && ./result
+    nix-build -A install_app && ./result && rm ./result
     @echo "\n=== Building shared library ==="
     nix-build -A install_lib
     @echo "\n=== Building static library ==="

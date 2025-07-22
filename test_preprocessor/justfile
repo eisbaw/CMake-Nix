@@ -6,14 +6,14 @@ run-debug:
     -rm -f default.nix
     ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=nix-build .
     @echo "=== Building Debug version ==="
-    nix-build -A preprocessor_app && ./result
+    nix-build -A preprocessor_app && ./result && rm ./result
 
 # Test Release build  
 run-release:
     -rm -f default.nix
     ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
     @echo "=== Building Release version ==="
-    nix-build -A preprocessor_app && ./result
+    nix-build -A preprocessor_app && ./result && rm ./result
 
 # Test both configurations
 run: run-debug run-release

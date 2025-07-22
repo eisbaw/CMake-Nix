@@ -15,9 +15,9 @@ run: build
     @echo "=== C Program ==="
     ./result
     @echo "\n=== C++ Program ===" 
-    nix-build -A cpp_program && ./result
+    nix-build -A cpp_program && ./result && rm ./result
     @echo "\n=== Mixed Program ==="
-    nix-build -A mixed_program && ./result
+    nix-build -A mixed_program && ./result && rm ./result
 
 # Test with clang (if available)
 test-clang:

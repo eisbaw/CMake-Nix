@@ -13,11 +13,11 @@ generate-debug:
 
 # Build and run the ECS app
 run: generate
-    nix-build -A ecs_app && ./result
+    nix-build -A ecs_app && ./result && rm ./result
 
 # Build and run Debug configuration
 run-debug: generate-debug
-    nix-build -A ecs_app && ./result
+    nix-build -A ecs_app && ./result && rm ./result
 
 # Clean generated files
 clean:

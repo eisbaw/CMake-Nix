@@ -6,7 +6,7 @@ run:
     -rm -f default.nix
     ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
     @echo "=== Building package integration application ==="
-    nix-build -A integration_app && ./result
+    nix-build -A integration_app && ./result && rm ./result
 
 # Test the threaded library independently
 run-lib:

@@ -30,9 +30,9 @@ build: configure
 # Run executable tests
 run: build
     @echo "=== Testing app with shared library ==="
-    nix-build -A app && ./result
+    nix-build -A app && ./result && rm ./result
     @echo "\n=== Testing mixed app ==="
-    nix-build -A mixed_app && ./result
+    nix-build -A mixed_app && ./result && rm ./result
 
 # Check generated Nix for shared library flags
 check-flags: configure

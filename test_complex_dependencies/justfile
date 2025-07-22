@@ -6,14 +6,14 @@ run:
     -rm -f default.nix
     ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
     @echo "=== Building complex application (transitive deps) ==="
-    nix-build -A complex_app && ./result
+    nix-build -A complex_app && ./result && rm ./result
 
 # Test direct dependencies application
 run-direct:
     -rm -f default.nix
     ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
     @echo "=== Building direct dependencies application ==="
-    nix-build -A direct_app && ./result
+    nix-build -A direct_app && ./result && rm ./result
 
 # Test all targets and applications
 test-all: run run-direct

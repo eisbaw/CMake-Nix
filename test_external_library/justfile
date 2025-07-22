@@ -8,7 +8,7 @@ generate:
 
 # Build and run the math program
 run: generate
-    nix-build -A main && ./result
+    nix-build -A main && ./result && rm ./result
 
 # Clean generated files
 clean:

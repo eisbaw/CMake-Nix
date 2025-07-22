@@ -26,19 +26,19 @@ run: test-debug test-release
 
 test-debug: generate-debug
     @echo "=== Testing Debug configuration ==="
-    nix-build -A simple_test && ./result
+    nix-build -A simple_test && ./result && rm ./result
 
 test-release: generate-release
     @echo "=== Testing Release configuration ==="
-    nix-build -A simple_test && ./result
+    nix-build -A simple_test && ./result && rm ./result
 
 test-relwithdebinfo: generate-relwithdebinfo
     @echo "=== Testing RelWithDebInfo configuration ==="
-    nix-build -A simple_test && ./result
+    nix-build -A simple_test && ./result && rm ./result
 
 test-minsizerel: generate-minsizerel
     @echo "=== Testing MinSizeRel configuration ==="
-    nix-build -A simple_test && ./result
+    nix-build -A simple_test && ./result && rm ./result
 
 # Check configuration-specific generated output
 check-debug: generate-debug

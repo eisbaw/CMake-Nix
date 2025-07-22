@@ -8,7 +8,7 @@ generate:
 
 # Build and run the calculator project  
 run: generate
-    nix-build -A calculator && ./result
+    nix-build -A calculator && ./result && rm ./result
 
 # Clean generated files
 clean:
