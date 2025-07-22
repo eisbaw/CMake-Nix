@@ -62,9 +62,9 @@ void cmNixTargetGenerator::WriteObjectDerivations()
   cmGlobalNixGenerator* globalGenerator = static_cast<cmGlobalNixGenerator*>(this->GetLocalGenerator()->GetGlobalGenerator());
 
   for (cmSourceFile* source : sources) {
-    // Only process C/C++ source files for Phase 1
+    // Process C/C++/Fortran/CUDA source files
     std::string const& lang = source->GetLanguage();
-    if (lang == "C" || lang == "CXX") {
+    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA") {
       std::vector<std::string> dependencies = this->GetSourceDependencies(source);
       globalGenerator->AddObjectDerivation(this->GetTargetName(), this->GetDerivationName(source), source->GetFullPath(), this->GetObjectFileName(source), lang, dependencies);
     }
@@ -89,7 +89,7 @@ void cmNixTargetGenerator::WriteLinkDerivation()
   std::vector<std::string> objectDeps;
   for (cmSourceFile* source : sources) {
     std::string const& lang = source->GetLanguage();
-    if (lang == "C" || lang == "CXX") {
+    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA") {
       objectDeps.push_back(this->GetDerivationName(source));
     }
   }

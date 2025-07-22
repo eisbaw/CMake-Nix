@@ -339,7 +339,7 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         
         for (cmSourceFile* source : sources) {
           std::string const& lang = source->GetLanguage();
-          if (lang == "C" || lang == "CXX") {
+          if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA") {
             std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
             this->AddObjectDerivation(target->GetName(), this->GetDerivationName(target->GetName(), source->GetFullPath()), source->GetFullPath(), targetGen->GetObjectFileName(source), lang, dependencies);
             this->WriteObjectDerivation(nixFileStream, target.get(), source);
@@ -931,7 +931,10 @@ std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) co
   }
 
   std::string result;
-  if (compilerId) {
+  if (lang == "CUDA") {
+    // CUDA requires special package
+    result = "cudatoolkit";
+  } else if (compilerId) {
     std::string id = *compilerId;
     if (id == "GNU") {
       result = "gcc";
@@ -941,6 +944,8 @@ std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) co
       result = "intel-compiler";
     } else if (id == "PGI") {
       result = "pgi";
+    } else if (id == "NVIDIA") {
+      result = "cudatoolkit"; // NVIDIA CUDA compiler
     } else if (id == "MSVC") {
       // For future Windows support
       result = "msvc";
@@ -986,7 +991,17 @@ std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) co
   std::string compilerPkg = this->GetCompilerPackage(lang);
   
   std::string result;
-  if (compilerPkg == "gcc") {
+  if (lang == "Fortran") {
+    if (compilerPkg == "gcc") {
+      result = "gfortran";
+    } else if (compilerPkg == "intel-compiler") {
+      result = "ifort";
+    } else {
+      result = "gfortran"; // Default Fortran compiler
+    }
+  } else if (lang == "CUDA") {
+    result = "nvcc"; // NVIDIA CUDA compiler
+  } else if (compilerPkg == "gcc") {
     result = (lang == "CXX") ? "g++" : "gcc";
   } else if (compilerPkg == "clang") {
     result = (lang == "CXX") ? "clang++" : "clang";
