@@ -16,11 +16,11 @@ run: configure
 
 # Build the static library
 static: configure
-    nix-build -A math_static
+    nix-build --no-out-link -A math_static
 
 # Build the shared library
 shared: configure
-    nix-build -A math_shared
+    nix-build --no-out-link -A math_shared
 
 # Clean build artifacts
 clean:
@@ -32,9 +32,9 @@ show: configure
 
 # Build all targets
 all: configure
-    nix-build -A calculator
-    nix-build -A math_static
-    nix-build -A math_shared
+    nix-build --no-out-link -A calculator
+    nix-build --no-out-link -A math_static
+    nix-build --no-out-link -A math_shared
 
 # List available targets
 list: configure

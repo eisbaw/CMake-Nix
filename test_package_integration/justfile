@@ -13,13 +13,13 @@ run-lib:
     -rm -f default.nix
     ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
     @echo "=== Building threaded library ==="
-    nix-build -A threaded_lib
+    nix-build --no-out-link -A threaded_lib
 
 # Test all targets and installs
 test-all: run run-lib
     @echo "=== Testing installs ==="
-    nix-build -A integration_app_install
-    nix-build -A threaded_lib_install
+    nix-build --no-out-link -A integration_app_install
+    nix-build --no-out-link -A threaded_lib_install
 
 # Check which packages were found and linked
 check-packages:

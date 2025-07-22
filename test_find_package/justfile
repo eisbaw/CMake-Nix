@@ -14,13 +14,13 @@ build-compress: configure
 
 # Build OpenGL app (if found)
 build-opengl: configure
-    nix-build -A opengl_app || echo "OpenGL app not built (package not found)"
+    nix-build --no-out-link -A opengl_app || echo "OpenGL app not built (package not found)"
 
 # Build all available targets
 build: configure
     nix-build -A threaded_app
-    -nix-build -A compress_app
-    -nix-build -A opengl_app
+    -nix-build --no-out-link -A compress_app
+    -nix-build --no-out-link -A opengl_app
 
 # Run tests
 run: build

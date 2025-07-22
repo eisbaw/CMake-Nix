@@ -23,8 +23,8 @@ test-all: run run-direct
     nix-build -A graphics_lib
     nix-build -A engine_lib
     @echo "=== Testing installs ==="
-    nix-build -A complex_app_install
-    nix-build -A direct_app_install
+    nix-build --no-out-link -A complex_app_install
+    nix-build --no-out-link -A direct_app_install
 
 # Check dependency structure in generated Nix
 check-deps:

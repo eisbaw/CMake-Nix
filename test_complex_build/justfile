@@ -11,9 +11,9 @@ run: generate
     @echo "=== Building complex mixed language application ==="
     nix-build -A mixed_lang_app && ./result && rm ./result
     @echo "\n=== Building static library ==="
-    nix-build -A complex_lib
+    nix-build --no-out-link -A complex_lib
     @echo "\n=== Building shared library ==="
-    nix-build -A shared_complex
+    nix-build --no-out-link -A shared_complex
 
 # Check for proper language-specific compilation
 check-compilation: generate

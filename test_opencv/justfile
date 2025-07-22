@@ -84,7 +84,7 @@ build-core:
     if [ -f "build/default.nix" ]; then
         cd build
         echo "Building opencv_core..."
-        nix-build -A opencv_core
+        nix-build --no-out-link -A opencv_core
         echo "✅ Core library built successfully!"
     else
         echo "❌ No build/default.nix found. Run 'just configure-core' first."
@@ -120,7 +120,7 @@ build-module MODULE:
         cd build
         if grep -q '"{{MODULE}}"' default.nix; then
             echo "Building {{MODULE}}..."
-            nix-build -A {{MODULE}}
+            nix-build --no-out-link -A {{MODULE}}
             echo "✅ Module {{MODULE}} built successfully!"
         else
             echo "❌ Module {{MODULE}} not found in Nix file"

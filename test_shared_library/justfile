@@ -6,11 +6,11 @@ configure:
 
 # Build shared library
 build-lib: configure
-    nix-build -A mylib
+    nix-build --no-out-link -A mylib
 
 # Build versioned library
 build-versioned: configure
-    nix-build -A versioned_lib
+    nix-build --no-out-link -A versioned_lib
 
 # Build executable linking shared library
 build-app: configure
@@ -18,14 +18,14 @@ build-app: configure
 
 # Build mixed linking executable
 build-mixed: configure
-    nix-build -A mixed_app
+    nix-build --no-out-link -A mixed_app
 
 # Build all targets
 build: configure
-    nix-build -A mylib
-    nix-build -A versioned_lib
+    nix-build --no-out-link -A mylib
+    nix-build --no-out-link -A versioned_lib
     nix-build -A app
-    nix-build -A mixed_app
+    nix-build --no-out-link -A mixed_app
 
 # Run executable tests
 run: build

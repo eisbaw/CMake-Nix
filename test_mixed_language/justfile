@@ -13,9 +13,9 @@ test-all: run
     @echo "=== Building C static library ==="
     nix-build -A c_math
     @echo "=== Building C++ shared library ==="
-    nix-build -A cpp_utils
+    nix-build --no-out-link -A cpp_utils
     @echo "=== Testing install ==="
-    nix-build -A mixed_app_install
+    nix-build --no-out-link -A mixed_app_install
 
 # Check generated Nix for mixed languages
 check:

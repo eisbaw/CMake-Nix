@@ -6,14 +6,14 @@ configure:
 
 # Build all targets
 build: configure
-    nix-build -A c_program
-    nix-build -A cpp_program
-    nix-build -A mixed_program
+    nix-build --no-out-link -A c_program
+    nix-build --no-out-link -A cpp_program
+    nix-build --no-out-link -A mixed_program
 
 # Run all programs
 run: build
     @echo "=== C Program ==="
-    ./result
+    nix-build -A c_program && ./result && rm ./result
     @echo "\n=== C++ Program ===" 
     nix-build -A cpp_program && ./result && rm ./result
     @echo "\n=== Mixed Program ==="

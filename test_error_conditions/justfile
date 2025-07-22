@@ -10,8 +10,8 @@ generate:
 run: generate
     @echo "=== Testing valid targets only ==="
     -cd build && nix-build -A test-with-dashes
-    -cd build && nix-build -A test_with_underscores
-    -cd build && nix-build -A very_long_target_name_that_might_cause_issues_with_nix_derivation_naming
+    -cd build && nix-build --no-out-link -A test_with_underscores
+    -cd build && nix-build --no-out-link -A very_long_target_name_that_might_cause_issues_with_nix_derivation_naming
 
 # Check for proper error handling in generated Nix
 check-errors: generate

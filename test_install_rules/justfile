@@ -11,16 +11,16 @@ run: generate
     @echo "=== Building main executable ==="
     nix-build -A install_app && ./result && rm ./result
     @echo "\n=== Building shared library ==="
-    nix-build -A install_lib
+    nix-build --no-out-link -A install_lib
     @echo "\n=== Building static library ==="
-    nix-build -A install_static
+    nix-build --no-out-link -A install_static
 
 # Test install rules specifically
 test-install: generate
     @echo "=== Testing install derivations ==="
-    -nix-build -A install_app_install
-    -nix-build -A install_lib_install
-    -nix-build -A install_static_install
+    -nix-build --no-out-link -A install_app_install
+    -nix-build --no-out-link -A install_lib_install
+    -nix-build --no-out-link -A install_static_install
 
 # Check for install rules in generated Nix
 check-install: generate

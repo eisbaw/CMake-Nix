@@ -7,11 +7,11 @@ configure:
 
 # Build the feature test with nix-build
 build:
-    nix-build -A feature_test
+    nix-build --no-out-link -A feature_test
 
 # Run the feature test executable
 run-test: build
-    ./result
+    nix-build -A feature_test && ./result && rm ./result
 
 # Full test: configure, build, and run
 run: configure build run-test
