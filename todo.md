@@ -1,5 +1,10 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
+
+Fix "just test_find_package::run": It has problems with finding ZLIB and OpenGL. When finding such packages, we want to use Nix packages - not system-installed ones. Read https://cmake.org/cmake/help/book/mastering-cmake/chapter/Finding%20Packages.html for how CMake wants it, but do not adhere to the out-of-repo global system-wide searches. It may make sense to create pkg_<Package>.nix files if they dont exist. When pkg_<Package>.nix file is created, it should be prefilled to use something appropriate from nixpkgs but with TODO comments inside. If the file already exists, use it.
+
+Ensure test_find_package's compress_app and opengl_app compile and work.
+
 DONE: Fix review comments posted as git notes. Run git log -1 to see.
 
 DONE: Fix this: The Nix generator doesn't support $<COMPILE_LANGUAGE:...> expressions yet
@@ -16,7 +21,7 @@ DONE: Fix what is reported in CODE_REVIEW_FINDINGS.md - Code refactored with hel
 
 DONE: Check for uncomitted files. Consider if they should be added. Test cases should be added to justfile and follow pattern to the other test cases. - Added test_compile_language_expr and test_interface_library
 
-DONE: Search the web for cmake C/C++ open-source projects. Add a medium-sized popular cmake-based project as a new test case. Use cmake nix generator backend to build it. - Added test_json_library as a comprehensive medium-sized project test
+Search the web for cmake C/C++ open-source projects. Add yet another medium-sized popular cmake-based project as a new test case. Use cmake nix generator backend to build it. - Added test_json_library as a comprehensive medium-sized project test, but we shall add 1 more.
 
 Obtain feature-parity of the Nix generator in cmake, with the Ninja generator.
 
