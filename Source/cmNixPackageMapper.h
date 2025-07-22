@@ -2,39 +2,23 @@
    file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
-#include <map>
-#include <string>
+#include "cmConfigure.h"
 
-/**
- * \class cmNixPackageMapper
- * \brief Maps CMake packages and imported targets to Nix packages.
- *
- * This class provides mapping from CMake's find_package() results
- * and imported targets to appropriate Nix packages.
- */
+#include <string>
+#include <vector>
+#include <map>
+
 class cmNixPackageMapper
 {
 public:
-  /**
-   * Get Nix package name for a CMake package
-   */
-  std::string GetNixPackage(const std::string& cmakePackage) const;
-  
-  /**
-   * Get Nix package name for an imported target (e.g., ZLIB::ZLIB -> zlib)
-   */
-  std::string GetNixPackageForTarget(const std::string& importedTarget) const;
-  
-  /**
-   * Get link flags for an imported target
-   */
-  std::string GetLinkFlags(const std::string& importedTarget) const;
-  
+  cmNixPackageMapper();
+
+  std::string GetNixPackageForTarget(std::string const& targetName) const;
+  std::string GetLinkFlags(std::string const& targetName) const;
+
 private:
-  /**
-   * Built-in package mapping
-   */
-  static const std::map<std::string, std::string> PackageMap;
-  static const std::map<std::string, std::string> TargetMap;
-  static const std::map<std::string, std::string> LinkFlagsMap;
+  void InitializeMappings();
+
+  std::map<std::string, std::string> TargetToNixPackage;
+  std::map<std::string, std::string> TargetToLinkFlags;
 };
