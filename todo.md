@@ -6,8 +6,6 @@ DONE: Look for code smells in the cmake Nix generator. (See CODE_REVIEW_FINDINGS
 
 DONE: Look for assumptions in the cmake Nix generator. (See CODE_REVIEW_FINDINGS.md)
 
-Improve the cmake Nix generator.
-
 DONE: Fix what is reported in UNSUPPORTED_FEATURES.md - OBJECT library support fixed
 
 DONE: Fix what is reported in CODE_REVIEW_FINDINGS.md - Code refactored with helper methods, platform abstraction added
@@ -15,5 +13,9 @@ DONE: Fix what is reported in CODE_REVIEW_FINDINGS.md - Code refactored with hel
 DONE: Check for uncomitted files. Consider if they should be added. Test cases should be added to justfile and follow pattern to the other test cases. - Added test_compile_language_expr and test_interface_library
 
 DONE: Search the web for cmake C/C++ open-source projects. Add a medium-sized popular cmake-based project as a new test case. Use cmake nix generator backend to build it. - Added test_json_library as a comprehensive medium-sized project test
+
+Obtain feature-parity of the Nix generator in cmake, with the Ninja generator.
+
+Look for improvements to the cmake Nix generator.
 
 Self-host cmake: adapt bootstrap so we can build cmake with Nix generator.
