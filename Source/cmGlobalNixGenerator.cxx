@@ -332,7 +332,8 @@ void cmGlobalNixGenerator::WriteNixFile()
     for (auto const& target : targets) {
       if (target->GetType() == cmStateEnums::EXECUTABLE ||
           target->GetType() == cmStateEnums::STATIC_LIBRARY ||
-          target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+          target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+          target->GetType() == cmStateEnums::MODULE_LIBRARY) {
         nixFileStream << "  \"" << target->GetName() << "\" = "
                       << this->GetDerivationName(target->GetName()) << ";\n";
       }
@@ -356,6 +357,7 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
       if (target->GetType() == cmStateEnums::EXECUTABLE ||
           target->GetType() == cmStateEnums::STATIC_LIBRARY ||
           target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+          target->GetType() == cmStateEnums::MODULE_LIBRARY ||
           target->GetType() == cmStateEnums::OBJECT_LIBRARY) {
         
         // Get source files for this target
@@ -395,7 +397,8 @@ void cmGlobalNixGenerator::WriteLinkingDerivations(
     for (auto const& target : targets) {
       if (target->GetType() == cmStateEnums::EXECUTABLE ||
           target->GetType() == cmStateEnums::STATIC_LIBRARY ||
-          target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+          target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+          target->GetType() == cmStateEnums::MODULE_LIBRARY) {
         this->WriteLinkDerivation(nixFileStream, target.get());
       }
     }
@@ -663,8 +666,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   if (!defineFlags.empty()) allFlags += defineFlags + " ";
   if (!includeFlags.empty()) allFlags += includeFlags + " ";
   
-  // Add -fPIC for shared libraries
-  if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+  // Add -fPIC for shared and module libraries
+  if (target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+      target->GetType() == cmStateEnums::MODULE_LIBRARY) {
     allFlags += "-fPIC ";
   }
   
@@ -708,6 +712,8 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   std::string outputName;
   if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
     outputName = this->GetLibraryPrefix() + targetName + this->GetSharedLibraryExtension();
+  } else if (target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+    outputName = targetName + this->GetSharedLibraryExtension();  // Modules typically don't have lib prefix
   } else {
     outputName = targetName;
   }
@@ -783,8 +789,9 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   if (linkImpl) {
     for (const cmLinkItem& item : linkImpl->Libraries) {
       if (item.Target && !item.Target->IsImported()) {
-        // Only add shared libraries to buildInputs, not static libraries
-        if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+        // Only add shared and module libraries to buildInputs, not static libraries
+        if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+            item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
           std::string depTargetName = item.Target->GetName();
           std::string depDerivName = this->GetDerivationName(depTargetName);
           nixFileStream << " " << depDerivName;
@@ -881,6 +888,9 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
         if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
           // For shared libraries, use Nix string interpolation
           linkFlags += " ${" + depDerivName + "}/" + this->GetLibraryPrefix() + depTargetName + this->GetSharedLibraryExtension();
+        } else if (item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+          // For module libraries, use Nix string interpolation (no lib prefix)
+          linkFlags += " ${" + depDerivName + "}/" + depTargetName + this->GetSharedLibraryExtension();
         } else if (item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
           // For static libraries, link the archive directly using string interpolation
           linkFlags += " ${" + depDerivName + "}";
@@ -929,6 +939,12 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
       nixFileStream << "      " << linkCompilerCmd << " -shared $objects" << linkFlags 
                     << " -Wl,-rpath,$out/lib -o $out/" << libName << "\n";
     }
+  } else if (target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+    // Module libraries are like shared libraries but without versioning or lib prefix
+    nixFileStream << "      mkdir -p $out\n";
+    std::string modName = targetName + this->GetSharedLibraryExtension();
+    nixFileStream << "      " << linkCompilerCmd << " -shared $objects" << linkFlags 
+                  << " -o $out/" << modName << "\n";
   }
   nixFileStream << "    '';\n";
   
@@ -1108,6 +1124,7 @@ void cmGlobalNixGenerator::CollectInstallTargets()
       if (target->GetType() == cmStateEnums::EXECUTABLE ||
           target->GetType() == cmStateEnums::STATIC_LIBRARY ||
           target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+          target->GetType() == cmStateEnums::MODULE_LIBRARY ||
           target->GetType() == cmStateEnums::OBJECT_LIBRARY) {
         if(!target->Target->GetInstallGenerators().empty()) {
           this->InstallTargets.push_back(target.get());
@@ -1250,8 +1267,10 @@ std::set<std::string> cmGlobalNixGenerator::cmNixDependencyGraph::GetTransitiveS
     
     auto& currentNode = currentIt->second;
     
-    // If this is a shared library (and not the starting target), include it
-    if (current != target && currentNode.type == cmStateEnums::SHARED_LIBRARY) {
+    // If this is a shared or module library (and not the starting target), include it
+    if (current != target && 
+        (currentNode.type == cmStateEnums::SHARED_LIBRARY || 
+         currentNode.type == cmStateEnums::MODULE_LIBRARY)) {
       result.insert(current);
     }
     
