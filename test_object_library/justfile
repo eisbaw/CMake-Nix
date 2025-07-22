@@ -1,0 +1,44 @@
+
+# Test OBJECT library support in CMake Nix backend
+
+# Default command - show help
+default:
+    @just --list
+
+# Configure the project
+configure:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build and run the calculator
+run: configure
+    nix-build -A calculator && ./result
+
+# Build the static library
+static: configure
+    nix-build -A math_static
+
+# Build the shared library
+shared: configure
+    nix-build -A math_shared
+
+# Clean build artifacts
+clean:
+    rm -f default.nix result*
+
+# Show generated Nix file
+show: configure
+    cat default.nix
+
+# Build all targets
+all: configure
+    nix-build -A calculator
+    nix-build -A math_static
+    nix-build -A math_shared
+
+# List available targets
+list: configure
+    @echo "Available targets:"
+    @echo "  - calculator (executable)"
+    @echo "  - math_static (static library)"
+    @echo "  - math_shared (shared library)"
