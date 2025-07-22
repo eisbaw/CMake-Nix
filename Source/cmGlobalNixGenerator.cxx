@@ -576,7 +576,14 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         // This is a built-in Nix package
         std::string nixPkg = lib.substr(9); // Remove "__NIXPKG__" prefix
         if (!nixPkg.empty()) {
-          nixFileStream << " " << nixPkg;
+          // Direct package names from nixpkgs (with pkgs; is at the top)
+          // Check if the package name starts with underscore (added by CMake)
+          std::string actualPkg = nixPkg;
+          if (actualPkg.length() > 1 && actualPkg[0] == '_') {
+            // Remove the underscore prefix that CMake adds
+            actualPkg = actualPkg.substr(1);
+          }
+          nixFileStream << " " << actualPkg;
         }
       } else {
         // This is a file import - adjust path for subdirectory sources
@@ -747,7 +754,14 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
         // This is a built-in Nix package
         std::string nixPkg = lib.substr(9); // Remove "__NIXPKG__" prefix
         if (!nixPkg.empty()) {
-          nixFileStream << " " << nixPkg;
+          // Direct package names from nixpkgs (with pkgs; is at the top)
+          // Check if the package name starts with underscore (added by CMake)
+          std::string actualPkg = nixPkg;
+          if (actualPkg.length() > 1 && actualPkg[0] == '_') {
+            // Remove the underscore prefix that CMake adds
+            actualPkg = actualPkg.substr(1);
+          }
+          nixFileStream << " " << actualPkg;
         }
       } else {
         // This is a file import - adjust path for subdirectory sources
