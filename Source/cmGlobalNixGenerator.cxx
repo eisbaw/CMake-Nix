@@ -187,6 +187,12 @@ void cmGlobalNixGenerator::WriteNixFile()
         if (cmCustomCommand const* cc = source->GetCustomCommand()) {
           cmNixCustomCommandGenerator ccg(cc, target->GetLocalGenerator(), this->GetBuildConfiguration(target.get()));
           ccg.Generate(nixFileStream);
+          
+          // Populate CustomCommandOutputs map for dependency tracking
+          std::string derivationName = ccg.GetDerivationName();
+          for (const std::string& output : ccg.GetOutputs()) {
+            this->CustomCommandOutputs[output] = derivationName;
+          }
         }
       }
     }
