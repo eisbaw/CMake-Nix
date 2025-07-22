@@ -79,6 +79,9 @@ mod test_interface_library
 # JSON library test (medium-sized C++ project)
 mod test_json_library
 
+# spdlog test (popular C++ logging library)
+mod test_spdlog
+
 # OpenCV real-world test (large C++ project)
 mod test_opencv
 
@@ -149,6 +152,7 @@ test-all:
     just test_compile_language_expr::run
     just test_interface_library::run
     just test_json_library::run
+    just test_spdlog::test
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself
     # just test_opencv::configure-core
     @echo "✅ All tests passed!"

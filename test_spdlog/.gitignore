@@ -1,0 +1,9 @@
+# Build directory
+build/
+
+# Downloaded spdlog source
+spdlog/
+
+# Nix result symlinks
+result
+result-*
