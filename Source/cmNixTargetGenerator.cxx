@@ -307,11 +307,12 @@ std::vector<std::string> cmNixTargetGenerator::GetIncludeFlags(
 {
   std::vector<std::string> flags;
   
-  // Get include directories from target
-  std::vector<BT<std::string>> includesBT = this->GeneratorTarget->GetIncludeDirectories(lang, config);
+  // Get include directories from target using LocalGenerator for proper generator expression evaluation
+  std::vector<std::string> includes;
+  this->LocalGenerator->GetIncludeDirectories(includes, this->GeneratorTarget, lang, config);
   
-  for (const auto& inc : includesBT) {
-    flags.push_back("-I" + inc.Value);
+  for (const auto& inc : includes) {
+    flags.push_back("-I" + inc);
   }
   
   return flags;
@@ -363,10 +364,12 @@ std::vector<std::string> cmNixTargetGenerator::ParseCompilerDependencyOutput(
 std::string cmNixTargetGenerator::ResolveIncludePath(std::string const& headerName) const
 {
   // Try to resolve include file to full path using include directories
-  std::vector<BT<std::string>> includesBT = this->GeneratorTarget->GetIncludeDirectories("", "");
+  std::vector<std::string> includes;
+  // Use empty strings for lang and config to get all include directories
+  this->LocalGenerator->GetIncludeDirectories(includes, this->GeneratorTarget, "", "");
   
-  for (const auto& inc : includesBT) {
-    std::string fullPath = inc.Value + "/" + headerName;
+  for (const auto& inc : includes) {
+    std::string fullPath = inc + "/" + headerName;
     if (cmSystemTools::FileExists(fullPath)) {
       return fullPath;
     }

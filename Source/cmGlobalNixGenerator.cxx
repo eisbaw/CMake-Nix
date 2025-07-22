@@ -343,14 +343,17 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   }
   
   // Get include directories from target with proper configuration
-  std::vector<BT<std::string>> includesBT = target->GetIncludeDirectories(lang, config);
+  // Use LocalGenerator to properly evaluate generator expressions
+  std::vector<std::string> includes;
+  lg->GetIncludeDirectories(includes, target, lang, config);
+  
   std::string includeFlags;
-  for (const auto& inc : includesBT) {
+  for (const auto& inc : includes) {
     if (!includeFlags.empty()) includeFlags += " ";
     // Convert absolute include paths to relative for Nix build environment
     std::string relativeInclude = cmSystemTools::RelativePath(
-      this->GetCMakeInstance()->GetHomeOutputDirectory(), inc.Value);
-    includeFlags += "-I" + (!relativeInclude.empty() ? relativeInclude : inc.Value);
+      this->GetCMakeInstance()->GetHomeOutputDirectory(), inc);
+    includeFlags += "-I" + (!relativeInclude.empty() ? relativeInclude : inc);
   }
   
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";

@@ -2344,7 +2344,8 @@ static const struct CompileLanguageNode : public cmGeneratorExpressionNode
         genName.find("Visual Studio") == std::string::npos &&
         genName.find("Xcode") == std::string::npos &&
         genName.find("Watcom WMake") == std::string::npos &&
-        genName.find("Green Hills MULTI") == std::string::npos) {
+        genName.find("Green Hills MULTI") == std::string::npos &&
+        genName.find("Nix") == std::string::npos) {
       reportError(context, content->GetOriginalExpression(),
                   "$<COMPILE_LANGUAGE:...> not supported for this generator.");
       return std::string();
@@ -2394,7 +2395,8 @@ static const struct CompileLanguageAndIdNode : public cmGeneratorExpressionNode
         genName.find("Visual Studio") == std::string::npos &&
         genName.find("Xcode") == std::string::npos &&
         genName.find("Watcom WMake") == std::string::npos &&
-        genName.find("Green Hills MULTI") == std::string::npos) {
+        genName.find("Green Hills MULTI") == std::string::npos &&
+        genName.find("Nix") == std::string::npos) {
       reportError(
         context, content->GetOriginalExpression(),
         "$<COMPILE_LANG_AND_ID:lang,id> not supported for this generator.");
@@ -2448,7 +2450,8 @@ static const struct LinkLanguageNode : public cmGeneratorExpressionNode
         genName.find("Visual Studio") == std::string::npos &&
         genName.find("Xcode") == std::string::npos &&
         genName.find("Watcom WMake") == std::string::npos &&
-        genName.find("Green Hills MULTI") == std::string::npos) {
+        genName.find("Green Hills MULTI") == std::string::npos &&
+        genName.find("Nix") == std::string::npos) {
       reportError(context, content->GetOriginalExpression(),
                   "$<LINK_LANGUAGE:...> not supported for this generator.");
       return std::string();
@@ -2539,7 +2542,8 @@ static const struct LinkLanguageAndIdNode : public cmGeneratorExpressionNode
         genName.find("Visual Studio") == std::string::npos &&
         genName.find("Xcode") == std::string::npos &&
         genName.find("Watcom WMake") == std::string::npos &&
-        genName.find("Green Hills MULTI") == std::string::npos) {
+        genName.find("Green Hills MULTI") == std::string::npos &&
+        genName.find("Nix") == std::string::npos) {
       reportError(
         context, content->GetOriginalExpression(),
         "$<LINK_LANG_AND_ID:lang,id> not supported for this generator.");
