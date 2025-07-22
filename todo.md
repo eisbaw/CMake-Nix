@@ -1,10 +1,10 @@
-Fix this: The Nix generator doesn't support $<COMPILE_LANGUAGE:...> expressions yet
+DONE: Fix this: The Nix generator doesn't support $<COMPILE_LANGUAGE:...> expressions yet
 
-Look for other unsupported features in Nix generator.
+DONE: Look for other unsupported features in Nix generator. (See UNSUPPORTED_FEATURES.md)
 
-Look for code smells in the cmake Nix generator.
+DONE: Look for code smells in the cmake Nix generator. (See CODE_REVIEW_FINDINGS.md)
 
-Look for asusmptions in the cmake Nix generator.
+DONE: Look for assumptions in the cmake Nix generator. (See CODE_REVIEW_FINDINGS.md)
 
 Improve the cmake Nix generator.
 
