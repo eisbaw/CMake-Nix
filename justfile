@@ -67,6 +67,15 @@ mod test_package_integration
 # Compiler feature detection test
 mod test_feature_detection
 
+# Compile language generator expression test
+mod test_compile_language_expr
+
+# Interface library test
+mod test_interface_library
+
+# JSON library test (medium-sized C++ project)
+mod test_json_library
+
 # OpenCV real-world test (large C++ project)
 mod test_opencv
 
@@ -136,6 +145,7 @@ test-all:
     just test_object_library::run
     just test_compile_language_expr::run
     just test_interface_library::run
+    just test_json_library::run
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself
     # just test_opencv::configure-core
     @echo "✅ All tests passed!"
