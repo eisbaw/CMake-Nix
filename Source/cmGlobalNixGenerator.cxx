@@ -982,8 +982,23 @@ void cmGlobalNixGenerator::WriteInstallRules(cmGeneratedFileStream& nixFileStrea
     nixFileStream << "    dontConfigure = true;\n";
     nixFileStream << "    installPhase = ''\n";
 
-    std::string dest = target->Target->GetInstallGenerators()[0]->GetDestination(this->GetBuildConfiguration(target));
-
+    // Get install destination, with error handling for missing install generators
+    std::string dest;
+    const auto& installGens = target->Target->GetInstallGenerators();
+    if (installGens.empty()) {
+      // No install rules defined - use default destinations
+      if (target->GetType() == cmStateEnums::EXECUTABLE) {
+        dest = "bin";
+      } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY || 
+                 target->GetType() == cmStateEnums::STATIC_LIBRARY) {
+        dest = "lib";
+      } else {
+        dest = "share";
+      }
+    } else {
+      dest = installGens[0]->GetDestination(this->GetBuildConfiguration(target));
+    }
+    
     nixFileStream << "      mkdir -p $out/" << dest << "\n";
     
     // Determine installation destination based on target type
