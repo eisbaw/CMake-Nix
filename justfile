@@ -134,6 +134,8 @@ test-all:
     just test_package_integration::run
     just test_feature_detection::run
     just test_object_library::run
+    just test_compile_language_expr::run
+    just test_interface_library::run
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself
     # just test_opencv::configure-core
     @echo "✅ All tests passed!"

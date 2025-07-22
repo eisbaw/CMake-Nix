@@ -1,0 +1,17 @@
+#!/usr/bin/env just --justfile
+
+# Clean up build artifacts
+clean:
+    rm -f default.nix
+
+# Configure the project with CMake using Nix generator
+configure:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build and run the test
+run: clean configure
+    nix-build -A app && ./result
+
+# Build and test all targets
+test: run
