@@ -159,6 +159,16 @@ private:
   // Map from output file to custom command derivation name
   std::map<std::string, std::string> CustomCommandOutputs;
   
+  // Structure to store custom command information for dependency resolution
+  struct CustomCommandInfo {
+    std::string DerivationName;
+    std::vector<std::string> Outputs;
+    std::vector<std::string> Depends;
+    cmCustomCommand const* Command;
+    cmLocalGenerator* LocalGen;
+  };
+  std::vector<CustomCommandInfo> CustomCommands;
+  
   // Dependency graph infrastructure for transitive dependency resolution
   class cmNixDependencyNode {
   public:

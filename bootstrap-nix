@@ -1,0 +1,106 @@
+#!/bin/sh
+# Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
+# file LICENSE.rst or https://cmake.org/licensing for details.
+
+# CMake Self-Hosting Script for Nix Generator
+# This script demonstrates CMake building itself using the Nix generator
+
+die() {
+  echo "$@" 1>&2 ; exit 1
+}
+
+# Detect system and directory information.
+cmake_system=`uname`
+cmake_source_dir=`cd "\`dirname \"$0\"\`";pwd`
+cmake_binary_dir=`pwd`
+
+# Version number extraction function.
+cmake_version_component()
+{
+  sed -n "
+/^set(CMake_VERSION_${1}/ {s/set(CMake_VERSION_${1} *\([0-9]*\)).*/\1/;p;}
+" "${cmake_source_dir}/Source/CMakeVersion.cmake"
+}
+
+# Load version information.
+cmake_version_major="`cmake_version_component MAJOR`"
+cmake_version_minor="`cmake_version_component MINOR`"
+cmake_version_patch="`cmake_version_component PATCH`"
+cmake_version="${cmake_version_major}.${cmake_version_minor}.${cmake_version_patch}"
+cmake_version_rc="`cmake_version_component RC`"
+if test "$cmake_version_rc" != ""; then
+  cmake_version="${cmake_version}-rc${cmake_version_rc}"
+fi
+
+echo "---------------------------------------------"
+echo "CMake Self-Hosting with Nix Generator"
+echo "---------------------------------------------"
+echo "CMake Version:    ${cmake_version}"
+echo "Generator:        Nix"
+echo "Source Directory: ${cmake_source_dir}"
+echo "Binary Directory: ${cmake_binary_dir}"
+echo "---------------------------------------------"
+
+# Ensure we have nix-build available
+if ! command -v nix-build >/dev/null 2>&1; then
+  die "nix-build is required but not found in PATH"
+fi
+
+# Since we're self-hosting, we need to use the CMake from the current build
+# which already has the Nix generator built in
+cmake_exe="${cmake_source_dir}/cmake"
+if ! test -x "${cmake_exe}"; then
+  cmake_exe="${cmake_source_dir}/bin/cmake"
+  if ! test -x "${cmake_exe}"; then
+    echo "Error: Could not find cmake binary in ${cmake_source_dir}"
+    echo "Please build CMake first using: make -j$(nproc)"
+    exit 1
+  fi
+fi
+
+echo "Using cmake: ${cmake_exe}"
+
+# Set up the environment so cmake can find its modules
+export CMAKE_ROOT="${cmake_source_dir}"
+
+# Since the cmake binary needs to find its data files relative to its location,
+# we'll run it from the source directory
+cd "${cmake_source_dir}"
+
+# Configure CMake with Nix generator
+echo ""
+echo "Configuring CMake with Nix generator..."
+"${cmake_exe}" . \
+  -B "${cmake_binary_dir}" \
+  -G "Nix" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_MAKE_PROGRAM=nix-build \
+  "$@" || die "Failed to configure CMake with Nix generator"
+
+cd "${cmake_binary_dir}"
+
+# Display the generated default.nix
+if test -f "${cmake_binary_dir}/default.nix"; then
+  echo ""
+  echo "Generated default.nix successfully!"
+  echo "Number of derivations: $(grep -c 'mkDerivation' default.nix)"
+  echo ""
+  echo "CMake is now configured to build itself using Nix!"
+  echo ""
+  echo "To build CMake with Nix, run:"
+  echo "  nix-build -A cmake"
+  echo ""
+  echo "To build specific components:"
+  echo "  nix-build -A CMakeLib"
+  echo "  nix-build -A ctest"
+  echo "  nix-build -A cpack"
+  echo ""
+  echo "To run the built cmake:"
+  echo "  ./result/bin/cmake --version"
+else
+  die "Failed to generate default.nix"
+fi
+
+echo "---------------------------------------------"
+echo "CMake self-hosting with Nix is ready!"
+echo "---------------------------------------------"

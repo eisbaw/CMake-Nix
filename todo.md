@@ -1,3 +1,5 @@
+# Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
+
 DONE: Fix this: The Nix generator doesn't support $<COMPILE_LANGUAGE:...> expressions yet
 
 DONE: Look for other unsupported features in Nix generator. (See UNSUPPORTED_FEATURES.md)
@@ -14,7 +16,7 @@ DONE: Check for uncomitted files. Consider if they should be added. Test cases s
 
 DONE: Search the web for cmake C/C++ open-source projects. Add a medium-sized popular cmake-based project as a new test case. Use cmake nix generator backend to build it. - Added test_json_library as a comprehensive medium-sized project test
 
-DONE: Obtain feature-parity of the Nix generator in cmake, with the Ninja generator.
+Obtain feature-parity of the Nix generator in cmake, with the Ninja generator.
 
 DONE: Look for improvements to the cmake Nix generator.
 

@@ -7,6 +7,8 @@
 #include <sstream>
 #include <algorithm>
 #include <set>
+#include <functional>
+#include <queue>
 
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
@@ -178,23 +180,100 @@ void cmGlobalNixGenerator::WriteNixFile()
                 << "with import <nixpkgs> {};\n\n"
                 << "let\n";
 
-  // Collect and write custom command derivations first
+  // First pass: Collect all custom commands
+  this->CustomCommands.clear();
+  this->CustomCommandOutputs.clear();
+  
   for (auto const& lg : this->LocalGenerators) {
     for (auto const& target : lg->GetGeneratorTargets()) {
       std::vector<cmSourceFile*> sources;
       target->GetSourceFiles(sources, "");
       for (cmSourceFile* source : sources) {
         if (cmCustomCommand const* cc = source->GetCustomCommand()) {
-          cmNixCustomCommandGenerator ccg(cc, target->GetLocalGenerator(), this->GetBuildConfiguration(target.get()));
-          ccg.Generate(nixFileStream);
-          
-          // Populate CustomCommandOutputs map for dependency tracking
-          std::string derivationName = ccg.GetDerivationName();
-          for (const std::string& output : ccg.GetOutputs()) {
-            this->CustomCommandOutputs[output] = derivationName;
+          try {
+            cmNixCustomCommandGenerator ccg(cc, target->GetLocalGenerator(), this->GetBuildConfiguration(target.get()));
+            
+            CustomCommandInfo info;
+            info.DerivationName = ccg.GetDerivationName();
+            info.Outputs = ccg.GetOutputs();
+            info.Depends = ccg.GetDepends();
+            info.Command = cc;
+            info.LocalGen = target->GetLocalGenerator();
+            
+            this->CustomCommands.push_back(info);
+            
+            // Populate CustomCommandOutputs map for dependency tracking
+            for (const std::string& output : info.Outputs) {
+              this->CustomCommandOutputs[output] = info.DerivationName;
+            }
+          } catch (const std::exception& e) {
+            std::cerr << "Exception in custom command processing: " << e.what() << std::endl;
+          } catch (...) {
+            std::cerr << "Unknown exception in custom command processing" << std::endl;
           }
         }
       }
+    }
+  }
+  
+  // Second pass: Write custom commands in dependency order
+  std::set<std::string> written;
+  std::vector<const CustomCommandInfo*> orderedCommands;
+  
+  // Simple topological sort using Kahn's algorithm
+  std::map<std::string, std::vector<const CustomCommandInfo*>> dependents;
+  std::map<std::string, int> inDegree;
+  
+  // Build dependency graph
+  for (const auto& info : this->CustomCommands) {
+    inDegree[info.DerivationName] = 0;
+  }
+  
+  for (const auto& info : this->CustomCommands) {
+    for (const std::string& dep : info.Depends) {
+      auto depIt = this->CustomCommandOutputs.find(dep);
+      if (depIt != this->CustomCommandOutputs.end()) {
+        dependents[depIt->second].push_back(&info);
+        inDegree[info.DerivationName]++;
+      }
+    }
+  }
+  
+  // Find nodes with no dependencies
+  std::queue<const CustomCommandInfo*> q;
+  for (const auto& info : this->CustomCommands) {
+    if (inDegree[info.DerivationName] == 0) {
+      q.push(&info);
+    }
+  }
+  
+  // Process in dependency order
+  while (!q.empty()) {
+    const CustomCommandInfo* current = q.front();
+    q.pop();
+    orderedCommands.push_back(current);
+    
+    // Reduce in-degree for dependents
+    for (const CustomCommandInfo* dependent : dependents[current->DerivationName]) {
+      if (--inDegree[dependent->DerivationName] == 0) {
+        q.push(dependent);
+      }
+    }
+  }
+  
+  // Write commands in order
+  for (const CustomCommandInfo* info : orderedCommands) {
+    try {
+      std::string config = this->GetCMakeInstance()->GetGlobalGenerator()->GetMakefiles()[0]->GetSafeDefinition("CMAKE_BUILD_TYPE");
+      if (config.empty()) {
+        config = "Release";
+      }
+      cmNixCustomCommandGenerator ccg(info->Command, info->LocalGen, config);
+      ccg.Generate(nixFileStream);
+    } catch (const std::exception& e) {
+      std::cerr << "Exception writing custom command: " << e.what() << std::endl;
+    } catch (...) {
+      std::cerr << "Unknown exception writing custom command" << std::endl;
     }
   }
 

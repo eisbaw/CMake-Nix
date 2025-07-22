@@ -9,6 +9,7 @@
 #include "cmGeneratorTarget.h"
 #include "cmMakefile.h"
 #include "cmSystemTools.h"
+#include <set>
 
 cmNixCustomCommandGenerator::cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config)
   : CustomCommand(cc)
@@ -21,10 +22,29 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
 {
   nixFileStream << "  " << this->GetDerivationName() << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << this->GetDerivationName() << "\";\n";
-  nixFileStream << "    buildInputs = [ pkgs.coreutils pkgs.cmake ];\n";
+  nixFileStream << "    buildInputs = [ pkgs.coreutils pkgs.cmake";
+  
+  // Add dependencies on other custom commands
+  std::vector<std::string> depends = this->GetDepends();
+  for (const std::string& dep : depends) {
+    // Check if this dependency is a custom command output
+    std::string depDerivName = "custom_" + cmSystemTools::GetFilenameWithoutExtension(dep);
+    nixFileStream << " " << depDerivName;
+  }
+  
+  nixFileStream << " ];\n";
   nixFileStream << "    phases = [ \"buildPhase\" ];\n";
   nixFileStream << "    buildPhase = ''\n";
   nixFileStream << "      mkdir -p $out\n";
+  
+  // Copy dependent files from other custom command outputs
+  for (const std::string& dep : depends) {
+    std::string depDerivName = "custom_" + cmSystemTools::GetFilenameWithoutExtension(dep);
+    std::string depFile = cmSystemTools::GetFilenameName(dep);
+    nixFileStream << "      cp ${" << depDerivName << "}/" << depFile << " .\n";
+  }
+  
+  nixFileStream << "";
 
   // Execute commands with proper shell handling
   for (const auto& commandLine : this->CustomCommand->GetCommandLines()) {
@@ -70,4 +90,9 @@ std::string cmNixCustomCommandGenerator::GetDerivationName() const
 std::vector<std::string> cmNixCustomCommandGenerator::GetOutputs() const
 {
   return this->CustomCommand->GetOutputs();
+}
+
+std::vector<std::string> cmNixCustomCommandGenerator::GetDepends() const
+{
+  return this->CustomCommand->GetDepends();
 }
