@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
 
 #include "cmCommonTargetGenerator.h"
 #include "cmNixPackageMapper.h"
@@ -35,6 +36,10 @@ public:
 
   /// Get header dependencies for a source file
   std::vector<std::string> GetSourceDependencies(cmSourceFile const* source) const;
+  
+  /// Get transitive header dependencies for a file
+  std::vector<std::string> GetTransitiveDependencies(std::string const& filePath, 
+                                                     std::set<std::string>& visited) const;
 
   /// Pure Nix library support - public for global generator access
   std::vector<std::string> GetTargetLibraryDependencies(std::string const& config) const;

@@ -142,7 +142,43 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
     // Try compiler-based scanning first (most accurate)
     dependencies = this->ScanWithCompiler(source, lang);
     if (!dependencies.empty()) {
-      return dependencies;
+      
+      // Now recursively scan all header dependencies for transitive includes
+      std::set<std::string> visited;
+      std::vector<std::string> transitiveDeps;
+      
+      // Mark source file as visited
+      visited.insert(source->GetFullPath());
+      
+      // Process each direct dependency
+      for (const std::string& dep : dependencies) {
+        // Add the direct dependency
+        transitiveDeps.push_back(dep);
+        
+        // Get absolute path for the dependency
+        std::string absPath;
+        if (cmSystemTools::FileIsFullPath(dep)) {
+          absPath = dep;
+        } else {
+          absPath = this->GetMakefile()->GetHomeDirectory() + "/" + dep;
+        }
+        
+        // Get transitive dependencies
+        std::vector<std::string> transDeps = this->GetTransitiveDependencies(absPath, visited);
+        transitiveDeps.insert(transitiveDeps.end(), transDeps.begin(), transDeps.end());
+      }
+      
+      // Remove duplicates while preserving order
+      std::set<std::string> seen;
+      std::vector<std::string> uniqueDeps;
+      for (const std::string& dep : transitiveDeps) {
+        if (seen.insert(dep).second) {
+          uniqueDeps.push_back(dep);
+        }
+      }
+      
+      
+      return uniqueDeps;
     }
   } catch (...) {
     // Fall back to other methods if compiler scanning fails
@@ -185,9 +221,9 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
   command.push_back(compiler);
   command.push_back("-MM"); // Generate dependencies, no system headers
   
-  // Add compile flags
+  // Add compile flags (but skip optimization flags for dependency scanning)
   for (const std::string& flag : compileFlags) {
-    if (!flag.empty()) {
+    if (!flag.empty() && flag.find("-O") != 0) {
       command.push_back(flag);
     }
   }
@@ -495,4 +531,164 @@ bool cmNixTargetGenerator::CreateNixPackageFile(
   file.close();
   
   return true;
+}
+
+std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
+  std::string const& filePath, std::set<std::string>& visited) const
+{
+  std::vector<std::string> dependencies;
+  
+  // Check if already visited
+  if (!visited.insert(filePath).second) {
+    return dependencies; // Already processed this file
+  }
+  
+  // Check if file exists
+  if (!cmSystemTools::FileExists(filePath)) {
+    return dependencies;
+  }
+  
+  // Determine the language based on file extension
+  std::string ext = cmSystemTools::GetFilenameLastExtension(filePath);
+  std::string lang;
+  if (ext == ".h" || ext == ".hpp" || ext == ".hxx" || ext == ".H" || 
+      ext == ".hh" || ext == ".h++" || ext == ".hp") {
+    lang = "CXX"; // Treat all headers as C++ for scanning
+  } else if (ext == ".c") {
+    lang = "C";
+  } else if (ext == ".cuh") {
+    lang = "CUDA";
+  } else {
+    return dependencies; // Unknown file type
+  }
+  
+  // Use compiler to scan this header file
+  std::vector<std::string> directDeps;
+  
+  // Get compiler command
+  std::string compiler = this->GetCompilerCommand(lang);
+  if (!compiler.empty()) {
+    // Get compile flags and include directories
+    std::string config = this->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+    if (config.empty()) {
+      config = "Release";
+    }
+    
+    std::vector<std::string> compileFlags = this->GetCompileFlags(lang, config);
+    std::vector<std::string> includeFlags = this->GetIncludeFlags(lang, config);
+    
+    // Build compiler command for dependency generation
+    std::vector<std::string> command;
+    command.push_back(compiler);
+    command.push_back("-MM"); // Generate dependencies, no system headers
+    command.push_back("-MT"); // Specify target name
+    command.push_back("dummy"); // Dummy target name
+    
+    // Add compile flags
+    for (const std::string& flag : compileFlags) {
+      if (!flag.empty()) {
+        command.push_back(flag);
+      }
+    }
+    
+    // Add include flags
+    for (const std::string& flag : includeFlags) {
+      if (!flag.empty()) {
+        command.push_back(flag);
+      }
+    }
+    
+    command.push_back(filePath);
+    
+    // Execute compiler to get dependencies
+    std::string output;
+    std::string error;
+    int result;
+    
+    if (cmSystemTools::RunSingleCommand(command, &output, &error, &result,
+                                       nullptr, cmSystemTools::OUTPUT_NONE)) {
+      if (result == 0) {
+        // Parse compiler output
+        std::istringstream stream(output);
+        std::string line;
+        
+        // Concatenate all lines (dependencies can be split across lines with \)
+        std::string fullOutput;
+        while (std::getline(stream, line)) {
+          // Remove trailing backslash and concatenate
+          if (!line.empty() && line.back() == '\\') {
+            line.pop_back();
+          }
+          fullOutput += line + " ";
+        }
+        
+        // Find the colon that separates object from dependencies
+        size_t colonPos = fullOutput.find(':');
+        if (colonPos != std::string::npos) {
+          // Extract everything after the colon
+          std::string depsStr = fullOutput.substr(colonPos + 1);
+          
+          // Split by whitespace to get individual files
+          std::istringstream depsStream(depsStr);
+          std::string depFile;
+          
+          while (depsStream >> depFile) {
+            // Skip the header file itself, only add its dependencies
+            if (depFile != filePath && !depFile.empty()) {
+              // Convert to relative path from top-level source directory (for Nix generation)
+              std::string topSourceDir = this->GetMakefile()->GetHomeDirectory();
+              std::string relPath = cmSystemTools::RelativePath(topSourceDir, depFile);
+              directDeps.push_back(!relPath.empty() ? relPath : depFile);
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // Fallback to regex scanning if compiler method fails
+  if (directDeps.empty()) {
+    std::ifstream headerFile(filePath);
+    if (headerFile.is_open()) {
+      // Regex to match #include statements
+      std::regex includePattern(R"(^\s*#\s*include\s*[<"]([^">]+)[">])");
+      std::string line;
+      
+      while (std::getline(headerFile, line)) {
+        std::smatch match;
+        if (std::regex_search(line, match, includePattern)) {
+          std::string headerName = match[1].str();
+          
+          // Try to resolve include to full path
+          std::string fullPath = this->ResolveIncludePath(headerName);
+          if (!fullPath.empty()) {
+            // Convert to relative path from top-level source directory (for Nix generation)
+            std::string topSourceDir = this->GetMakefile()->GetHomeDirectory();
+            std::string relPath = cmSystemTools::RelativePath(topSourceDir, fullPath);
+            directDeps.push_back(!relPath.empty() ? relPath : fullPath);
+          }
+        }
+      }
+    }
+  }
+  
+  // Process each direct dependency recursively
+  for (const std::string& dep : directDeps) {
+    // Add the direct dependency
+    dependencies.push_back(dep);
+    
+    // Get absolute path for the dependency
+    std::string absPath;
+    if (cmSystemTools::FileIsFullPath(dep)) {
+      absPath = dep;
+    } else {
+      absPath = this->GetMakefile()->GetHomeDirectory() + "/" + dep;
+    }
+    
+    // Get transitive dependencies
+    std::vector<std::string> transDeps = this->GetTransitiveDependencies(absPath, visited);
+    dependencies.insert(dependencies.end(), transDeps.begin(), transDeps.end());
+  }
+  
+  return dependencies;
 } 
