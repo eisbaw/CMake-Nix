@@ -362,8 +362,13 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   cmLocalGenerator* lg = target->GetLocalGenerator();
   
   // Get configuration-specific compile flags
+  // Use the vector version to properly capture all flags including those from target_compile_options
+  std::vector<BT<std::string>> compileFlagsVec = lg->GetTargetCompileFlags(target, config, lang, "");
   std::string compileFlags;
-  lg->GetTargetCompileFlags(target, config, lang, compileFlags);
+  for (const auto& flag : compileFlagsVec) {
+    if (!compileFlags.empty()) compileFlags += " ";
+    compileFlags += flag.Value;
+  }
   
   // Get configuration-specific preprocessor definitions
   std::set<std::string> defines;
