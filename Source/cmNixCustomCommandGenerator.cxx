@@ -21,19 +21,39 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
 {
   nixFileStream << "  " << this->GetDerivationName() << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << this->GetDerivationName() << "\";\n";
-  nixFileStream << "    buildInputs = [ pkgs.coreutils ];\n";
+  nixFileStream << "    buildInputs = [ pkgs.coreutils pkgs.cmake ];\n";
   nixFileStream << "    phases = [ \"buildPhase\" ];\n";
   nixFileStream << "    buildPhase = ''\n";
+  nixFileStream << "      mkdir -p $out\n";
 
+  // Execute commands with proper shell handling
   for (const auto& commandLine : this->CustomCommand->GetCommandLines()) {
-    std::string fullCommand;
+    nixFileStream << "      ";
+    bool first = true;
     for (const std::string& arg : commandLine) {
-        if (!fullCommand.empty()) {
-            fullCommand += " ";
-        }
-        fullCommand += "\"" + arg + "\"";
+      if (!first) {
+        nixFileStream << " ";
+      }
+      first = false;
+      
+      // Handle shell operators properly
+      if (arg == ">" || arg == ">>" || arg == "<" || arg == "|" || arg == "&&" || arg == "||") {
+        nixFileStream << arg;
+      } else if (arg.find("/cmake") != std::string::npos && arg.find("/bin/cmake") != std::string::npos) {
+        // Replace absolute cmake paths with just "cmake" from nixpkgs
+        nixFileStream << "cmake";
+      } else {
+        // Quote arguments that aren't shell operators
+        nixFileStream << "\"" << arg << "\"";
+      }
     }
-    nixFileStream << "      " << fullCommand << "\n";
+    nixFileStream << "\n";
+  }
+
+  // Copy outputs to derivation output
+  for (const std::string& output : this->CustomCommand->GetOutputs()) {
+    std::string outputFile = cmSystemTools::GetFilenameName(output);
+    nixFileStream << "      cp " << outputFile << " $out/" << outputFile << "\n";
   }
 
   nixFileStream << "    '';\n";
