@@ -232,10 +232,7 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         
         // Pre-create target generator and cache configuration for efficiency
         auto targetGen = cmNixTargetGenerator::New(target.get());
-        std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
-        if (config.empty()) {
-          config = "Release";
-        }
+        std::string config = this->GetBuildConfiguration(target.get());
         
         // Pre-compute and cache library dependencies for this target
         std::pair<cmGeneratorTarget*, std::string> cacheKey = {target.get(), config};
@@ -318,7 +315,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   std::string sourceFile = source->GetFullPath();
   std::string derivName = this->GetDerivationName(target->GetName(), sourceFile);
   std::string objectName = cmSystemTools::GetFilenameWithoutLastExtension(
-    cmSystemTools::GetFilenameName(sourceFile)) + ".o";
+    cmSystemTools::GetFilenameName(sourceFile)) + this->GetObjectFileExtension();
   std::string lang = source->GetLanguage();
   
   // Get the configuration (Debug, Release, etc.)
@@ -558,7 +555,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   // Generate appropriate name for target type
   std::string outputName;
   if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-    outputName = "lib" + targetName + ".so";
+    outputName = this->GetLibraryPrefix() + targetName + this->GetSharedLibraryExtension();
   } else {
     outputName = targetName;
   }
@@ -566,10 +563,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   nixFileStream << "    name = \"" << outputName << "\";\n";
   
   // Get external library dependencies using cache
-  std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
-  if (config.empty()) {
-    config = "Release";
-  }
+  std::string config = this->GetBuildConfiguration(target);
   
   std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
   std::vector<std::string> libraryDeps;
@@ -675,8 +669,9 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     
     // Remove .o extension to get the source file path
     std::string sourceFile = objectFile;
-    if (sourceFile.size() > 2 && sourceFile.substr(sourceFile.size() - 2) == ".o") {
-      sourceFile = sourceFile.substr(0, sourceFile.size() - 2);
+    std::string objExt = this->GetObjectFileExtension();
+    if (sourceFile.size() > objExt.size() && sourceFile.substr(sourceFile.size() - objExt.size()) == objExt) {
+      sourceFile = sourceFile.substr(0, sourceFile.size() - objExt.size());
     }
     
     // Find the OBJECT library that contains this source
@@ -726,7 +721,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
         // Add appropriate link flags based on target type using direct references
         if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
           // For shared libraries, use Nix string interpolation
-          linkFlags += " ${" + depDerivName + "}/lib" + depTargetName + ".so";
+          linkFlags += " ${" + depDerivName + "}/" + this->GetLibraryPrefix() + depTargetName + this->GetSharedLibraryExtension();
         } else if (item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
           // For static libraries, link the archive directly using string interpolation
           linkFlags += " ${" + depDerivName + "}";
@@ -743,7 +738,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   for (const std::string& depTarget : transitiveDeps) {
     if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
       std::string depDerivName = this->GetDerivationName(depTarget);
-      linkFlags += " ${" + depDerivName + "}/lib" + depTarget + ".so";
+      linkFlags += " ${" + depDerivName + "}/" + this->GetLibraryPrefix() + depTarget + this->GetSharedLibraryExtension();
     }
   }
   
@@ -759,7 +754,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     cmValue soversion = target->GetProperty("SOVERSION");
     
     nixFileStream << "      mkdir -p $out\n";
-    std::string libName = "lib" + targetName + ".so";
+    std::string libName = this->GetLibraryPrefix() + targetName + this->GetSharedLibraryExtension();
     
     if (version && soversion) {
       // Create versioned library and symlinks
@@ -876,6 +871,15 @@ std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) co
   return result;
 }
 
+std::string cmGlobalNixGenerator::GetBuildConfiguration(cmGeneratorTarget* target) const
+{
+  std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+  if (config.empty()) {
+    config = "Release"; // Default to Release if no configuration specified
+  }
+  return config;
+}
+
 std::map<std::string, std::string> cmGlobalNixGenerator::CollectCustomCommands()
 {
   std::map<std::string, std::string> outputToDerivation;
@@ -903,10 +907,7 @@ std::map<std::string, std::string> cmGlobalNixGenerator::CollectCustomCommands()
             processedCommands.insert(cc);
             
             // Create custom command generator
-            std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
-            if (config.empty()) {
-              config = "Release";
-            }
+            std::string config = this->GetBuildConfiguration(target.get());
             
             cmNixCustomCommandGenerator ccGen(cc, target->GetLocalGenerator(), config);
             std::string derivName = ccGen.GetDerivationName();
@@ -919,11 +920,7 @@ std::map<std::string, std::string> cmGlobalNixGenerator::CollectCustomCommands()
           }
         }
         
-        // Also check for PRE_BUILD, PRE_LINK, POST_BUILD commands
-        std::vector<cmCustomCommand> const& preBuildCommands = target->GetPreBuildCommands();
-        (void)preBuildCommands;
-        std::vector<cmCustomCommand> const& postBuildCommands = target->GetPostBuildCommands();
-        (void)postBuildCommands;
+        // TODO: Add support for PRE_BUILD, PRE_LINK, POST_BUILD commands in the future
         
         // Note: These need special handling as they're not file-generating commands
         // For now, we'll skip them and focus on OUTPUT-based custom commands
@@ -961,10 +958,7 @@ void cmGlobalNixGenerator::WriteCustomCommandDerivations(
         for (cmSourceFile* source : sources) {
           cmCustomCommand const* cc = source->GetCustomCommand();
           if (cc) {
-            std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
-            if (config.empty()) {
-              config = "Release";
-            }
+            std::string config = this->GetBuildConfiguration(target.get());
             
             cmNixCustomCommandGenerator ccGen(cc, target->GetLocalGenerator(), config);
             std::string derivName = ccGen.GetDerivationName();
@@ -1033,15 +1027,15 @@ void cmGlobalNixGenerator::WriteInstallRules(cmGeneratedFileStream& nixFileStrea
     nixFileStream << "    dontBuild = true;\n";
     nixFileStream << "    dontConfigure = true;\n";
     nixFileStream << "    installPhase = ''\n";
-    nixFileStream << "      mkdir -p $out/bin $out/lib $out/include\n";
+    nixFileStream << "      mkdir -p $out/" << this->GetInstallBinDir() << " $out/" << this->GetInstallLibDir() << " $out/" << this->GetInstallIncludeDir() << "\n";
     
     // Determine installation destination based on target type
     if (target->GetType() == cmStateEnums::EXECUTABLE) {
-      nixFileStream << "      cp $src $out/bin/" << targetName << "\n";
+      nixFileStream << "      cp $src $out/" << this->GetInstallBinDir() << "/" << targetName << "\n";
     } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-      nixFileStream << "      cp -r $src/* $out/lib/ 2>/dev/null || true\n";
+      nixFileStream << "      cp -r $src/* $out/" << this->GetInstallLibDir() << "/ 2>/dev/null || true\n";
     } else if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
-      nixFileStream << "      cp $src $out/lib/lib" << targetName << ".a\n";
+      nixFileStream << "      cp $src $out/" << this->GetInstallLibDir() << "/" << this->GetLibraryPrefix() << targetName << this->GetStaticLibraryExtension() << "\n";
     }
     
     nixFileStream << "    '';\n";

@@ -89,6 +89,24 @@ protected:
                             cmGeneratorTarget* target, cmSourceFile* source);
   void WriteLinkDerivation(cmGeneratedFileStream& nixFileStream, 
                           cmGeneratorTarget* target);
+  
+  // Helper methods for WriteLinkDerivation refactoring
+  void WriteLinkDerivationHeader(cmGeneratedFileStream& nixFileStream,
+                                 cmGeneratorTarget* target,
+                                 const std::string& derivName,
+                                 const std::string& outputName);
+  void WriteLinkDerivationBuildInputs(cmGeneratedFileStream& nixFileStream,
+                                      cmGeneratorTarget* target,
+                                      const std::string& config);
+  void WriteLinkDerivationObjects(cmGeneratedFileStream& nixFileStream,
+                                  cmGeneratorTarget* target,
+                                  const std::string& config);
+  std::string GetLinkFlags(cmGeneratorTarget* target,
+                          const std::string& config);
+  void WriteLinkDerivationBuildPhase(cmGeneratedFileStream& nixFileStream,
+                                     cmGeneratorTarget* target,
+                                     const std::string& linkFlags,
+                                     const std::string& primaryLang);
 
   // Custom command support
   void WriteCustomCommandDerivations(cmGeneratedFileStream& nixFileStream);
@@ -107,6 +125,18 @@ private:
   // Compiler detection methods
   std::string GetCompilerPackage(const std::string& lang) const;
   std::string GetCompilerCommand(const std::string& lang) const;
+  
+  // Configuration handling
+  std::string GetBuildConfiguration(cmGeneratorTarget* target) const;
+  
+  // Platform abstraction helpers
+  std::string GetObjectFileExtension() const { return ".o"; }
+  std::string GetStaticLibraryExtension() const { return ".a"; }
+  std::string GetSharedLibraryExtension() const { return ".so"; }
+  std::string GetLibraryPrefix() const { return "lib"; }
+  std::string GetInstallBinDir() const { return "bin"; }
+  std::string GetInstallLibDir() const { return "lib"; }
+  std::string GetInstallIncludeDir() const { return "include"; }
   
   // Performance optimization: Cache frequently computed values
   mutable std::map<std::string, std::string> CompilerPackageCache;
