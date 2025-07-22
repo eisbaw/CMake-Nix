@@ -10,7 +10,7 @@ build-threaded: configure
 
 # Build compression app
 build-compress: configure
-    nix-build -A compress_app
+    nix-build --no-out-link -A compress_app
 
 # Build OpenGL app (if found)
 build-opengl: configure

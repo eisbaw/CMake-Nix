@@ -14,7 +14,7 @@ build-versioned: configure
 
 # Build executable linking shared library
 build-app: configure
-    nix-build -A app
+    nix-build --no-out-link -A app
 
 # Build mixed linking executable
 build-mixed: configure
@@ -24,7 +24,7 @@ build-mixed: configure
 build: configure
     nix-build --no-out-link -A mylib
     nix-build --no-out-link -A versioned_lib
-    nix-build -A app
+    nix-build --no-out-link -A app
     nix-build --no-out-link -A mixed_app
 
 # Run executable tests

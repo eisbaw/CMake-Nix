@@ -18,10 +18,10 @@ run-direct:
 # Test all targets and applications
 test-all: run run-direct
     @echo "=== Building all individual libraries ==="
-    nix-build -A base_utils
-    nix-build -A math_lib  
-    nix-build -A graphics_lib
-    nix-build -A engine_lib
+    nix-build --no-out-link -A base_utils
+    nix-build --no-out-link -A math_lib  
+    nix-build --no-out-link -A graphics_lib
+    nix-build --no-out-link -A engine_lib
     @echo "=== Testing installs ==="
     nix-build --no-out-link -A complex_app_install
     nix-build --no-out-link -A direct_app_install

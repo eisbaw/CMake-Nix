@@ -80,6 +80,8 @@ public:
   void BeginTryCompileBatch();
   void EndTryCompileBatch();
 
+  void AddObjectDerivation(std::string const& targetName, std::string const& derivationName, std::string const& sourceFile, std::string const& objectFileName, std::string const& language, std::vector<std::string> const& dependencies);
+
 protected:
   void WriteNixFile();
   void WriteDerivations();
@@ -183,4 +185,14 @@ private:
   
   // Build dependency graph from all targets
   void BuildDependencyGraph();
+
+  struct ObjectDerivation {
+    std::string TargetName;
+    std::string DerivationName;
+    std::string SourceFile;
+    std::string ObjectFileName;
+    std::string Language;
+    std::vector<std::string> Dependencies;
+  };
+  std::map<std::string, ObjectDerivation> ObjectDerivations;
 }; 
