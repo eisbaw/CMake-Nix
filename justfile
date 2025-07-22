@@ -67,6 +67,9 @@ mod test_package_integration
 # Compiler feature detection test
 mod test_feature_detection
 
+# Object library test
+mod test_object_library
+
 # Compile language generator expression test
 mod test_compile_language_expr
 
