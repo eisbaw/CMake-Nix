@@ -1458,7 +1458,23 @@ std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) co
       }
     }
   } else {
-    result = "gcc"; // Default fallback
+    // Check for user-specified fallback package
+    std::string fallbackVar = "CMAKE_NIX_" + lang + "_COMPILER_PACKAGE";
+    cmValue fallbackPackage = cm->GetCacheDefinition(fallbackVar);
+    if (fallbackPackage && !fallbackPackage->empty()) {
+      result = *fallbackPackage;
+    } else {
+      // Default fallback packages
+      if (lang == "Fortran") {
+        result = "gcc"; // provides gfortran
+      } else if (lang == "CUDA") {
+        result = "cudatoolkit";
+      } else if (lang == "Swift") {
+        result = "swift";
+      } else {
+        result = "gcc"; // Default for C/CXX/ASM
+      }
+    }
   }
 
   if (cm->GetState()->GetGlobalPropertyAsBool("CMAKE_CROSSCOMPILING")) {
@@ -1513,8 +1529,26 @@ std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) co
   } else if (compilerPkg == "clang") {
     result = (lang == "CXX") ? "clang++" : "clang";
   } else {
-    // Default fallback
-    result = (lang == "CXX") ? "g++" : "gcc";
+    // Check for user-specified fallback command
+    cmake* cm = this->GetCMakeInstance();
+    std::string fallbackVar = "CMAKE_NIX_" + lang + "_COMPILER_COMMAND";
+    cmValue fallbackCommand = cm->GetCacheDefinition(fallbackVar);
+    if (fallbackCommand && !fallbackCommand->empty()) {
+      result = *fallbackCommand;
+    } else {
+      // Default fallback commands
+      if (lang == "Fortran") {
+        result = "gfortran";
+      } else if (lang == "CUDA") {
+        result = "nvcc";
+      } else if (lang == "Swift") {
+        result = "swiftc";
+      } else if (lang == "CXX") {
+        result = "g++";
+      } else {
+        result = "gcc";
+      }
+    }
   }
   
   // Cache the result
