@@ -39,7 +39,8 @@ public:
   
   /// Get transitive header dependencies for a file
   std::vector<std::string> GetTransitiveDependencies(std::string const& filePath, 
-                                                     std::set<std::string>& visited) const;
+                                                     std::set<std::string>& visited,
+                                                     int depth = 0) const;
 
   /// Pure Nix library support - public for global generator access
   std::vector<std::string> GetTargetLibraryDependencies(std::string const& config) const;

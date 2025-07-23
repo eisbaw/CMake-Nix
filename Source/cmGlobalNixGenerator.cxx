@@ -229,8 +229,11 @@ void cmGlobalNixGenerator::WriteNixFile()
                 << "let\n";
 
   // First pass: Collect all custom commands
-  this->CustomCommands.clear();
-  this->CustomCommandOutputs.clear();
+  {
+    std::lock_guard<std::mutex> lock(this->CustomCommandMutex);
+    this->CustomCommands.clear();
+    this->CustomCommandOutputs.clear();
+  }
   
   for (auto const& lg : this->LocalGenerators) {
     for (auto const& target : lg->GetGeneratorTargets()) {
@@ -248,11 +251,14 @@ void cmGlobalNixGenerator::WriteNixFile()
             info.Command = cc;
             info.LocalGen = target->GetLocalGenerator();
             
-            this->CustomCommands.push_back(info);
-            
-            // Populate CustomCommandOutputs map for dependency tracking
-            for (const std::string& output : info.Outputs) {
-              this->CustomCommandOutputs[output] = info.DerivationName;
+            {
+              std::lock_guard<std::mutex> lock(this->CustomCommandMutex);
+              this->CustomCommands.push_back(info);
+              
+              // Populate CustomCommandOutputs map for dependency tracking
+              for (const std::string& output : info.Outputs) {
+                this->CustomCommandOutputs[output] = info.DerivationName;
+              }
             }
           } catch (const std::exception& e) {
             std::cerr << "Exception in custom command processing: " << e.what() << std::endl;
@@ -273,22 +279,25 @@ void cmGlobalNixGenerator::WriteNixFile()
   std::map<std::string, int> inDegree;
   
   // Build dependency graph
-  for (const auto& info : this->CustomCommands) {
-    inDegree[info.DerivationName] = 0;
-  }
-  
-  // Build dependency graph using indices
-  for (size_t i = 0; i < this->CustomCommands.size(); ++i) {
-    const auto& info = this->CustomCommands[i];
-    for (const std::string& dep : info.Depends) {
-      auto depIt = this->CustomCommandOutputs.find(dep);
-      if (depIt != this->CustomCommandOutputs.end()) {
-        // Find the index of the dependency
-        for (size_t j = 0; j < this->CustomCommands.size(); ++j) {
-          if (this->CustomCommands[j].DerivationName == depIt->second) {
-            dependents[depIt->second].push_back(i);
-            inDegree[info.DerivationName]++;
-            break;
+  {
+    std::lock_guard<std::mutex> lock(this->CustomCommandMutex);
+    for (const auto& info : this->CustomCommands) {
+      inDegree[info.DerivationName] = 0;
+    }
+    
+    // Build dependency graph using indices
+    for (size_t i = 0; i < this->CustomCommands.size(); ++i) {
+      const auto& info = this->CustomCommands[i];
+      for (const std::string& dep : info.Depends) {
+        auto depIt = this->CustomCommandOutputs.find(dep);
+        if (depIt != this->CustomCommandOutputs.end()) {
+          // Find the index of the dependency
+          for (size_t j = 0; j < this->CustomCommands.size(); ++j) {
+            if (this->CustomCommands[j].DerivationName == depIt->second) {
+              dependents[depIt->second].push_back(i);
+              inDegree[info.DerivationName]++;
+              break;
+            }
           }
         }
       }
@@ -1491,6 +1500,7 @@ std::string cmGlobalNixGenerator::GetBuildConfiguration(cmGeneratorTarget* targe
 
 void cmGlobalNixGenerator::WriteInstallOutputs(cmGeneratedFileStream& nixFileStream)
 {
+  std::lock_guard<std::mutex> lock(this->InstallTargetsMutex);
   for (cmGeneratorTarget* target : this->InstallTargets) {
     std::string targetName = target->GetName();
     std::string derivName = this->GetDerivationName(targetName);
@@ -1502,6 +1512,7 @@ void cmGlobalNixGenerator::WriteInstallOutputs(cmGeneratedFileStream& nixFileStr
 
 void cmGlobalNixGenerator::CollectInstallTargets()
 {
+  std::lock_guard<std::mutex> lock(this->InstallTargetsMutex);
   this->InstallTargets.clear();
   
   for (auto const& lg : this->LocalGenerators) {
@@ -1521,6 +1532,7 @@ void cmGlobalNixGenerator::CollectInstallTargets()
 
 void cmGlobalNixGenerator::WriteInstallRules(cmGeneratedFileStream& nixFileStream)
 {
+  std::lock_guard<std::mutex> lock(this->InstallTargetsMutex);
   if (this->InstallTargets.empty()) {
     return;
   }

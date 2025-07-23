@@ -23,6 +23,7 @@
 #include "cmValue.h"
 #include <regex>
 #include <fstream>
+#include <iostream>
 
 std::unique_ptr<cmNixTargetGenerator> cmNixTargetGenerator::New(
   cmGeneratorTarget* target)
@@ -176,7 +177,7 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
         }
         
         // Get transitive dependencies
-        std::vector<std::string> transDeps = this->GetTransitiveDependencies(absPath, visited);
+        std::vector<std::string> transDeps = this->GetTransitiveDependencies(absPath, visited, 0);
         transitiveDeps.insert(transitiveDeps.end(), transDeps.begin(), transDeps.end());
       }
       
@@ -544,9 +545,16 @@ bool cmNixTargetGenerator::CreateNixPackageFile(
 }
 
 std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
-  std::string const& filePath, std::set<std::string>& visited) const
+  std::string const& filePath, std::set<std::string>& visited, int depth) const
 {
   std::vector<std::string> dependencies;
+  
+  // Limit recursion depth to prevent stack overflow
+  const int MAX_DEPTH = 100;
+  if (depth > MAX_DEPTH) {
+    std::cerr << "[WARNING] Header dependency recursion depth exceeded for: " << filePath << std::endl;
+    return dependencies;
+  }
   
   // Check if already visited
   if (!visited.insert(filePath).second) {
@@ -696,7 +704,7 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
     }
     
     // Get transitive dependencies
-    std::vector<std::string> transDeps = this->GetTransitiveDependencies(absPath, visited);
+    std::vector<std::string> transDeps = this->GetTransitiveDependencies(absPath, visited, depth + 1);
     dependencies.insert(dependencies.end(), transDeps.begin(), transDeps.end());
   }
   

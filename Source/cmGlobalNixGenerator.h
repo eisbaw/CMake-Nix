@@ -163,6 +163,7 @@ private:
   
   // Install rule tracking
   std::vector<cmGeneratorTarget*> InstallTargets;
+  mutable std::mutex InstallTargetsMutex;
   
   // Common string constants to avoid repeated allocations
   static const std::string DefaultConfig;
@@ -183,6 +184,9 @@ private:
     cmLocalGenerator* LocalGen;
   };
   std::vector<CustomCommandInfo> CustomCommands;
+  
+  // Mutex to protect CustomCommands and CustomCommandOutputs
+  mutable std::mutex CustomCommandMutex;
   
   // Dependency graph infrastructure for transitive dependency resolution
   class cmNixDependencyNode {
