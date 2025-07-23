@@ -158,7 +158,7 @@ DONE: All feature tests passing with `just dev`
 ## MISSING TEST COVERAGE (2025-07-23):
 
 ### Critical Missing Tests:
-1. **Language Support**: ASM, Fortran, CUDA support implemented but not tested
+1. **Language Support**: ASM (test added: test_asm_language), Fortran, CUDA support implemented but not tested
 2. **Thread Safety**: No tests for parallel builds with mutable cache access
 3. **Security**: No tests for paths with quotes/special characters
 4. **Error Recovery**: No tests for build failures, permission errors, disk full
