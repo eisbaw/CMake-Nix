@@ -142,13 +142,13 @@ DONE: All feature tests passing with `just dev`
 ## CODE SMELLS AND BUGS FOUND (2025-07-23):
 
 ### Critical Issues:
-1. **Thread Safety**: All mutable caches in cmGlobalNixGenerator.h (lines 157-160) accessed without synchronization - could cause race conditions in parallel builds
-2. **Memory Management**: cmGlobalNixGenerator.cxx:299 - Raw pointers in orderedCommands vector could become dangling if CustomCommands modified
+1. DONE: **Thread Safety**: All mutable caches in cmGlobalNixGenerator.h (lines 157-160) accessed without synchronization - could cause race conditions in parallel builds - Fixed: Added CustomCommandMutex and InstallTargetsMutex with proper lock_guard protection
+2. DONE: **Memory Management**: cmGlobalNixGenerator.cxx:299 - Raw pointers in orderedCommands vector could become dangling if CustomCommands modified - Fixed: Already using indices instead of pointers
 3. DONE: **Security**: Shell command injection vulnerabilities in cmGlobalNixGenerator.cxx:155-194 and cmNixCustomCommandGenerator.cxx:87-143 - paths with quotes/special chars not escaped - Fixed: Using cmOutputConverter::EscapeForShell()
 
 ### High Priority Issues:
 4. DONE: **Error Handling**: File write errors silently ignored in cmGlobalNixGenerator.cxx:209-215 - should propagate errors - Fixed: Using IssueMessage(FATAL_ERROR)
-5. **Stack Overflow Risk**: cmNixTargetGenerator.cxx:159-193 - Recursive header scanning without depth limit
+5. DONE: **Stack Overflow Risk**: cmNixTargetGenerator.cxx:159-193 - Recursive header scanning without depth limit - Fixed: Added MAX_DEPTH limit of 100 with warning message
 6. DONE: **Debug Output**: Debug statements in cmGlobalNixGenerator.cxx:207,217 not controlled by debug flag (should use GetDebug()) - Fixed: Now using GetDebugOutput()
 
 ### Medium Priority Issues:
