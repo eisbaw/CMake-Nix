@@ -4,3 +4,6 @@
 [submodule "test_bullet_physics/bullet3"]
 	path = test_bullet_physics/bullet3
 	url = https://github.com/bulletphysics/bullet3.git
+[submodule "test_zephyr_rtos/zephyr"]
+	path = test_zephyr_rtos/zephyr
+	url = https://github.com/zephyrproject-rtos/zephyr.git
