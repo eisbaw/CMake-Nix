@@ -16,6 +16,9 @@ mod test_implicit_headers
 # Manual OBJECT_DEPENDS configuration test
 mod test_explicit_headers
 
+# Explicit source derivations test (CMAKE_NIX_EXPLICIT_SOURCES)
+mod test_explicit_sources
+
 # Compiler auto-detection test
 mod test_compiler_detection
 
@@ -99,6 +102,7 @@ clean-test-projects:
     -just test_headers::clean
     -just test_implicit_headers::clean
     -just test_explicit_headers::clean
+    -just test_explicit_sources::clean
     -just test_compiler_detection::clean
     -just test_shared_library::clean
     -just test_find_package::clean
@@ -132,6 +136,7 @@ test-all:
     just test_headers::run
     just test_implicit_headers::run
     just test_explicit_headers::run
+    just test_explicit_sources::run
     just test_compiler_detection::run
     just test_shared_library::run
     just test_find_package::run

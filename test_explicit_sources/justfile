@@ -1,0 +1,52 @@
+# Test CMAKE_NIX_EXPLICIT_SOURCES feature
+
+# Configure with explicit sources enabled
+configure:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_NIX_EXPLICIT_SOURCES=ON .
+
+# Configure without explicit sources (default)
+configure-default:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build with explicit sources
+build: configure
+    nix-build -A explicit_test
+
+# Build without explicit sources
+build-default: configure-default
+    nix-build -A explicit_test
+
+# Run the test
+run: build
+    ./result && rm ./result
+
+# Check for src derivations in default.nix
+check-src-derivations:
+    @echo "=== Checking for source derivations ==="
+    @grep -c "src_[0-9a-f]" default.nix || echo "No source derivations found"
+    @echo "\n=== Source derivation details ==="
+    @grep -A10 "src = stdenv.mkDerivation" default.nix || echo "No mkDerivation for src found"
+
+# Compare default.nix with and without explicit sources
+compare:
+    @echo "=== With explicit sources ==="
+    just configure
+    cp default.nix default_explicit.nix
+    just check-src-derivations
+    @echo "\n=== Without explicit sources ==="
+    just configure-default
+    cp default.nix default_normal.nix
+    @echo "Normal src references:"
+    @grep "src = " default_normal.nix | head -5
+    @echo "\nComparison saved to default_explicit.nix and default_normal.nix"
+
+# Clean
+clean:
+    rm -f default.nix default_explicit.nix default_normal.nix
+    rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
+
+# Full test
+test: clean compare run
+    @echo "\n✅ CMAKE_NIX_EXPLICIT_SOURCES test passed!"
