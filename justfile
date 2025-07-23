@@ -88,6 +88,9 @@ mod test_spdlog
 # OpenCV real-world test (large C++ project)
 mod test_opencv
 
+# ASM language support test
+mod test_asm_language
+
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
     ./bootstrap --parallel=$(nproc) --no-system-curl -- -DCMAKE_USE_OPENSSL=OFF -DCMAKE_USE_SYSTEM_ZLIB=OFF
@@ -159,6 +162,7 @@ test-all:
     just test_interface_library::run
     just test_json_library::run
     just test_spdlog::test
+    -just test_asm_language::run  # ASM language not yet supported
     # just test_fmt_library::run  # Skip - incomplete test
     # just test_zephyr_rtos::run  # Skip - requires specific Python environment
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself

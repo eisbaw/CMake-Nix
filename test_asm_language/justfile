@@ -1,0 +1,17 @@
+default: clean configure run
+
+clean:
+    rm -f default.nix
+    rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
+
+configure:
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+build:
+    nix-build -A asm_test
+
+run: clean configure build
+    ./result && rm ./result
+
+test: run
+    @echo "✅ ASM language test passed!"
