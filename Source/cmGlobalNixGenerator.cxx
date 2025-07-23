@@ -56,7 +56,9 @@ cmDocumentationEntry cmGlobalNixGenerator::GetDocumentation()
 
 void cmGlobalNixGenerator::Generate()
 {
-  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() started" << std::endl;
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() started" << std::endl;
+  }
   
   // Check for unsupported CMAKE_EXPORT_COMPILE_COMMANDS
   if (this->GetCMakeInstance()->GetState()->GetGlobalPropertyAsBool(
@@ -72,7 +74,9 @@ void cmGlobalNixGenerator::Generate()
   // First call the parent Generate to set up targets
   this->cmGlobalGenerator::Generate();
   
-  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
+  }
   
   // Build dependency graph for transitive dependency resolution
   this->BuildDependencyGraph();
@@ -80,7 +84,9 @@ void cmGlobalNixGenerator::Generate()
   // Generate our Nix output
   this->WriteNixFile();
   
-  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() completed" << std::endl;
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() completed" << std::endl;
+  }
 }
 
 std::vector<cmGlobalGenerator::GeneratedMakeCommand>
@@ -94,14 +100,16 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   // Check if this is a try-compile (look for CMakeScratch in path)
   bool isTryCompile = projectDir.find("CMakeScratch") != std::string::npos;
   
-  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
-            << " GenerateBuildCommand() called for projectDir: " << projectDir
-            << " isTryCompile: " << (isTryCompile ? "true" : "false")
-            << " targetNames: ";
-  for (const auto& t : targetNames) {
-    std::cerr << t << " ";
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+              << " GenerateBuildCommand() called for projectDir: " << projectDir
+              << " isTryCompile: " << (isTryCompile ? "true" : "false")
+              << " targetNames: ";
+    for (const auto& t : targetNames) {
+      std::cerr << t << " ";
+    }
+    std::cerr << std::endl;
   }
-  std::cerr << std::endl;
   
   GeneratedMakeCommand makeCommand;
   
@@ -136,8 +144,10 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   
   // For try-compile, add post-build copy commands to move binaries from Nix store
   if (isTryCompile && !targetNames.empty()) {
-    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
-              << " Generating try-compile copy commands" << std::endl;
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+                << " Generating try-compile copy commands" << std::endl;
+    }
     
     GeneratedMakeCommand copyCommand;
     copyCommand.Add("sh");
@@ -146,8 +156,10 @@ cmGlobalNixGenerator::GenerateBuildCommand(
     std::string copyScript = "set -e; ";
     for (auto const& tname : targetNames) {
       if (!tname.empty()) {
-        std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
-                  << " Adding copy command for target: " << tname << std::endl;
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+                    << " Adding copy command for target: " << tname << std::endl;
+        }
         
         // Read the target location file and copy the binary
         copyScript += "if [ -f \"" + tname + "_loc\" ]; then ";
@@ -176,8 +188,10 @@ void cmGlobalNixGenerator::WriteNixFile()
   std::string nixFile = this->GetCMakeInstance()->GetHomeDirectory();
   nixFile += "/default.nix";
   
-  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
-            << " WriteNixFile() writing to: " << nixFile << std::endl;
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+              << " WriteNixFile() writing to: " << nixFile << std::endl;
+  }
   
   cmGeneratedFileStream nixFileStream(nixFile);
   nixFileStream.SetCopyIfDifferent(true);
@@ -809,10 +823,12 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   // Check if this is a try_compile
   bool isTryCompile = buildDir.find("CMakeScratch") != std::string::npos;
   
-  std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
-            << " WriteLinkDerivation for target: " << targetName
-            << " buildDir: " << buildDir
-            << " isTryCompile: " << (isTryCompile ? "true" : "false") << std::endl;
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+              << " WriteLinkDerivation for target: " << targetName
+              << " buildDir: " << buildDir
+              << " isTryCompile: " << (isTryCompile ? "true" : "false") << std::endl;
+  }
   
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
   
@@ -1081,8 +1097,10 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   // For try_compile, copy the output file where CMake expects it for COPY_FILE
   if (isTryCompile) {
-    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
-              << " Adding try_compile output file handling for: " << targetName << std::endl;
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+                << " Adding try_compile output file handling for: " << targetName << std::endl;
+    }
     
     nixFileStream << "    # Handle try_compile COPY_FILE requirement\n";
     nixFileStream << "    postBuildPhase = ''\n";
