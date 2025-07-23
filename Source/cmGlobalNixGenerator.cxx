@@ -27,6 +27,7 @@
 #include "cmState.h"
 #include "cmOutputConverter.h"
 #include "cmNixWriter.h"
+#include "cmStringAlgorithms.h"
 
 // String constants for performance optimization
 const std::string cmGlobalNixGenerator::DefaultConfig = "Release";
@@ -920,21 +921,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
   }
   
-  // Get external library dependencies for compilation (headers) - use cache
-  std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
-  std::vector<std::string> libraryDeps;
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    auto libCacheIt = this->LibraryDependencyCache.find(cacheKey);
-    if (libCacheIt != this->LibraryDependencyCache.end()) {
-      libraryDeps = libCacheIt->second;
-    } else {
-      // Fallback: compute and cache
-      auto targetGen = cmNixTargetGenerator::New(target);
-      libraryDeps = targetGen->GetTargetLibraryDependencies(config);
-      this->LibraryDependencyCache[cacheKey] = libraryDeps;
-    }
-  }
+  // Get external library dependencies for compilation (headers)
+  std::vector<std::string> libraryDeps = this->GetCachedLibraryDependencies(target, config);
   
   // Build buildInputs list including external libraries for headers
   std::vector<std::string> buildInputs;
@@ -1116,23 +1104,9 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   writer.StartDerivation(derivName, 1);
   writer.WriteAttribute("name", outputName);
   
-  // Get external library dependencies using cache
+  // Get external library dependencies
   std::string config = this->GetBuildConfiguration(target);
-  
-  std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
-  std::vector<std::string> libraryDeps;
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    auto libCacheIt = this->LibraryDependencyCache.find(cacheKey);
-    if (libCacheIt != this->LibraryDependencyCache.end()) {
-      libraryDeps = libCacheIt->second;
-    } else {
-      // Fallback: compute and cache
-      auto targetGen = cmNixTargetGenerator::New(target);
-      libraryDeps = targetGen->GetTargetLibraryDependencies(config);
-      this->LibraryDependencyCache[cacheKey] = libraryDeps;
-    }
-  }
+  std::vector<std::string> libraryDeps = this->GetCachedLibraryDependencies(target, config);
   
   // Get link implementation for dependency processing
   auto linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
@@ -1288,9 +1262,13 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   // Target dependencies will be referenced directly in link flags
   
-  // Get library link flags for build phase
-  std::string linkFlags;
+  // Get library link flags for build phase - use vector for efficient concatenation
+  std::vector<std::string> linkFlagsList;
+  
   if (linkImpl) {
+    // Reserve space for efficiency
+    linkFlagsList.reserve(linkImpl->Libraries.size() + transitiveDeps.size());
+    
     for (const cmLinkItem& item : linkImpl->Libraries) {
       if (item.Target && item.Target->IsImported()) {
         // This is an imported target from find_package
@@ -1299,7 +1277,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
         auto targetGen = cmNixTargetGenerator::New(target);
         std::string flags = targetGen->GetPackageMapper().GetLinkFlags(importedTargetName);
         if (!flags.empty()) {
-          linkFlags += " " + flags;
+          linkFlagsList.push_back(flags);
         }
       } else if (item.Target && !item.Target->IsImported()) {
         // This is a CMake target within the same project
@@ -1309,18 +1287,20 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
         // Add appropriate link flags based on target type using direct references
         if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
           // For shared libraries, use Nix string interpolation
-          linkFlags += " ${" + depDerivName + "}/" + this->GetLibraryPrefix() + depTargetName + this->GetSharedLibraryExtension();
+          linkFlagsList.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                                 depTargetName + this->GetSharedLibraryExtension());
         } else if (item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
           // For module libraries, use Nix string interpolation (no lib prefix)
-          linkFlags += " ${" + depDerivName + "}/" + depTargetName + this->GetSharedLibraryExtension();
+          linkFlagsList.push_back("${" + depDerivName + "}/" + depTargetName + 
+                                 this->GetSharedLibraryExtension());
         } else if (item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
           // For static libraries, link the archive directly using string interpolation
-          linkFlags += " ${" + depDerivName + "}";
+          linkFlagsList.push_back("${" + depDerivName + "}");
         }
       } else if (!item.Target) { 
         // External library (not a target)
         std::string libName = item.AsStr();
-        linkFlags += " -l" + libName;
+        linkFlagsList.push_back("-l" + libName);
       }
     }
   }
@@ -1329,8 +1309,15 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   for (const std::string& depTarget : transitiveDeps) {
     if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
       std::string depDerivName = this->GetDerivationName(depTarget);
-      linkFlags += " ${" + depDerivName + "}/" + this->GetLibraryPrefix() + depTarget + this->GetSharedLibraryExtension();
+      linkFlagsList.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                             depTarget + this->GetSharedLibraryExtension());
     }
+  }
+  
+  // Join all link flags with spaces
+  std::string linkFlags;
+  if (!linkFlagsList.empty()) {
+    linkFlags = " " + cmJoin(linkFlagsList, " ");
   }
   
   std::string linkCompilerCmd = this->GetCompilerCommand(primaryLang);
@@ -1545,6 +1532,32 @@ std::string cmGlobalNixGenerator::GetBuildConfiguration(cmGeneratorTarget* targe
     config = "Release"; // Default to Release if no configuration specified
   }
   return config;
+}
+
+std::vector<std::string> cmGlobalNixGenerator::GetCachedLibraryDependencies(
+  cmGeneratorTarget* target, const std::string& config) const
+{
+  std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
+  
+  // Check cache first
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    auto it = this->LibraryDependencyCache.find(cacheKey);
+    if (it != this->LibraryDependencyCache.end()) {
+      return it->second;
+    }
+  }
+  
+  // Compute dependencies and cache them
+  auto targetGen = cmNixTargetGenerator::New(target);
+  std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
+  
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    this->LibraryDependencyCache[cacheKey] = libraryDeps;
+  }
+  
+  return libraryDeps;
 }
 
 

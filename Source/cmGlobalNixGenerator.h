@@ -148,6 +148,10 @@ private:
   
   // Configuration handling
   std::string GetBuildConfiguration(cmGeneratorTarget* target) const;
+  
+  // Helper method to get library dependencies with caching
+  std::vector<std::string> GetCachedLibraryDependencies(cmGeneratorTarget* target, 
+                                                        const std::string& config) const;
 protected:
   // Platform abstraction helpers
   std::string GetObjectFileExtension() const { return ".o"; }
