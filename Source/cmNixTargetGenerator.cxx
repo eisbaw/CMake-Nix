@@ -262,21 +262,26 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
       // Parse compiler output
       dependencies = this->ParseCompilerDependencyOutput(output, source);
     } else {
-      // Log compiler error without failing the build
-      if (this->Makefile->GetCMakeInstance()->GetDebugOutput()) {
-        std::cerr << "[DEBUG] Compiler dependency scan failed for " << source->GetFullPath() 
-                  << " with exit code " << result << std::endl;
-        if (!error.empty()) {
-          std::cerr << "[DEBUG] Compiler error: " << error << std::endl;
-        }
+      // Always report compiler errors, not just in debug mode
+      std::ostringstream msg;
+      msg << "Compiler dependency scan failed for " << source->GetFullPath() 
+          << " with exit code " << result;
+      if (!error.empty()) {
+        msg << ": " << error;
       }
+      this->Makefile->GetCMakeInstance()->IssueMessage(
+        MessageType::WARNING, msg.str());
     }
   } else {
-    // Log command execution failure
-    if (this->Makefile->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[DEBUG] Failed to execute dependency scanning command for " 
-                << source->GetFullPath() << std::endl;
+    // Always report command execution failures
+    std::ostringstream msg;
+    msg << "Failed to execute dependency scanning command for " 
+        << source->GetFullPath();
+    if (!error.empty()) {
+      msg << ": " << error;
     }
+    this->Makefile->GetCMakeInstance()->IssueMessage(
+      MessageType::WARNING, msg.str());
   }
   
   return dependencies;

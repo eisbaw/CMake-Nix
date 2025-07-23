@@ -129,7 +129,7 @@ cmGlobalNixGenerator::GenerateBuildCommand(
       // Check if everything after the underscore is numeric
       std::string suffix = scratchDir.substr(underscorePos + 1);
       bool isNumeric = !suffix.empty() && std::all_of(suffix.begin(), suffix.end(), 
-        [](unsigned char c) { return std::isdigit(c); });
+        [](unsigned char c) { return c >= '0' && c <= '9'; });
       if (isNumeric) {
         scratchDir = scratchDir.substr(0, underscorePos);
       }
@@ -331,17 +331,11 @@ void cmGlobalNixGenerator::WriteNixFile()
   this->WriteNixHelperFunctions(writer);
 
   // Collect all custom commands with proper thread safety
-  // Use a local copy to avoid race conditions
-  std::vector<CustomCommandInfo> localCustomCommands;
-  std::map<std::string, std::string> localCustomCommandOutputs;
+  // Use temporary collections to avoid race conditions
+  std::vector<CustomCommandInfo> tempCustomCommands;
+  std::map<std::string, std::string> tempCustomCommandOutputs;
   
-  // First pass: Collect all custom commands
-  {
-    std::lock_guard<std::mutex> lock(this->CustomCommandMutex);
-    this->CustomCommands.clear();
-    this->CustomCommandOutputs.clear();
-  }
-  
+  // First pass: Collect all custom commands into temporary collections
   for (auto const& lg : this->LocalGenerators) {
     for (auto const& target : lg->GetGeneratorTargets()) {
       std::vector<cmSourceFile*> sources;
@@ -358,14 +352,11 @@ void cmGlobalNixGenerator::WriteNixFile()
             info.Command = cc;
             info.LocalGen = target->GetLocalGenerator();
             
-            {
-              std::lock_guard<std::mutex> lock(this->CustomCommandMutex);
-              this->CustomCommands.push_back(info);
-              
-              // Populate CustomCommandOutputs map for dependency tracking
-              for (const std::string& output : info.Outputs) {
-                this->CustomCommandOutputs[output] = info.DerivationName;
-              }
+            tempCustomCommands.push_back(info);
+            
+            // Populate CustomCommandOutputs map for dependency tracking
+            for (const std::string& output : info.Outputs) {
+              tempCustomCommandOutputs[output] = info.DerivationName;
             }
           } catch (const std::exception& e) {
             std::cerr << "Exception in custom command processing: " << e.what() << std::endl;
@@ -377,12 +368,16 @@ void cmGlobalNixGenerator::WriteNixFile()
     }
   }
   
-  // Create thread-safe local copies for dependency processing
+  // Atomically replace the member collections with the temporary ones
   {
     std::lock_guard<std::mutex> lock(this->CustomCommandMutex);
-    localCustomCommands = this->CustomCommands;
-    localCustomCommandOutputs = this->CustomCommandOutputs;
+    this->CustomCommands = std::move(tempCustomCommands);
+    this->CustomCommandOutputs = std::move(tempCustomCommandOutputs);
   }
+  
+  // Create local copies for dependency processing
+  std::vector<CustomCommandInfo> localCustomCommands = this->CustomCommands;
+  std::map<std::string, std::string> localCustomCommandOutputs = this->CustomCommandOutputs;
   
   // Second pass: Write custom commands in dependency order
   std::set<std::string> written;
@@ -859,10 +854,29 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   // Validate path doesn't contain dangerous characters that could break Nix expressions
   if (sourceFile.find('"') != std::string::npos || 
       sourceFile.find('$') != std::string::npos ||
-      sourceFile.find('`') != std::string::npos) {
+      sourceFile.find('`') != std::string::npos ||
+      sourceFile.find('\n') != std::string::npos ||
+      sourceFile.find('\r') != std::string::npos) {
     std::ostringstream msg;
     msg << "Source file path contains potentially dangerous characters: " << sourceFile;
     this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+  }
+  
+  // Additional security check for path traversal
+  std::string normalizedPath = cmSystemTools::CollapseFullPath(sourceFile);
+  std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
+  
+  // Check if normalized path is outside project directory (unless it's a system file)
+  if (!cmSystemTools::IsSubDirectory(normalizedPath, projectDir) &&
+      !cmSystemTools::IsSubDirectory(normalizedPath, "/usr") &&
+      !cmSystemTools::IsSubDirectory(normalizedPath, "/nix/store")) {
+    // Check if it's in the CMake build directory
+    std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+    if (!cmSystemTools::IsSubDirectory(normalizedPath, buildDir)) {
+      std::ostringstream msg;
+      msg << "Source file path appears to be outside project directory: " << sourceFile;
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    }
   }
   std::string derivName = this->GetDerivationName(target->GetName(), sourceFile);
   ObjectDerivation const& od = this->ObjectDerivations[derivName];
@@ -925,9 +939,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       std::replace(processedOptions.begin(), processedOptions.end(), ';', ' ');
       
       // Convert absolute paths in PCH options to relative paths
-      std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
+      std::string pchProjectDir = this->GetCMakeInstance()->GetHomeDirectory();
       size_t pos = 0;
-      while ((pos = processedOptions.find(projectDir, pos)) != std::string::npos) {
+      while ((pos = processedOptions.find(pchProjectDir, pos)) != std::string::npos) {
         // Find the end of the path (space or end of string)
         size_t endPos = processedOptions.find(' ', pos);
         if (endPos == std::string::npos) {
@@ -938,7 +952,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         std::string fullPath = processedOptions.substr(pos, endPos - pos);
         
         // Convert to relative path
-        std::string relPath = cmSystemTools::RelativePath(projectDir, fullPath);
+        std::string relPath = cmSystemTools::RelativePath(pchProjectDir, fullPath);
         
         // Replace in the string
         processedOptions.replace(pos, fullPath.length(), relPath);
