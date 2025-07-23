@@ -12,7 +12,7 @@ DONE: Update todo.md with actual Nix generator codebase state. Review codebase. 
 
 ### Minor Issues Found:
 1. DONE: **Debug Trace Output**: The code contains `std::cerr << "[NIX-TRACE]"` debug statements that should be controlled by a debug flag or removed for production - Fixed: All debug traces now controlled by debug flag
-2. **Language Support Discrepancy**: Swift support is marked as DONE but no clear implementation found in code - Swift is NOT actually supported by Nix generator
+2. DONE: **Language Support Discrepancy**: Swift support is marked as DONE but no clear implementation found in code - Swift is NOT actually supported by Nix generator - Clarified in documentation and todo
 3. DONE: **Platform Documentation**: Unix/Linux-only support should be more clearly documented - Updated documentation to clearly state Unix/Linux-only support
 
 ### Code Quality Assessment:
