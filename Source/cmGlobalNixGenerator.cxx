@@ -9,6 +9,7 @@
 #include <set>
 #include <functional>
 #include <queue>
+#include <cctype>
 
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
@@ -127,7 +128,8 @@ cmGlobalNixGenerator::GenerateBuildCommand(
     if (underscorePos != std::string::npos) {
       // Check if everything after the underscore is numeric
       std::string suffix = scratchDir.substr(underscorePos + 1);
-      bool isNumeric = !suffix.empty() && std::all_of(suffix.begin(), suffix.end(), ::isdigit);
+      bool isNumeric = !suffix.empty() && std::all_of(suffix.begin(), suffix.end(), 
+        [](unsigned char c) { return std::isdigit(c); });
       if (isNumeric) {
         scratchDir = scratchDir.substr(0, underscorePos);
       }
@@ -729,6 +731,31 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   cmNixWriter writer(nixFileStream);
   
   std::string sourceFile = source->GetFullPath();
+  
+  // Validate source path
+  if (sourceFile.empty()) {
+    std::ostringstream msg;
+    msg << "Empty source file path for target " << target->GetName();
+    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    return;
+  }
+  
+  // Check if file exists (unless it's a generated file)
+  if (!source->GetIsGenerated() && !cmSystemTools::FileExists(sourceFile)) {
+    std::ostringstream msg;
+    msg << "Source file does not exist: " << sourceFile << " for target " << target->GetName();
+    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    // Continue anyway as it might be generated later
+  }
+  
+  // Validate path doesn't contain dangerous characters that could break Nix expressions
+  if (sourceFile.find('"') != std::string::npos || 
+      sourceFile.find('$') != std::string::npos ||
+      sourceFile.find('`') != std::string::npos) {
+    std::ostringstream msg;
+    msg << "Source file path contains potentially dangerous characters: " << sourceFile;
+    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+  }
   std::string derivName = this->GetDerivationName(target->GetName(), sourceFile);
   ObjectDerivation const& od = this->ObjectDerivations[derivName];
 
