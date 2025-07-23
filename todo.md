@@ -4,7 +4,7 @@ DONE: Run all tests
 
 DONE: Put all traces under a debug flag.
 
-Make a flag to generativations with specific explicit src attribute (using fs union), instead of whole dir (i.e. `src = ./.` is bad and causes too much hashing and rebuild even if a readme.md changes).
+DONE: Make a flag to generativations with specific explicit src attribute (using fs union), instead of whole dir (i.e. `src = ./.` is bad and causes too much hashing and rebuild even if a readme.md changes).
 
 DONE: Update todo.md with actual Nix generator codebase state. Review codebase. Add problems, bugs and code smells to todo.md
 
