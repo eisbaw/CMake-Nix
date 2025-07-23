@@ -3,6 +3,8 @@
 #include <vector>
 #include <chrono>
 #include <thread>
+#include <cstring>
+#include <cstdio>
 
 // Conditional includes based on what packages are available
 #ifdef HAVE_ZLIB
