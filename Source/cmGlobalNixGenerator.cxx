@@ -164,13 +164,29 @@ cmGlobalNixGenerator::GenerateBuildCommand(
         // Read the target location file and copy the binary
         copyScript += "if [ -f \"" + tname + "_loc\" ]; then ";
         copyScript += "TARGET_LOCATION=$(cat \"" + tname + "_loc\"); ";
-        copyScript += "echo '[NIX-TRACE] Target location: '$TARGET_LOCATION; ";
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          copyScript += "echo '[NIX-TRACE] Target location: '$TARGET_LOCATION; ";
+        }
         copyScript += "if [ -f \"result\" ]; then ";
         copyScript += "STORE_PATH=$(readlink result); ";
-        copyScript += "echo '[NIX-TRACE] Store path: '$STORE_PATH; ";
-        copyScript += "cp \"$STORE_PATH\" \"$TARGET_LOCATION\" 2>/dev/null || echo '[NIX-TRACE] Copy failed'; ";
-        copyScript += "else echo '[NIX-TRACE] No result symlink found'; fi; ";
-        copyScript += "else echo '[NIX-TRACE] No location file for " + tname + "'; fi; ";
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          copyScript += "echo '[NIX-TRACE] Store path: '$STORE_PATH; ";
+        }
+        copyScript += "cp \"$STORE_PATH\" \"$TARGET_LOCATION\" 2>/dev/null";
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          copyScript += " || echo '[NIX-TRACE] Copy failed'";
+        }
+        copyScript += "; ";
+        copyScript += "else ";
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          copyScript += "echo '[NIX-TRACE] No result symlink found'; ";
+        }
+        copyScript += "fi; ";
+        copyScript += "else ";
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          copyScript += "echo '[NIX-TRACE] No location file for " + tname + "'; ";
+        }
+        copyScript += "fi; ";
       }
     }
     copyScript += "true"; // Ensure script always succeeds
@@ -1117,11 +1133,15 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     nixFileStream << "      # Create output location in build directory for CMake COPY_FILE\n";
     nixFileStream << "      COPY_DEST=\"" << buildDir << "/" << targetName << "\"\n";
     nixFileStream << "      cp \"$out\" \"$COPY_DEST\"\n";
-    nixFileStream << "      echo '[NIX-TRACE] Copied try_compile output to: '$COPY_DEST\n";
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      nixFileStream << "      echo '[NIX-TRACE] Copied try_compile output to: '$COPY_DEST\n";
+    }
     nixFileStream << "      # Write location file that CMake expects to find the executable path\n";
     nixFileStream << "      echo \"$COPY_DEST\" > \"" << buildDir << "/" << targetName << "_loc\"\n";
-    nixFileStream << "      echo '[NIX-TRACE] Wrote location file: " << buildDir << "/" << targetName << "_loc'\n";
-    nixFileStream << "      echo '[NIX-TRACE] Location file contains: '$COPY_DEST\n";
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      nixFileStream << "      echo '[NIX-TRACE] Wrote location file: " << buildDir << "/" << targetName << "_loc'\n";
+      nixFileStream << "      echo '[NIX-TRACE] Location file contains: '$COPY_DEST\n";
+    }
     nixFileStream << "    '';\n";
   }
   

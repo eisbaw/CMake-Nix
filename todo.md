@@ -11,9 +11,9 @@ DONE: Update todo.md with actual Nix generator codebase state. Review codebase. 
 ## CODEBASE REVIEW FINDINGS (July 2025):
 
 ### Minor Issues Found:
-1. **Debug Trace Output**: The code contains `std::cerr << "[NIX-TRACE]"` debug statements that should be controlled by a debug flag or removed for production
-2. **Language Support Discrepancy**: Swift support is marked as DONE but no clear implementation found in code
-3. **Platform Documentation**: Unix/Linux-only support should be more clearly documented
+1. DONE: **Debug Trace Output**: The code contains `std::cerr << "[NIX-TRACE]"` debug statements that should be controlled by a debug flag or removed for production - Fixed: All debug traces now controlled by debug flag
+2. **Language Support Discrepancy**: Swift support is marked as DONE but no clear implementation found in code - Swift is NOT actually supported by Nix generator
+3. DONE: **Platform Documentation**: Unix/Linux-only support should be more clearly documented - Updated documentation to clearly state Unix/Linux-only support
 
 ### Code Quality Assessment:
 - No TODO/FIXME comments found in Nix generator code
@@ -83,7 +83,7 @@ DONE: Add multi-language support for Fortran and CUDA
 2. DONE: **Multi-Configuration Support**: Ninja has multi-config variant, Nix is single-config only - Implemented cmGlobalNixMultiGenerator  
 3. DONE: **Response Files**: For very long command lines (not needed for Nix - build commands are in derivation scripts, not command lines)
 4. DONE: **Install Rule Error Handling**: Need to handle missing/invalid install generators gracefully - Already implemented with default destinations
-5. DONE: **Additional Language Support**: Swift and Assembly (ASM, ASM-ATT, ASM_NASM, ASM_MASM) added. HIP, ISPC, C++ modules still pending
+5. DONE: **Additional Language Support**: Assembly (ASM, ASM-ATT, ASM_NASM, ASM_MASM) added. Swift NOT supported (requires CMake changes). HIP, ISPC, C++ modules still pending
 
 ### ADDITIONAL MISSING FEATURES (Medium/Low Priority):
 

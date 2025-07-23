@@ -11,7 +11,8 @@ advanced caching capabilities.
 Platform Support
 ^^^^^^^^^^^^^^^^
 
-This generator is supported on Unix-like systems where Nix is available.
+**Important**: This generator is only supported on Unix/Linux systems where Nix is available.
+Windows and macOS are not supported.
 
 Generator Features
 ^^^^^^^^^^^^^^^^^^
@@ -30,7 +31,10 @@ Supported Languages
 
 - C
 - C++
-- Mixed C/C++ projects
+- Fortran
+- CUDA
+- Assembly (ASM, ASM-ATT, ASM_NASM, ASM_MASM)
+- Mixed language projects
 
 Supported Target Types
 ^^^^^^^^^^^^^^^^^^^^^^
