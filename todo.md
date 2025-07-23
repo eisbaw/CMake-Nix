@@ -341,9 +341,9 @@ DONE: All feature tests passing with `just dev`
 
 ### High Priority Issues:
 4. DONE: **Silent Failures**: cmNixTargetGenerator.cxx:258-264 - RunSingleCommand failures ignored without logging - Fixed: Now always reports failures as warnings
-5. **Resource Leak**: cmGlobalNixGenerator.cxx:219-224 - Fatal error on write failure but no cleanup of partial files
-6. **Performance Bug**: cmNixTargetGenerator.cxx:547-711 - GetTransitiveDependencies has exponential complexity without caching
-7. **Missing Validation**: cmNixCustomCommandGenerator.cxx:174-175 - Assumes GetOutputs() non-empty without checking
+5. DONE: **Resource Leak**: cmGlobalNixGenerator.cxx:219-224 - Fatal error on write failure but no cleanup of partial files - Not an issue: cmGeneratedFileStream handles cleanup automatically
+6. DONE: **Performance Bug**: cmNixTargetGenerator.cxx:547-711 - GetTransitiveDependencies has exponential complexity without caching - Fixed: Added TransitiveDependencyCache to prevent redundant scanning
+7. DONE: **Missing Validation**: cmNixCustomCommandGenerator.cxx:174-175 - Assumes GetOutputs() non-empty without checking - Fixed: Already has empty check with fallback name
 
 ### Medium Priority Issues:
 8. DONE: **Performance**: cmGlobalNixGenerator.cxx:1592-1616 - GetCachedLibraryDependencies recreates target generator despite cache
