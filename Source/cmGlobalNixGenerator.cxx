@@ -592,6 +592,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   std::string includeFlags;
   for (const auto& inc : includes) {
+    // Skip include directories from Nix store - these are provided by buildInputs packages
+    if (inc.find("/nix/store/") != std::string::npos) {
+      continue;
+    }
+    
     if (!includeFlags.empty()) includeFlags += " ";
     // Convert absolute include paths to relative for Nix build environment
     std::string relativeInclude = cmSystemTools::RelativePath(
@@ -701,10 +706,24 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   nixFileStream << "    dontFixup = true;\n";
   
-  if (!headers.empty()) {
+  // Filter out external headers (from /nix/store) and collect only project headers
+  std::vector<std::string> projectHeaders;
+  for (const std::string& header : headers) {
+    // Skip headers from Nix store - they're provided by buildInputs packages
+    if (header.find("/nix/store/") != std::string::npos) {
+      continue;
+    }
+    // Skip absolute paths outside project (system headers)
+    if (cmSystemTools::FileIsFullPath(header)) {
+      continue;
+    }
+    projectHeaders.push_back(header);
+  }
+  
+  if (!projectHeaders.empty()) {
     nixFileStream << "    # Header dependencies\n";
     nixFileStream << "    propagatedInputs = [\n";
-    for (const std::string& header : headers) {
+    for (const std::string& header : projectHeaders) {
       if (isExternalSource) {
         // For external sources, headers are copied into the composite source root
         nixFileStream << "      ./" << header << "\n";
