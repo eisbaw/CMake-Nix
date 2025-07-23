@@ -58,6 +58,17 @@ void cmGlobalNixGenerator::Generate()
 {
   std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() started" << std::endl;
   
+  // Check for unsupported CMAKE_EXPORT_COMPILE_COMMANDS
+  if (this->GetCMakeInstance()->GetState()->GetGlobalPropertyAsBool(
+        "CMAKE_EXPORT_COMPILE_COMMANDS")) {
+    this->GetCMakeInstance()->IssueMessage(
+      MessageType::WARNING,
+      "CMAKE_EXPORT_COMPILE_COMMANDS is not supported by the Nix generator. "
+      "The Nix backend uses derivation-based compilation where commands are "
+      "executed inside isolated Nix environments. Consider using Nix-aware "
+      "development tools or direnv for IDE integration.");
+  }
+  
   // First call the parent Generate to set up targets
   this->cmGlobalGenerator::Generate();
   

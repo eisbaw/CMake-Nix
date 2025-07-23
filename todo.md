@@ -57,8 +57,8 @@ DONE: Add multi-language support for Fortran and CUDA
 ### ADDITIONAL MISSING FEATURES (Medium/Low Priority):
 
 6. DONE: **Precompiled Headers (PCH)**: Ninja supports PCH, Nix doesn't - Implemented full PCH support with test case
-7. **Unity Builds**: Ninja supports unity builds for faster compilation  
-8. **Compile Commands Database**: Ninja supports compile_commands.json generation
+7. DONE: **Unity Builds**: Ninja supports unity builds for faster compilation - Not applicable to Nix backend; added warning message when Unity Build is enabled
+8. DONE: **Compile Commands Database**: Ninja supports compile_commands.json generation - Not applicable to Nix backend; added warning for CMAKE_EXPORT_COMPILE_COMMANDS
 9. **Advanced Dependency Features**: 
     - Order-only dependencies
     - Restat feature for build optimization
