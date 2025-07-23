@@ -25,7 +25,7 @@ public:
   static std::unique_ptr<cmNixTargetGenerator> New(cmGeneratorTarget* target);
 
   /// Build a NixTargetGenerator.
-  cmNixTargetGenerator(cmGeneratorTarget* target);
+  explicit cmNixTargetGenerator(cmGeneratorTarget* target);
 
   /// Destructor.
   ~cmNixTargetGenerator() override;
@@ -103,6 +103,5 @@ public:
 
 private:
   cmLocalNixGenerator* LocalGenerator;
-  cmMakefile* Makefile;
   cmNixPackageMapper PackageMapper;
 }; 

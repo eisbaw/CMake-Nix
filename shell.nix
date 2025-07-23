@@ -9,6 +9,11 @@ pkgs.mkShell {
     gcc
     gnumake
     pkg-config
+    # Static analysis and linting tools
+    clang-tools  # clang-tidy
+    cppcheck
+    include-what-you-use
+    valgrind
   ];
   
   buildInputs = with pkgs; [

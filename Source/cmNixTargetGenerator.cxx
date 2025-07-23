@@ -35,7 +35,6 @@ cmNixTargetGenerator::cmNixTargetGenerator(cmGeneratorTarget* target)
   : cmCommonTargetGenerator(target)
   , LocalGenerator(
       static_cast<cmLocalNixGenerator*>(target->GetLocalGenerator()))
-  , Makefile(target->Target->GetMakefile())
 {
 }
 

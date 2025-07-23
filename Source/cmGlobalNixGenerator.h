@@ -30,7 +30,7 @@ class cmake;
 class cmGlobalNixGenerator : public cmGlobalCommonGenerator
 {
 public:
-  cmGlobalNixGenerator(cmake* cm);
+  explicit cmGlobalNixGenerator(cmake* cm);
   
   static std::unique_ptr<cmGlobalGeneratorFactory> NewFactory()
   {

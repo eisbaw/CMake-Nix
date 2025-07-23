@@ -2,7 +2,7 @@
 
 Run static analysis and lint tools over the Nix generator backend. Add tools to shell.nix
 
-Ensure we have have good tests of CMAKE_NIX_EXPLICIT_SOURCES=ON .
+DONE: Ensure we have have good tests of CMAKE_NIX_EXPLICIT_SOURCES=ON .
 
 DONE: Grep justfiles for for nix-build commands that allow failure. Fix the failures. 
 
