@@ -981,6 +981,13 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   lg->GetIncludeDirectories(includes, target, lang, config);
   
   std::string includeFlags;
+  // When using filesets, we need to compute include paths relative to the source directory
+  // since that's where the build will happen in the Nix derivation
+  bool willUseFileset = !source->GetIsGenerated();
+  std::string basePath = willUseFileset ? 
+    this->GetCMakeInstance()->GetHomeDirectory() : 
+    this->GetCMakeInstance()->GetHomeOutputDirectory();
+    
   for (const auto& inc : includes) {
     // Skip include directories from Nix store - these are provided by buildInputs packages
     if (inc.find("/nix/store/") != std::string::npos) {
@@ -989,8 +996,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     
     if (!includeFlags.empty()) includeFlags += " ";
     // Convert absolute include paths to relative for Nix build environment
-    std::string relativeInclude = cmSystemTools::RelativePath(
-      this->GetCMakeInstance()->GetHomeOutputDirectory(), inc);
+    std::string relativeInclude = cmSystemTools::RelativePath(basePath, inc);
     includeFlags += "-I" + (!relativeInclude.empty() ? relativeInclude : inc);
   }
   
