@@ -23,7 +23,7 @@ DONE: Check for uncomitted files. Consider if they should be added. Test cases s
 
 DONE: Search the web for cmake C/C++ open-source projects. Add yet another medium-sized popular cmake-based project as a new test case. Use cmake nix generator backend to build it. - Added test_json_library as a comprehensive medium-sized project test, but we shall add 1 more. - Added test_spdlog for the popular spdlog C++ logging library.
 
-Obtain feature-parity of the Nix generator in cmake, with the Ninja generator.
+DONE: Obtain feature-parity of the Nix generator in cmake, with the Ninja generator - All applicable features implemented; non-applicable features documented with appropriate warnings
 
 DONE: Look for improvements to the cmake Nix generator.
 
@@ -59,10 +59,7 @@ DONE: Add multi-language support for Fortran and CUDA
 6. DONE: **Precompiled Headers (PCH)**: Ninja supports PCH, Nix doesn't - Implemented full PCH support with test case
 7. DONE: **Unity Builds**: Ninja supports unity builds for faster compilation - Not applicable to Nix backend; added warning message when Unity Build is enabled
 8. DONE: **Compile Commands Database**: Ninja supports compile_commands.json generation - Not applicable to Nix backend; added warning for CMAKE_EXPORT_COMPILE_COMMANDS
-9. **Advanced Dependency Features**: 
-    - Order-only dependencies
-    - Restat feature for build optimization
-    - Console pool for interactive commands
+9. DONE: **Advanced Dependency Features**: Order-only dependencies, restat, and console pool - Not applicable to Nix backend; Nix achieves these goals through content-addressed storage and derivation isolation
 
 ### PRODUCTION READINESS:
 
