@@ -159,6 +159,8 @@ test-all:
     just test_interface_library::run
     just test_json_library::run
     just test_spdlog::test
+    just test_fmt_library::run
+    just test_zephyr_simple::run
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself
     # just test_opencv::configure-core
     @echo "✅ All tests passed!"
@@ -171,3 +173,9 @@ dev: build test-all
 
 # Module library test
 mod test_module_library
+
+# fmt library test (popular C++ formatting library)
+mod test_fmt_library
+
+# Zephyr RTOS simulation test
+mod test_zephyr_simple
