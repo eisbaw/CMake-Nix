@@ -487,6 +487,69 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     compileFlags += flag.Value;
   }
   
+  // Add PCH compile options if applicable
+  // First check if this is a PCH source file
+  std::vector<std::string> pchArchs = target->GetPchArchs(config, lang);
+  std::unordered_set<std::string> pchSources;
+  for (const std::string& arch : pchArchs) {
+    std::string pchSource = target->GetPchSource(config, lang, arch);
+    if (!pchSource.empty()) {
+      pchSources.insert(pchSource);
+    }
+  }
+  
+  // Check if source file has SKIP_PRECOMPILE_HEADERS property
+  cmSourceFile* sf = target->Target->GetMakefile()->GetOrCreateSource(sourceFile);
+  bool skipPch = sf && sf->GetPropertyAsBool("SKIP_PRECOMPILE_HEADERS");
+  
+  if (!pchSources.empty() && !skipPch) {
+    std::string pchOptions;
+    if (pchSources.find(sourceFile) != pchSources.end()) {
+      // This is a PCH source file - add create options
+      for (const std::string& arch : pchArchs) {
+        if (target->GetPchSource(config, lang, arch) == sourceFile) {
+          pchOptions = target->GetPchCreateCompileOptions(config, lang, arch);
+          break;
+        }
+      }
+    } else {
+      // This is a regular source file - add use options
+      pchOptions = target->GetPchUseCompileOptions(config, lang);
+    }
+    
+    if (!pchOptions.empty()) {
+      // PCH options may be semicolon-separated, convert to space-separated
+      std::string processedOptions = pchOptions;
+      std::replace(processedOptions.begin(), processedOptions.end(), ';', ' ');
+      
+      // Convert absolute paths in PCH options to relative paths
+      std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
+      size_t pos = 0;
+      while ((pos = processedOptions.find(projectDir, pos)) != std::string::npos) {
+        // Find the end of the path (space or end of string)
+        size_t endPos = processedOptions.find(' ', pos);
+        if (endPos == std::string::npos) {
+          endPos = processedOptions.length();
+        }
+        
+        // Extract the full path
+        std::string fullPath = processedOptions.substr(pos, endPos - pos);
+        
+        // Convert to relative path
+        std::string relPath = cmSystemTools::RelativePath(projectDir, fullPath);
+        
+        // Replace in the string
+        processedOptions.replace(pos, fullPath.length(), relPath);
+        
+        // Move past this replacement
+        pos += relPath.length();
+      }
+      
+      if (!compileFlags.empty()) compileFlags += " ";
+      compileFlags += processedOptions;
+    }
+  }
+  
   // Get configuration-specific preprocessor definitions
   std::set<std::string> defines;
   lg->GetTargetDefines(target, config, lang, defines);
@@ -816,12 +879,30 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   // Collect object file dependencies (reuse sources from above)
   
   nixFileStream << "    objects = [\n";
+  
+  // Get PCH sources to exclude from linking
+  std::unordered_set<std::string> pchSources;
+  std::set<std::string> languages;
+  target->GetLanguages(languages, config);
+  for (const std::string& lang : languages) {
+    std::vector<std::string> pchArchs = target->GetPchArchs(config, lang);
+    for (const std::string& arch : pchArchs) {
+      std::string pchSource = target->GetPchSource(config, lang, arch);
+      if (!pchSource.empty()) {
+        pchSources.insert(pchSource);
+      }
+    }
+  }
+  
   for (cmSourceFile* source : sources) {
     std::string const& lang = source->GetLanguage();
     if (lang == "C" || lang == "CXX") {
-      std::string objDerivName = this->GetDerivationName(
-        target->GetName(), source->GetFullPath());
-      nixFileStream << "      " << objDerivName << "\n";
+      // Exclude PCH source files from linking
+      if (pchSources.find(source->GetFullPath()) == pchSources.end()) {
+        std::string objDerivName = this->GetDerivationName(
+          target->GetName(), source->GetFullPath());
+        nixFileStream << "      " << objDerivName << "\n";
+      }
     }
   }
   

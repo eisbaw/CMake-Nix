@@ -6,6 +6,7 @@
 #include <sstream>
 #include <algorithm>
 #include <set>
+#include <unordered_set>
 
 #include "cmGeneratorTarget.h"
 #include "cmGlobalNixGenerator.h"
@@ -42,6 +43,9 @@ cmNixTargetGenerator::~cmNixTargetGenerator() = default;
 
 void cmNixTargetGenerator::Generate()
 {
+  // Generate precompiled header derivations if needed
+  this->WritePchDerivations();
+  
   // Generate per-source file derivations
   this->WriteObjectDerivations();
   
@@ -56,9 +60,15 @@ std::string cmNixTargetGenerator::GetTargetName() const
 
 void cmNixTargetGenerator::WriteObjectDerivations()
 {
+  // Get build configuration  
+  std::string config = this->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+  if (config.empty()) {
+    config = "Release";
+  }
+
   // Get all source files for this target
   std::vector<cmSourceFile*> sources;
-  this->GeneratorTarget->GetSourceFiles(sources, "");
+  this->GeneratorTarget->GetSourceFiles(sources, config);
   cmGlobalNixGenerator* globalGenerator = static_cast<cmGlobalNixGenerator*>(this->GetLocalGenerator()->GetGlobalGenerator());
 
   for (cmSourceFile* source : sources) {
@@ -66,6 +76,11 @@ void cmNixTargetGenerator::WriteObjectDerivations()
     std::string const& lang = source->GetLanguage();
     if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || lang == "Swift" || lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
       std::vector<std::string> dependencies = this->GetSourceDependencies(source);
+      
+      // Add PCH dependencies if applicable
+      std::vector<std::string> pchDeps = this->GetPchDependencies(source, config);
+      dependencies.insert(dependencies.end(), pchDeps.begin(), pchDeps.end());
+      
       globalGenerator->AddObjectDerivation(this->GetTargetName(), this->GetDerivationName(source), source->GetFullPath(), this->GetObjectFileName(source), lang, dependencies);
     }
   }
@@ -691,4 +706,144 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
   }
   
   return dependencies;
-} 
+} // PCH implementation methods for cmNixTargetGenerator
+
+void cmNixTargetGenerator::WritePchDerivations()
+{
+  std::string config = this->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+  if (config.empty()) {
+    config = "Release";
+  }
+
+  cmGlobalNixGenerator* globalGenerator = 
+    static_cast<cmGlobalNixGenerator*>(this->GetLocalGenerator()->GetGlobalGenerator());
+
+  // Check if target has precompile headers for each language
+  std::set<std::string> languages;
+  this->GeneratorTarget->GetLanguages(languages, config);
+
+  for (const std::string& lang : languages) {
+    if (!this->NeedsPchSupport(config, lang)) {
+      continue;
+    }
+
+    // Get PCH architectures for this language
+    std::vector<std::string> pchArchs = 
+      this->GeneratorTarget->GetPchArchs(config, lang);
+
+    for (const std::string& arch : pchArchs) {
+      // Get PCH source file
+      std::string pchSource = this->GeneratorTarget->GetPchSource(config, lang, arch);
+      if (pchSource.empty()) {
+        continue;
+      }
+
+      // Get PCH header file
+      std::string pchHeader = this->GeneratorTarget->GetPchHeader(config, lang, arch);
+      
+      // Get PCH object file path
+      std::string pchObject = this->GeneratorTarget->GetPchFileObject(config, lang, arch);
+      
+      // Get the actual PCH file path
+      std::string pchFile = this->GeneratorTarget->GetPchFile(config, lang, arch);
+
+      // Create derivation name for PCH
+      std::string derivationName = this->GetPchDerivationName(lang, arch);
+      
+      // Add PCH derivation to global generator
+      // The PCH needs to include the header as a dependency
+      std::vector<std::string> pchDeps;
+      pchDeps.push_back(pchHeader);
+      
+      // Add the PCH creation derivation
+      globalGenerator->AddObjectDerivation(
+        this->GetTargetName(), 
+        derivationName, 
+        pchSource, 
+        pchFile,  // Output is the PCH file, not object
+        lang, 
+        pchDeps
+      );
+    }
+  }
+}
+
+std::string cmNixTargetGenerator::GetPchDerivationName(
+  std::string const& language, std::string const& arch) const
+{
+  std::string name = this->GetTargetName() + "_pch_" + language;
+  if (!arch.empty()) {
+    name += "_" + arch;
+  }
+  return name;
+}
+
+bool cmNixTargetGenerator::NeedsPchSupport(
+  std::string const& config, std::string const& language) const
+{
+  // Check if this target has precompile headers for this language
+  cmValue pchHeaders = this->GeneratorTarget->GetProperty("PRECOMPILE_HEADERS");
+  if (!pchHeaders || pchHeaders->empty()) {
+    return false;
+  }
+
+  // Check if PCH is disabled for this target
+  cmValue disablePch = this->GeneratorTarget->GetProperty("DISABLE_PRECOMPILE_HEADERS");
+  if (disablePch && cmIsOn(*disablePch)) {
+    return false;
+  }
+
+  // Check if the language supports PCH
+  if (language != "C" && language != "CXX" && language != "OBJC" && language != "OBJCXX") {
+    return false;
+  }
+
+  // Check if we have a PCH extension defined for this compiler
+  std::string pchExtVar = "CMAKE_" + language + "_COMPILER_PRECOMPILE_HEADER_EXTENSION";
+  cmValue pchExt = this->GetMakefile()->GetDefinition(pchExtVar);
+  if (!pchExt || pchExt->empty()) {
+    return false;
+  }
+
+  return true;
+}
+
+std::vector<std::string> cmNixTargetGenerator::GetPchDependencies(
+  cmSourceFile const* source, std::string const& config) const
+{
+  std::vector<std::string> pchDeps;
+  
+  // Skip if this source file has SKIP_PRECOMPILE_HEADERS property
+  if (source->GetPropertyAsBool("SKIP_PRECOMPILE_HEADERS")) {
+    return pchDeps;
+  }
+
+  std::string const& lang = source->GetLanguage();
+  if (!this->NeedsPchSupport(config, lang)) {
+    return pchDeps;
+  }
+
+  // Get PCH architectures
+  std::vector<std::string> pchArchs = 
+    this->GeneratorTarget->GetPchArchs(config, lang);
+
+  // Check if this source file is a PCH source itself
+  std::unordered_set<std::string> pchSources;
+  for (const std::string& arch : pchArchs) {
+    std::string pchSource = this->GeneratorTarget->GetPchSource(config, lang, arch);
+    if (!pchSource.empty()) {
+      pchSources.insert(pchSource);
+    }
+  }
+
+  // If this is not a PCH source, it depends on the PCH files
+  if (pchSources.find(source->GetFullPath()) == pchSources.end()) {
+    for (const std::string& arch : pchArchs) {
+      // Add dependency on the PCH derivation
+      std::string pchDerivationName = this->GetPchDerivationName(lang, arch);
+      pchDeps.push_back(pchDerivationName);
+    }
+  }
+
+  return pchDeps;
+}

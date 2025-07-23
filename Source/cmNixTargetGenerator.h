@@ -95,6 +95,12 @@ public:
   std::string MapCommonLibraryToNixPackage(std::string const& libName) const;
   std::string GetNixPackageFilePath(std::string const& libName) const;
 
+  /// Precompiled Header (PCH) support
+  void WritePchDerivations();
+  std::string GetPchDerivationName(std::string const& language, std::string const& arch) const;
+  bool NeedsPchSupport(std::string const& config, std::string const& language) const;
+  std::vector<std::string> GetPchDependencies(cmSourceFile const* source, std::string const& config) const;
+
 private:
   cmLocalNixGenerator* LocalGenerator;
   cmMakefile* Makefile;

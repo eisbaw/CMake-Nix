@@ -1,0 +1,23 @@
+#!/usr/bin/env just --justfile
+
+# Configure project with Nix generator
+configure:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build the project
+build: configure
+    nix-build -A pch_test
+
+# Run the test
+run: build
+    ./result
+    rm -f ./result
+
+# Clean build artifacts
+clean:
+    rm -rf default.nix result
+
+# Full test cycle
+test: clean run
+    @echo "✅ PCH test completed"
