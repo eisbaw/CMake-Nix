@@ -1,0 +1,45 @@
+# Justfile for fmt library test
+
+# Clean build artifacts
+clean:
+    rm -rf build default.nix
+
+# Configure with CMake Nix generator
+configure:
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build
+
+# Build all targets
+build: configure
+    nix-build --no-out-link -A fmt_example
+    nix-build --no-out-link -A fmt_advanced
+    nix-build --no-out-link -A fmt_chrono
+
+# Run basic example
+run-basic: configure
+    nix-build -A fmt_example && ./result && rm ./result
+
+# Run advanced example
+run-advanced: configure
+    nix-build -A fmt_advanced && ./result && rm ./result
+
+# Run chrono example
+run-chrono: configure
+    nix-build -A fmt_chrono && ./result && rm ./result
+
+# Run all tests
+run: clean
+    @echo "=== Building fmt library example with CMake Nix backend ==="
+    just configure
+    @echo "\n=== Running basic fmt example ==="
+    nix-build -A fmt_example && echo && ./result && rm ./result
+    @echo "\n=== Running advanced fmt example ==="
+    nix-build -A fmt_advanced && echo && ./result && rm ./result
+    @echo "\n=== Running chrono fmt example ==="
+    nix-build -A fmt_chrono && echo && ./result && rm ./result
+    @echo "\n✅ fmt library built and tested successfully with CMake Nix backend!"
+
+# Check generated Nix file
+check-nix: configure
+    @echo "=== Generated default.nix ==="
+    cat build/default.nix | head -50
+    @echo "\n... (truncated) ..."
