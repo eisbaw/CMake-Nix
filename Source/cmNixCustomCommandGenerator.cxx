@@ -9,6 +9,7 @@
 #include "cmGeneratorTarget.h"
 #include "cmMakefile.h"
 #include "cmSystemTools.h"
+#include "cmOutputConverter.h"
 #include <set>
 #include <cctype>
 
@@ -135,8 +136,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
             nixFileStream << "\"" << arg << "\"";
           }
         } else {
-          // Quote arguments that aren't shell operators
-          nixFileStream << "\"" << arg << "\"";
+          // Properly escape arguments for shell
+          nixFileStream << cmOutputConverter::EscapeForShell(arg, cmOutputConverter::Shell_Flag_IsUnix);
         }
       }
       nixFileStream << "\n";

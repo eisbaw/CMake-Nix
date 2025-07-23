@@ -131,3 +131,50 @@ DONE: Add multi-language support for Fortran and CUDA
 DONE: Fix error conditions test (expected errors are correctly generated)
 DONE: All feature tests passing with `just dev`
 
+## CODE SMELLS AND BUGS FOUND (2025-07-23):
+
+### Critical Issues:
+1. **Thread Safety**: All mutable caches in cmGlobalNixGenerator.h (lines 157-160) accessed without synchronization - could cause race conditions in parallel builds
+2. **Memory Management**: cmGlobalNixGenerator.cxx:299 - Raw pointers in orderedCommands vector could become dangling if CustomCommands modified
+3. **Security**: Shell command injection vulnerabilities in cmGlobalNixGenerator.cxx:155-194 and cmNixCustomCommandGenerator.cxx:87-143 - paths with quotes/special chars not escaped
+
+### High Priority Issues:
+4. **Error Handling**: File write errors silently ignored in cmGlobalNixGenerator.cxx:209-215 - should propagate errors
+5. **Stack Overflow Risk**: cmNixTargetGenerator.cxx:159-193 - Recursive header scanning without depth limit
+6. **Debug Output**: Debug statements in cmGlobalNixGenerator.cxx:207,217 not controlled by debug flag (should use GetDebug())
+
+### Medium Priority Issues:
+7. **Performance**: String concatenation in loops without reservation in cmGlobalNixGenerator.cxx:157-198
+8. **Code Duplication**: Library dependency processing duplicated in cmGlobalNixGenerator.cxx:869-894 and 1052-1092
+9. **Hardcoded Values**: Compiler fallbacks hardcoded in cmGlobalNixGenerator.cxx:1367-1376 - should be configurable
+10. **Path Validation**: No validation of source paths in cmGlobalNixGenerator.cxx:803-816
+11. **Edge Cases**: Numeric suffix detection in cmGlobalNixGenerator.cxx:124-131 fails with non-ASCII digits
+
+### Low Priority Issues:
+12. **Resource Leaks**: File close errors not checked in cmNixTargetGenerator.cxx:536
+13. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456
+14. **Style**: Inconsistent debug output prefixes ([NIX-TRACE] vs [DEBUG])
+
+## MISSING TEST COVERAGE (2025-07-23):
+
+### Critical Missing Tests:
+1. **Language Support**: ASM, Fortran, CUDA support implemented but not tested
+2. **Thread Safety**: No tests for parallel builds with mutable cache access
+3. **Security**: No tests for paths with quotes/special characters
+4. **Error Recovery**: No tests for build failures, permission errors, disk full
+5. **Scale**: No tests with 1000+ files or deep directory hierarchies
+
+### High Priority Missing Tests:
+6. **Unity Builds**: Warning implemented but not tested
+7. **Cross-compilation**: CMAKE_CROSSCOMPILING logic not tested
+8. **Circular Dependencies**: Detection exists but not tested for regular targets
+9. **Complex Custom Commands**: WORKING_DIRECTORY, VERBATIM, multiple outputs not tested
+10. **External Tools**: ExternalProject_Add, FetchContent not tested
+
+### Medium Priority Missing Tests:
+11. **File Edge Cases**: Spaces in names, unicode paths, symlinks not tested
+12. **Multi-Config**: RelWithDebInfo, MinSizeRel configurations not tested
+13. **Library Versioning**: VERSION/SOVERSION partially tested
+14. **Performance**: No benchmarks for large projects or caching effectiveness
+15. **Platform Features**: RPATH handling has limited tests
+
