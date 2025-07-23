@@ -204,6 +204,96 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   return { std::move(makeCommand) };
 }
 
+void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
+{
+  writer.WriteComment("Helper functions for DRY derivations");
+  writer.WriteLine();
+  
+  // Compilation helper function
+  writer.WriteLine("  cmakeNixCC = {");
+  writer.WriteLine("    name,");
+  writer.WriteLine("    src,");
+  writer.WriteLine("    compiler ? gcc,");
+  writer.WriteLine("    flags ? \"\",");
+  writer.WriteLine("    source,  # Source file path relative to src");
+  writer.WriteLine("    buildInputs ? [],");
+  writer.WriteLine("    propagatedInputs ? []");
+  writer.WriteLine("  }: stdenv.mkDerivation {");
+  writer.WriteLine("    inherit name src buildInputs propagatedInputs;");
+  writer.WriteLine("    dontFixup = true;");
+  writer.WriteLine("    buildPhase = ''");
+  writer.WriteLine("      compilerBin=$(");
+  writer.WriteLine("        if [[ \"${compiler}\" == \"${gcc}\" ]]; then");
+  writer.WriteLine("          echo \"gcc\"");
+  writer.WriteLine("        elif [[ \"${compiler}\" == \"${clang}\" ]]; then");  
+  writer.WriteLine("          echo \"clang\"");
+  writer.WriteLine("        else");
+  writer.WriteLine("          echo \"${compiler.pname or \"cc\"}\"");
+  writer.WriteLine("        fi");
+  writer.WriteLine("      )");
+  writer.WriteLine("      ${compiler}/bin/$compilerBin -c ${flags} \"${source}\" -o \"$out\"");
+  writer.WriteLine("    '';");
+  writer.WriteLine("    installPhase = \"true\";");
+  writer.WriteLine("  };");
+  writer.WriteLine();
+  
+  // Linking helper function
+  writer.WriteLine("  cmakeNixLD = {");
+  writer.WriteLine("    name,");
+  writer.WriteLine("    type ? \"executable\",  # \"executable\", \"static\", \"shared\", \"module\"");
+  writer.WriteLine("    objects,");
+  writer.WriteLine("    compiler ? gcc,");
+  writer.WriteLine("    flags ? \"\",");
+  writer.WriteLine("    libraries ? [],");
+  writer.WriteLine("    buildInputs ? [],");
+  writer.WriteLine("    version ? null,");
+  writer.WriteLine("    soversion ? null");
+  writer.WriteLine("  }: stdenv.mkDerivation {");
+  writer.WriteLine("    inherit name objects buildInputs;");
+  writer.WriteLine("    dontUnpack = true;");
+  writer.WriteLine("    buildPhase =");
+  writer.WriteLine("      if type == \"static\" then ''");
+  writer.WriteLine("        ar rcs \"$out\" $objects");
+  writer.WriteLine("      '' else if type == \"shared\" || type == \"module\" then ''");
+  writer.WriteLine("        mkdir -p $out");
+  writer.WriteLine("        compilerBin=$(");
+  writer.WriteLine("          if [[ \"${compiler}\" == \"${gcc}\" ]]; then");
+  writer.WriteLine("            echo \"gcc\"");
+  writer.WriteLine("          elif [[ \"${compiler}\" == \"${clang}\" ]]; then");
+  writer.WriteLine("            echo \"clang\"");
+  writer.WriteLine("          else");
+  writer.WriteLine("            echo \"${compiler.pname or \"cc\"}\"");
+  writer.WriteLine("          fi");
+  writer.WriteLine("        )");
+  writer.WriteLine("        libname=\"lib${name}.so\"");
+  writer.WriteLine("        if [[ -n \"${toString version}\" ]]; then");
+  writer.WriteLine("          libname=\"lib${name}.so.${version}\"");
+  writer.WriteLine("        fi");
+  writer.WriteLine("        ${compiler}/bin/$compilerBin -shared ${flags} $objects ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out/$libname\"");
+  writer.WriteLine("        # Create version symlinks if needed");
+  writer.WriteLine("        if [[ -n \"${toString version}\" ]]; then");
+  writer.WriteLine("          ln -sf \"$libname\" \"$out/lib${name}.so\"");
+  writer.WriteLine("          if [[ -n \"${toString soversion}\" ]]; then");
+  writer.WriteLine("            ln -sf \"$libname\" \"$out/lib${name}.so.${soversion}\"");
+  writer.WriteLine("          fi");
+  writer.WriteLine("        fi");
+  writer.WriteLine("      '' else ''");
+  writer.WriteLine("        compilerBin=$(");
+  writer.WriteLine("          if [[ \"${compiler}\" == \"${gcc}\" ]]; then");
+  writer.WriteLine("            echo \"gcc\"");
+  writer.WriteLine("          elif [[ \"${compiler}\" == \"${clang}\" ]]; then");
+  writer.WriteLine("            echo \"clang\"");
+  writer.WriteLine("          else");
+  writer.WriteLine("            echo \"${compiler.pname or \"cc\"}\"");
+  writer.WriteLine("          fi");
+  writer.WriteLine("        )");
+  writer.WriteLine("        ${compiler}/bin/$compilerBin ${flags} $objects ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out\"");
+  writer.WriteLine("      '';");
+  writer.WriteLine("    installPhase = \"true\";");
+  writer.WriteLine("  };");
+  writer.WriteLine();
+}
+
 void cmGlobalNixGenerator::WriteNixFile()
 {
   std::string nixFile = this->GetCMakeInstance()->GetHomeDirectory();
@@ -236,6 +326,9 @@ void cmGlobalNixGenerator::WriteNixFile()
   writer.WriteLine("with pkgs;");
   writer.WriteLine();
   writer.StartLetBinding();
+  
+  // Write helper functions for DRY code generation
+  this->WriteNixHelperFunctions(writer);
 
   // Collect all custom commands with proper thread safety
   // Use a local copy to avoid race conditions

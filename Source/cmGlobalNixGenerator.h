@@ -86,6 +86,7 @@ public:
 
 protected:
   virtual void WriteNixFile();
+  void WriteNixHelperFunctions(cmNixWriter& writer);
   void WriteDerivations();
   virtual void WritePerTranslationUnitDerivations(cmGeneratedFileStream& nixFileStream);
   virtual void WriteLinkingDerivations(cmGeneratedFileStream& nixFileStream);
