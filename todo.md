@@ -6,7 +6,7 @@
 
 ## NEW HIGH PRIORITY ISSUE (2025-01-29):
 
-### Improve Nix Derivation Source Attributes to Use Minimal Filesets
+### DONE: Improve Nix Derivation Source Attributes to Use Minimal Filesets
 
 **Problem**: Currently all object file derivations use `src = ./.` which includes the entire directory in the Nix store hash. This causes unnecessary rebuilds when any unrelated file in the directory changes (e.g., README.md, other source files, etc).
 
@@ -46,7 +46,7 @@ grep "src = " $(fd -u default.nix) | grep -c "src = ./."
 **Priority**: HIGH - This is a performance regression from the intended design
 
 
-### Improve Generated Nix Code Quality with DRY Principles
+### DONE: Improve Generated Nix Code Quality with DRY Principles
 
 **Problem**: Generated default.nix files have massive code duplication and several code smells that make them fragile and hard to maintain.
 
@@ -300,9 +300,9 @@ DONE: All feature tests passing with `just dev`
 ### Medium Priority Issues:
 7. **Performance**: String concatenation in loops without reservation in cmGlobalNixGenerator.cxx:157-198
 8. **Code Duplication**: Library dependency processing duplicated in cmGlobalNixGenerator.cxx:869-894 and 1052-1092
-9. **Hardcoded Values**: Compiler fallbacks hardcoded in cmGlobalNixGenerator.cxx:1367-1376 - should be configurable
-10. **Path Validation**: No validation of source paths in cmGlobalNixGenerator.cxx:803-816
-11. **Edge Cases**: Numeric suffix detection in cmGlobalNixGenerator.cxx:124-131 fails with non-ASCII digits
+9. DONE: **Hardcoded Values**: Compiler fallbacks hardcoded in cmGlobalNixGenerator.cxx:1367-1376 - should be configurable - Fixed: Already configurable via CMAKE_NIX_<LANG>_COMPILER_PACKAGE cache variables
+10. DONE: **Path Validation**: No validation of source paths in cmGlobalNixGenerator.cxx:803-816 - Fixed: Added comprehensive path validation including traversal detection
+11. DONE: **Edge Cases**: Numeric suffix detection in cmGlobalNixGenerator.cxx:124-131 fails with non-ASCII digits - Fixed: Using explicit ASCII range check
 
 ### Low Priority Issues:
 12. **Resource Leaks**: File close errors not checked in cmNixTargetGenerator.cxx:536
@@ -335,12 +335,12 @@ DONE: All feature tests passing with `just dev`
 ## NEW CODE REVIEW FINDINGS (2025-07-23 Deep Analysis):
 
 ### Critical Issues - MUST FIX:
-1. **Thread Safety Bug**: cmGlobalNixGenerator.cxx:242-337 - CustomCommands/CustomCommandOutputs accessed outside lock after modification - RACE CONDITION
-2. **Stack Overflow Risk**: cmGlobalNixGenerator.cxx:436-484 - findCycle lambda has unbounded recursion without depth limit
-3. **Security Vulnerability**: cmNixCustomCommandGenerator.cxx:141 - Shell command construction without proper validation - COMMAND INJECTION RISK
+1. DONE: **Thread Safety Bug**: cmGlobalNixGenerator.cxx:242-337 - CustomCommands/CustomCommandOutputs accessed outside lock after modification - RACE CONDITION - Fixed: Now uses temporary collections and atomic replacement
+2. DONE: **Stack Overflow Risk**: cmGlobalNixGenerator.cxx:436-484 - findCycle lambda has unbounded recursion without depth limit - Fixed: Already has MAX_DEPTH=100 limit with warning
+3. DONE: **Security Vulnerability**: cmNixCustomCommandGenerator.cxx:141 - Shell command construction without proper validation - COMMAND INJECTION RISK - Fixed: Already uses EscapeForShell()
 
 ### High Priority Issues:
-4. **Silent Failures**: cmNixTargetGenerator.cxx:258-264 - RunSingleCommand failures ignored without logging
+4. DONE: **Silent Failures**: cmNixTargetGenerator.cxx:258-264 - RunSingleCommand failures ignored without logging - Fixed: Now always reports failures as warnings
 5. **Resource Leak**: cmGlobalNixGenerator.cxx:219-224 - Fatal error on write failure but no cleanup of partial files
 6. **Performance Bug**: cmNixTargetGenerator.cxx:547-711 - GetTransitiveDependencies has exponential complexity without caching
 7. **Missing Validation**: cmNixCustomCommandGenerator.cxx:174-175 - Assumes GetOutputs() non-empty without checking
@@ -350,7 +350,7 @@ DONE: All feature tests passing with `just dev`
 9. **Code Duplication**: Compiler detection logic duplicated between GetCompilerPackage and GetCompilerCommand
 10. **Magic Numbers**: cmNixTargetGenerator.cxx:553 - MAX_DEPTH=100 arbitrary limit
 11. **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping
-12. **Path Traversal Risk**: cmGlobalNixGenerator.cxx:752-758 - Incomplete path validation
+12. DONE: **Path Traversal Risk**: cmGlobalNixGenerator.cxx:752-758 - Incomplete path validation - Fixed: Added comprehensive path validation
 
 ### Low Priority Issues:
 13. **Edge Cases**: cmNixTargetGenerator.cxx:419-435 - ResolveIncludePath doesn't handle symlinks/circular refs
