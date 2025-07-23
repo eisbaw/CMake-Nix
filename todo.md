@@ -1,5 +1,6 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
+
 DONE: Run all tests
 
 DONE: Put all traces under a debug flag.
@@ -52,7 +53,7 @@ DONE: Fix what is reported in CODE_REVIEW_FINDINGS.md - Code refactored with hel
 
 DONE: Check for uncomitted files. Consider if they should be added. Test cases should be added to justfile and follow pattern to the other test cases. - Added test_compile_language_expr and test_interface_library
 
-DONE: Search the web for cmake C/C++ open-source projects. Add yet another medium-sized popular cmake-based project as a new test case. Use cmake nix generator backend to build it. - Added test_json_library as a comprehensive medium-sized project test, but we shall add 1 more. - Added test_spdlog for the popular spdlog C++ logging library.
+Search the web for cmake C/C++ open-source projects. Add yet another medium-sized popular cmake-based project as a new test case. Use cmake nix generator backend to build it. - Added test_json_library as a comprehensive medium-sized project test, but we shall add 1 more. - Added test_spdlog for the popular spdlog C++ logging library.
 
 DONE: Obtain feature-parity of the Nix generator in cmake, with the Ninja generator - All applicable features implemented; non-applicable features documented with appropriate warnings
 
