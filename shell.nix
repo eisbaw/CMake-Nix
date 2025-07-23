@@ -4,7 +4,22 @@
 }) {}) }:
 
 pkgs.mkShell {
-  buildInputs = [
-    pkgs.just
+  buildInputs = with pkgs; [
+    just
+    gcc
+    gnumake
+    zlib
+    bzip2
+    xz
+    curl
+    expat
+    jsoncpp
+    libarchive
+    rhash
+    libuv
+    nghttp2
+    zstd
+    openssl
+    pkg-config
   ];
 } 
