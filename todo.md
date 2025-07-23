@@ -1,16 +1,16 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
-Run static analysis and lint tools over the Nix generator backend. Add tools to shell.nix
+DONE: Run static analysis and lint tools over the Nix generator backend. Add tools to shell.nix
 
 DONE: Ensure we have have good tests of CMAKE_NIX_EXPLICIT_SOURCES=ON .
 
 DONE: Grep justfiles for for nix-build commands that allow failure. Fix the failures. 
 
-Search the web and add a opensource large-sized popular cmake-based project as a new test case.
+DONE: Search the web and add a opensource large-sized popular cmake-based project as a new test case.
 
-Search the web for open-source project that uses cmake, and is not in cmake.
+DONE: Search the web for open-source project that uses cmake, and is not in cmake.
 
-Add zephyr rtos as cmake-based test case. Build for x86.
+DONE: Add zephyr rtos as cmake-based test case. Build for x86.
 
 Add zephyr rtos as cmake-based test case. Build for ARM via cross-compiler.
 
