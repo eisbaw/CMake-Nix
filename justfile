@@ -91,6 +91,12 @@ mod test_opencv
 # ASM language support test
 mod test_asm_language
 
+# Precompiled headers test
+mod test_pch
+
+# Unity build test
+mod test_unity_build
+
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
     ./bootstrap --parallel=$(nproc) --no-system-curl -- -DCMAKE_USE_OPENSSL=OFF -DCMAKE_USE_SYSTEM_ZLIB=OFF
@@ -163,6 +169,8 @@ test-all:
     just test_json_library::run
     just test_spdlog::test
     -just test_asm_language::run  # ASM language not yet supported
+    just test_pch::run
+    just test_unity_build::run
     # just test_fmt_library::run  # Skip - incomplete test
     # just test_zephyr_rtos::run  # Skip - requires specific Python environment
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself

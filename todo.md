@@ -367,3 +367,36 @@ DONE: All feature tests passing with `just dev`
 - Security vulnerability testing
 - Performance benchmarks
 
+
+## NEW CODE REVIEW FINDINGS (2025-07-23 Updated):
+
+### Performance Issues to Fix:
+1. **String Concatenation in Loops**: cmGlobalNixGenerator.cxx:157-198 - Multiple string concatenations using += in loops without pre-reservation
+2. **Inefficient Algorithm O(n²)**: cmGlobalNixGenerator.cxx:396-410 - Nested loop for building dependency graph
+3. **Cache Recreation**: cmGlobalNixGenerator.cxx:1592-1616 - GetCachedLibraryDependencies recreates target generator despite cache
+
+### Code Duplication to Fix:
+1. **Library Dependency Processing**: Duplicated logic in cmGlobalNixGenerator.cxx:869-894 and 1052-1092
+2. **Compiler Detection Logic**: Duplicated between GetCompilerPackage and GetCompilerCommand
+
+### Minor Issues to Fix:
+1. **Resource Leak**: cmNixTargetGenerator.cxx:536 - File close errors not checked
+2. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456  
+3. **Style Inconsistency**: Debug output prefixes vary ([NIX-TRACE] vs [DEBUG])
+4. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without named constant
+5. **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping
+
+### Test Directories Ready to Add:
+- test_pch (has justfile with run target)
+- test_unity_build (has justfile with run target)
+
+### Missing Test Coverage:
+1. **Unit Tests**: No unit tests for cmGlobalNixGenerator, cmLocalNixGenerator, cmNixTargetGenerator
+2. **Thread Safety Tests**: No tests for parallel builds with mutable cache access
+3. **Error Recovery Tests**: No tests for build failures, permission errors, disk full
+4. **Scale Tests**: No tests with 1000+ files or deep directory hierarchies
+5. **Unity Build Tests**: Warning implemented but not tested
+6. **Cross-compilation Tests**: CMAKE_CROSSCOMPILING logic not tested
+7. **Circular Dependency Tests**: Detection exists but not tested for regular targets
+8. **Complex Custom Command Tests**: WORKING_DIRECTORY, VERBATIM, multiple outputs not tested
+
