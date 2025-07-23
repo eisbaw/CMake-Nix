@@ -137,6 +137,34 @@ void cmNixWriter::WriteFilesetUnion(const std::string& name,
   WriteIndented(indentLevel, "];");
 }
 
+void cmNixWriter::WriteFilesetUnionSrcAttribute(const std::vector<std::string>& files,
+                                               int indentLevel)
+{
+  if (files.empty()) {
+    WriteIndented(indentLevel, "src = ./.;");
+    return;
+  }
+  
+  // For single files, we need to use fileset.toSource
+  if (files.size() == 1) {
+    WriteIndented(indentLevel, "src = lib.fileset.toSource {");
+    WriteIndented(indentLevel + 1, "root = ./.;");
+    WriteIndented(indentLevel + 1, "fileset = ./" + files[0] + ";");
+    WriteIndented(indentLevel, "};");
+    return;
+  }
+  
+  // For multiple files, use fileset union with toSource
+  WriteIndented(indentLevel, "src = lib.fileset.toSource {");
+  WriteIndented(indentLevel + 1, "root = ./.;");
+  WriteIndented(indentLevel + 1, "fileset = lib.fileset.unions [");
+  for (const auto& file : files) {
+    WriteIndented(indentLevel + 2, "./" + file);
+  }
+  WriteIndented(indentLevel + 1, "];");
+  WriteIndented(indentLevel, "};");
+}
+
 void cmNixWriter::StartLetBinding(int indentLevel)
 {
   WriteIndented(indentLevel, "let");

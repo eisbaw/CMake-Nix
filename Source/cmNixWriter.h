@@ -55,6 +55,8 @@ public:
   void WriteFilesetUnion(const std::string& name, 
                         const std::vector<std::string>& files,
                         int indentLevel = 2);
+  void WriteFilesetUnionSrcAttribute(const std::vector<std::string>& files,
+                                    int indentLevel = 2);
   
   // Let binding helpers
   void StartLetBinding(int indentLevel = 0);

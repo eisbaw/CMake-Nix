@@ -938,24 +938,40 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
     
     // Add dependencies (headers)
-    for (const auto& dep : dependencies) {
-      // Skip system headers and non-existent files
-      if (!cmSystemTools::FileIsFullPath(dep)) {
-        continue;
+    // Note: headers from ObjectDerivation are already computed and stored
+    for (const auto& dep : headers) {
+      // Convert absolute path to relative if needed
+      std::string relDep;
+      if (cmSystemTools::FileIsFullPath(dep)) {
+        relDep = cmSystemTools::RelativePath(
+          this->GetCMakeInstance()->GetHomeDirectory(), dep);
+      } else {
+        relDep = dep;
       }
-      if (!cmSystemTools::FileExists(dep)) {
-        continue;
-      }
-      std::string relDep = cmSystemTools::RelativePath(
-        this->GetCMakeInstance()->GetHomeDirectory(), dep);
+      
+      // Only add if it's within the project and exists
       if (!relDep.empty() && relDep.find("../") != 0) {
-        fileList.push_back(relDep);
+        // Verify file exists (unless it's generated)
+        std::string fullPath = dep;
+        if (!cmSystemTools::FileIsFullPath(dep)) {
+          fullPath = this->GetCMakeInstance()->GetHomeDirectory();
+          fullPath += "/";
+          fullPath += dep;
+        }
+        
+        if (cmSystemTools::FileExists(fullPath) || source->GetIsGenerated()) {
+          fileList.push_back(relDep);
+        }
       }
     }
     
-    // For now, use the entire directory to ensure tests pass
-    // TODO: Implement proper fileset union support that handles single files correctly
-    writer.WriteSourceAttribute("./.");
+    // Use fileset union for minimal source sets
+    if (!fileList.empty()) {
+      writer.WriteFilesetUnionSrcAttribute(fileList);
+    } else {
+      // Fallback if no files detected
+      writer.WriteSourceAttribute("./.");
+    }
   }
   
   // Get external library dependencies for compilation (headers)
