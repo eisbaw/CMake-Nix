@@ -2,11 +2,11 @@
 
 
 
-(cd test_zephyr_rtos/zephyr/ && nix-shell --run 'just build-via-nix') generates test_zephyr_rtos/zephyr/samples/philosophers/default.nix which has problems:
-1) We use mkDerivation for simple files and thus have to copy lot of files around both - this is very bad. Instead use fileset Unions.
-2) What does cmake "-E" "echo" "" do? It does nothing, so remove it.
-3) Why do we depend on cmake inside the derivations? That should not be nessecary as we come from cmake outside, and cmake shall produce stuff simpler than itself.
-4) Attribute name collisions, e.g. custom_include appears multiple times. Ensure we do not duplicate attribute names, or else we have to qualify them if they are not identical.
+DONE: (cd test_zephyr_rtos/zephyr/ && nix-shell --run 'just build-via-nix') generates test_zephyr_rtos/zephyr/samples/philosophers/default.nix which has problems:
+1) DONE: We use mkDerivation for simple files and thus have to copy lot of files around both - this is very bad. Instead use fileset Unions. - Fixed: CMAKE_NIX_EXPLICIT_SOURCES option available
+2) DONE: What does cmake "-E" "echo" "" do? It does nothing, so remove it. - Fixed: Skip echo commands without redirection
+3) DONE: Why do we depend on cmake inside the derivations? That should not be nessecary as we come from cmake outside, and cmake shall produce stuff simpler than itself. - Fixed: Removed cmake from buildInputs
+4) DONE: Attribute name collisions, e.g. custom_include appears multiple times. Ensure we do not duplicate attribute names, or else we have to qualify them if they are not identical. - Fixed: Generate unique derivation names based on full path
 
 
 
