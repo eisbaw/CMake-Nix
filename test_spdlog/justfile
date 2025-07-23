@@ -12,9 +12,8 @@ build-lib: configure
 build-example: configure
     cd spdlog && nix-build -A example
 
-# Build tests
-build-tests: configure
-    -cd spdlog && nix-build -A spdlog-utests || echo "Tests may require additional setup"
+# Tests are not built by default in spdlog (SPDLOG_BUILD_TESTS=OFF)
+# To enable tests, configure with -DSPDLOG_BUILD_TESTS=ON
 
 # Run example
 run-example: build-example

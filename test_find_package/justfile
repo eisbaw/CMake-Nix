@@ -12,9 +12,9 @@ build-threaded: configure
 build-compress: configure
     nix-build --no-out-link -A compress_app
 
-# Build OpenGL app (if found)
+# Build OpenGL app
 build-opengl: configure
-    nix-build --no-out-link -A opengl_app || echo "OpenGL app not built (package not found)"
+    nix-build --no-out-link -A opengl_app
 
 # Build all available targets
 build: configure
