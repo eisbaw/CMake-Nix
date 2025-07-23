@@ -134,7 +134,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
             skipNext = 2; // Skip -E and echo
           } else {
             // For other cmake commands, we might need the actual cmake
-            nixFileStream << "\"" << arg << "\"";
+            // Properly escape to prevent shell injection
+            nixFileStream << cmOutputConverter::EscapeForShell(arg, cmOutputConverter::Shell_Flag_IsUnix);
           }
         } else {
           // Properly escape arguments for shell
@@ -159,7 +160,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     nixFileStream << "      mkdir -p $out\n";
     for (const std::string& output : this->CustomCommand->GetOutputs()) {
       std::string outputFile = cmSystemTools::GetFilenameName(output);
-      nixFileStream << "      touch $out/" << outputFile << "\n";
+      std::string escapedOutputFile = cmOutputConverter::EscapeForShell(outputFile, cmOutputConverter::Shell_Flag_IsUnix);
+      nixFileStream << "      touch $out/" << escapedOutputFile << "\n";
     }
     nixFileStream << "    '';\n";
   }
@@ -171,7 +173,12 @@ std::string cmNixCustomCommandGenerator::GetDerivationName() const
 {
   // Create a unique name for the derivation based on the output file.
   // Include more of the path to avoid collisions in large projects like Zephyr
-  std::string firstOutput = this->CustomCommand->GetOutputs()[0];
+  const std::vector<std::string>& outputs = this->CustomCommand->GetOutputs();
+  if (outputs.empty()) {
+    // Return a fallback name if no outputs (shouldn't happen in valid CMake)
+    return "custom_command_no_output";
+  }
+  std::string firstOutput = outputs[0];
   return this->GetDerivationNameForPath(firstOutput);
 }
 

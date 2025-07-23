@@ -21,6 +21,7 @@
 #include "cmList.h"
 #include "cmListFileCache.h"
 #include "cmValue.h"
+#include "cmake.h"
 #include <regex>
 #include <fstream>
 #include <iostream>
@@ -260,6 +261,21 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
     if (result == 0) {
       // Parse compiler output
       dependencies = this->ParseCompilerDependencyOutput(output, source);
+    } else {
+      // Log compiler error without failing the build
+      if (this->Makefile->GetCMakeInstance()->GetDebugOutput()) {
+        std::cerr << "[DEBUG] Compiler dependency scan failed for " << source->GetFullPath() 
+                  << " with exit code " << result << std::endl;
+        if (!error.empty()) {
+          std::cerr << "[DEBUG] Compiler error: " << error << std::endl;
+        }
+      }
+    }
+  } else {
+    // Log command execution failure
+    if (this->Makefile->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[DEBUG] Failed to execute dependency scanning command for " 
+                << source->GetFullPath() << std::endl;
     }
   }
   
@@ -661,6 +677,21 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
           }
         }
       }
+    } else {
+      // Log compiler error without failing the build
+      if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+        std::cerr << "[DEBUG] Compiler header dependency scan failed for " << filePath
+                  << " with exit code " << result << std::endl;
+        if (!error.empty()) {
+          std::cerr << "[DEBUG] Compiler error: " << error << std::endl;
+        }
+      }
+    }
+  } else {
+    // Log command execution failure
+    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[DEBUG] Failed to execute header dependency scanning command for " 
+                << filePath << std::endl;
     }
   }
   
