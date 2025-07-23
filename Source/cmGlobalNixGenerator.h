@@ -19,6 +19,7 @@ class cmGeneratorTarget;
 class cmLocalGenerator;
 class cmMakefile;
 class cmake;
+class cmNixWriter;
 
 /**
  * \class cmGlobalNixGenerator
@@ -92,6 +93,11 @@ protected:
                             cmGeneratorTarget* target, cmSourceFile* source);
   void WriteLinkDerivation(cmGeneratedFileStream& nixFileStream, 
                           cmGeneratorTarget* target);
+  
+  // New helper methods for object derivation refactoring
+  void WriteObjectDerivationUsingWriter(cmNixWriter& writer, 
+                                       cmGeneratorTarget* target, 
+                                       cmSourceFile* source);
   
   // Helper methods for WriteLinkDerivation refactoring
   void WriteLinkDerivationHeader(cmGeneratedFileStream& nixFileStream,
