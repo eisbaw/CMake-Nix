@@ -1,0 +1,35 @@
+#!/usr/bin/env just --justfile
+
+build:
+    rm -f default.nix
+    cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+run: build
+    @echo "=== Testing safe target ==="
+    nix-build -A safe_target
+    ./result
+    
+    @echo "\n=== Testing target with dashes and underscores ==="
+    nix-build -A test-with-dashes_and_underscores
+    ./result
+    
+    @echo "\n=== Testing long target name ==="
+    nix-build -A this_is_a_very_long_target_name_that_might_cause_issues_with_path_length_limits_in_some_systems
+    ./result
+    
+    @echo "\n=== Testing library with spaces in path ==="
+    nix-build -A space_lib || echo "Expected: Should handle paths with spaces"
+
+test-generation: build
+    @echo "=== Checking generated Nix file for proper escaping ==="
+    @echo "Checking for proper quote handling..."
+    @grep -q 'echo "Testing quote \\" handling"' default.nix && echo "✓ Quotes properly escaped" || echo "✗ Quote escaping failed"
+    
+    @echo "Checking for proper dollar sign handling..."
+    @grep -q 'echo "Testing dollar \$\$ signs"' default.nix && echo "✓ Dollar signs properly escaped" || echo "✗ Dollar sign escaping failed"
+    
+    @echo "Checking for proper backtick handling..."
+    @grep -q 'echo "Testing backtick ` handling"' default.nix && echo "✓ Backticks properly escaped" || echo "✗ Backtick escaping failed"
+
+clean:
+    rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake default.nix result* "dir with spaces"

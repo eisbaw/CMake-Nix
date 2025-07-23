@@ -1,0 +1,17 @@
+#!/usr/bin/env just --justfile
+
+build:
+    rm -f default.nix
+    cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+run: build
+    nix-build -A fortran_hello
+    echo "=== Testing pure Fortran executable ==="
+    ./result
+    
+    nix-build -A mixed_fortran
+    echo "\n=== Testing mixed Fortran/C executable ==="
+    ./result
+
+clean:
+    rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake default.nix result*

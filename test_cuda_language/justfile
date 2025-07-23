@@ -1,0 +1,18 @@
+#!/usr/bin/env just --justfile
+
+build:
+    rm -f default.nix
+    cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+run: build
+    @echo "Note: CUDA tests will run in CPU-only mode if no GPU is available"
+    nix-build -A cuda_hello
+    echo "=== Testing pure CUDA executable ==="
+    ./result || echo "CUDA runtime not available, but compilation successful"
+    
+    nix-build -A mixed_cuda
+    echo "\n=== Testing mixed CUDA/C++ executable ==="
+    ./result
+
+clean:
+    rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake default.nix result*

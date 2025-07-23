@@ -183,3 +183,12 @@ mod test_fmt_library
 
 # Zephyr RTOS simulation test
 mod test_zephyr_rtos
+
+# Fortran language support test
+mod test_fortran_language
+
+# CUDA language support test
+mod test_cuda_language
+
+# Security test for paths with special characters
+mod test_security_paths
