@@ -1,0 +1,6 @@
+CMake Error: Could not find CMAKE_ROOT !!!
+CMake has most likely not been installed correctly.
+Modules directory not found in
+/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1
+CMake Error: Error executing cmake::LoadCache(). Aborting.
+

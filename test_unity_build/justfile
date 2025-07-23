@@ -1,0 +1,33 @@
+#!/usr/bin/env just --justfile
+
+# Test Unity Build handling with CMake Nix backend
+
+cmake_bin := "../bin/cmake"
+
+# Default target - run the test
+test: build run
+
+# Configure with CMake
+configure:
+    {{cmake_bin}} -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build 2>&1 | tee configure.log
+
+# Build both apps  
+build: configure
+    cd build && nix-build -A unity_app && nix-build -A normal_app
+
+# Run the built applications
+run: build
+    @echo "=== Running Unity Build App (should show warning) ==="
+    cd build && ./result
+    @echo ""
+    @echo "=== Running Normal App ==="
+    cd build && nix-build -A normal_app && ./result
+    
+# Clean build directory
+clean:
+    rm -rf build configure.log
+
+# Show configuration log
+show-warnings:
+    @echo "=== Checking for Unity Build warning ==="
+    @grep -i "unity" configure.log || echo "No Unity Build messages found"

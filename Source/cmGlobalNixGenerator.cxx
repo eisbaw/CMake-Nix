@@ -360,6 +360,16 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
           target->GetType() == cmStateEnums::MODULE_LIBRARY ||
           target->GetType() == cmStateEnums::OBJECT_LIBRARY) {
         
+        // Check for Unity Build and warn if enabled
+        if (target->GetPropertyAsBool("UNITY_BUILD")) {
+          this->GetCMakeInstance()->IssueMessage(
+            MessageType::WARNING,
+            cmStrCat("Unity builds are not supported by the Nix generator and will be ignored for target '",
+                     target->GetName(), 
+                     "'. The Nix backend achieves better performance through fine-grained parallelism."),
+            target->GetBacktrace());
+        }
+        
         // Get source files for this target
         std::vector<cmSourceFile*> sources;
         target->GetSourceFiles(sources, "");
@@ -375,6 +385,11 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         }
         
         for (cmSourceFile* source : sources) {
+          // Skip Unity-generated source files as we don't support Unity builds
+          if (source->GetProperty("UNITY_SOURCE_FILE")) {
+            continue;
+          }
+          
           std::string const& lang = source->GetLanguage();
           if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA") {
             std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
@@ -895,8 +910,13 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   }
   
   for (cmSourceFile* source : sources) {
+    // Skip Unity-generated source files as we don't support Unity builds
+    if (source->GetProperty("UNITY_SOURCE_FILE")) {
+      continue;
+    }
+    
     std::string const& lang = source->GetLanguage();
-    if (lang == "C" || lang == "CXX") {
+    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA") {
       // Exclude PCH source files from linking
       if (pchSources.find(source->GetFullPath()) == pchSources.end()) {
         std::string objDerivName = this->GetDerivationName(

@@ -1,0 +1,1 @@
+/nix/store/x9d49vaqlrkw97p9ichdwrnbh013kq7z-bash-interactive-5.2p37/bin/bash: line 1: ../bin/cmake: No such file or directory
