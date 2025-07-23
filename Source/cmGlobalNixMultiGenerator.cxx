@@ -241,7 +241,15 @@ void cmGlobalNixMultiGenerator::WriteObjectDerivationForConfig(
   // Write the derivation directly
   nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << objectName << "\";\n";
-  nixFileStream << "    src = ./.;\n";
+  
+  // Handle source specification
+  if (this->UseExplicitSources()) {
+    // Write explicit source derivation using already computed dependencies
+    std::string projectSourceRelPath = ""; // Multi-generator always uses project root
+    this->WriteExplicitSourceDerivation(nixFileStream, source->GetFullPath(), dependencies, projectSourceRelPath);
+  } else {
+    nixFileStream << "    src = ./.;\n";
+  }
   
   // Use the correct compiler package based on language
   std::string compilerPkg = this->GetCompilerPackage(lang);

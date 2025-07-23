@@ -128,6 +128,13 @@ protected:
   // Compiler detection methods
   std::string GetCompilerPackage(const std::string& lang) const;
 
+protected:
+  bool UseExplicitSources() const;
+  void WriteExplicitSourceDerivation(cmGeneratedFileStream& nixFileStream,
+                                    const std::string& sourceFile,
+                                    const std::vector<std::string>& dependencies,
+                                    const std::string& projectSourceRelPath);
+
 private:
   std::vector<std::string> GetSourceDependencies(std::string const& sourceFile) const;
   std::string GetCompilerCommand(const std::string& lang) const;

@@ -654,14 +654,24 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     nixFileStream << "    '';\n";
   } else {
     // Regular project source
-    if (projectSourceRelPath.empty()) {
-      nixFileStream << "    src = ./.;\n";
+    if (this->UseExplicitSources()) {
+      // Get dependencies for this source file
+      auto targetGen = cmNixTargetGenerator::New(target);
+      std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
+      
+      // Write explicit source derivation
+      this->WriteExplicitSourceDerivation(nixFileStream, sourceFile, dependencies, projectSourceRelPath);
     } else {
-      // Remove trailing slash if present
-      if (!projectSourceRelPath.empty() && projectSourceRelPath.back() == '/') {
-        projectSourceRelPath.pop_back();
+      // Use entire directory (old behavior)
+      if (projectSourceRelPath.empty()) {
+        nixFileStream << "    src = ./.;\n";
+      } else {
+        // Remove trailing slash if present
+        if (!projectSourceRelPath.empty() && projectSourceRelPath.back() == '/') {
+          projectSourceRelPath.pop_back();
+        }
+        nixFileStream << "    src = ./" << projectSourceRelPath << ";\n";
       }
-      nixFileStream << "    src = ./" << projectSourceRelPath << ";\n";
     }
   }
   
@@ -1475,4 +1485,74 @@ bool cmGlobalNixGenerator::cmNixDependencyGraph::HasCircularDependency() const {
 
 void cmGlobalNixGenerator::cmNixDependencyGraph::Clear() {
   nodes.clear();
+}
+
+bool cmGlobalNixGenerator::UseExplicitSources() const
+{
+  // Check if CMAKE_NIX_EXPLICIT_SOURCES is set in cache
+  cmValue value = this->GetCMakeInstance()->GetState()->GetCacheEntryValue(
+    "CMAKE_NIX_EXPLICIT_SOURCES");
+  return value && cmIsOn(*value);
+}
+
+void cmGlobalNixGenerator::WriteExplicitSourceDerivation(
+  cmGeneratedFileStream& nixFileStream,
+  const std::string& sourceFile,
+  const std::vector<std::string>& dependencies,
+  const std::string& projectSourceRelPath)
+{
+  // Build the list of files to include in the source derivation
+  std::set<std::string> filesToInclude;
+  
+  // Add the source file itself
+  filesToInclude.insert(sourceFile);
+  
+  // Add all dependencies (headers)
+  for (const auto& dep : dependencies) {
+    filesToInclude.insert(dep);
+  }
+  
+  // Generate a unique name for this source derivation
+  std::size_t hash = std::hash<std::string>{}(sourceFile);
+  std::stringstream ss;
+  ss << std::hex << hash;
+  std::string sourceDerivName = "src_" + ss.str().substr(0, 8);
+  
+  // Write the source derivation using symlinkJoin
+  nixFileStream << "    src = stdenv.mkDerivation {\n";
+  nixFileStream << "      name = \"" << sourceDerivName << "\";\n";
+  nixFileStream << "      dontUnpack = true;\n";
+  nixFileStream << "      buildPhase = ''\n";
+  nixFileStream << "        mkdir -p $out\n";
+  
+  // Copy each file to the output, preserving directory structure
+  std::string baseDir = this->GetCMakeInstance()->GetHomeDirectory();
+  for (const auto& file : filesToInclude) {
+    // Make sure the path is absolute
+    std::string absPath = file;
+    if (!cmSystemTools::FileIsFullPath(absPath)) {
+      absPath = baseDir + "/" + file;
+    }
+    
+    // Skip if file doesn't exist (might be system header)
+    if (!cmSystemTools::FileExists(absPath)) {
+      continue;
+    }
+    
+    std::string relPath = cmSystemTools::RelativePath(baseDir, absPath);
+    std::string dirPath = cmSystemTools::GetFilenamePath(relPath);
+    
+    if (!dirPath.empty()) {
+      nixFileStream << "        mkdir -p $out/" << dirPath << "\n";
+    }
+    nixFileStream << "        cp ${./";
+    if (!projectSourceRelPath.empty()) {
+      nixFileStream << projectSourceRelPath << "/";
+    }
+    nixFileStream << relPath << "} $out/" << relPath << "\n";
+  }
+  
+  nixFileStream << "      '';\n";
+  nixFileStream << "      installPhase = \"true\";\n";
+  nixFileStream << "    };\n";
 } 

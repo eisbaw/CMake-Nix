@@ -1,8 +1,8 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
-Run all tests
+DONE: Run all tests
 
-Put all traces under a debug flag.
+DONE: Put all traces under a debug flag.
 
 Make a flag to generativations with specific explicit src attribute (using fs union), instead of whole dir (i.e. `src = ./.` is bad and causes too much hashing and rebuild even if a readme.md changes).
 
