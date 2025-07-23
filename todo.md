@@ -1,6 +1,152 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
 
+
+#############################
+
+## NEW HIGH PRIORITY ISSUE (2025-01-29):
+
+### Improve Nix Derivation Source Attributes to Use Minimal Filesets
+
+**Problem**: Currently all object file derivations use `src = ./.` which includes the entire directory in the Nix store hash. This causes unnecessary rebuilds when any unrelated file in the directory changes (e.g., README.md, other source files, etc).
+
+**Current State**: 
+```bash
+grep "src = " $(fd -u default.nix) | grep -c "src = ./."
+# Result: 106 out of ~115 total src attributes use whole directory
+```
+
+**Desired State**:
+- Each object derivation should only include its specific source file and the headers it depends on
+- Use Nix fileset unions to create minimal source sets
+- Example for main.o derivation:
+  ```nix
+  src = fileset.toSource {
+    root = ./.;
+    fileset = fileset.unions [
+      ./main.c
+      ./include/header1.h
+      ./include/header2.h
+    ];
+  };
+  ```
+
+**Implementation Notes**:
+- The code for fileset unions was already partially implemented but commented out in cmGlobalNixGenerator.cxx lines 210-222
+- Need to properly handle single source files vs directories
+- Must include all transitively dependent headers (already tracked by GetTransitiveDependencies)
+- Consider using `builtins.path` with a filter function as an alternative to filesets
+
+**Benefits**:
+- Significantly reduced rebuilds when editing unrelated files
+- Smaller Nix store paths (only relevant files)
+- Better caching and faster CI builds
+- More precise dependency tracking
+
+**Priority**: HIGH - This is a performance regression from the intended design
+
+
+### Improve Generated Nix Code Quality with DRY Principles
+
+**Problem**: Generated default.nix files have massive code duplication and several code smells that make them fragile and hard to maintain.
+
+**Code Smells Identified**:
+1. **Massive Duplication**: Every compilation derivation repeats identical boilerplate
+2. **Unused Attributes**: `propagatedInputs` is set but not actually used for dependency tracking
+3. **Hardcoded Patterns**: `dontFixup = true;` and `installPhase = "true";` repeated everywhere
+4. **Inconsistent Output**: Some derivations use `$out` as file, others as directory
+5. **No Error Handling**: Compilation failures not properly handled
+6. **Fragile Commands**: String concatenation for build commands is error-prone
+
+**Current State Example**:
+```nix
+calculator_test_multifile_main_c_o = stdenv.mkDerivation {
+  name = "main.o";
+  src = ./.;
+  buildInputs = [ gcc ];
+  dontFixup = true;
+  propagatedInputs = [ ./math.h ];  # Not actually used!
+  buildPhase = ''
+    gcc -c -O3 -DNDEBUG "main.c" -o "$out"
+  '';
+  installPhase = "true";
+};
+```
+
+**Desired State - DRY with Helper Functions**:
+```nix
+let
+  # Compilation helper function
+  cmakeNixCC = { name, source, flags ? "", deps ? [], headers ? [] }: 
+    stdenv.mkDerivation {
+      inherit name;
+      src = fileset.toSource {
+        root = ./.;
+        fileset = fileset.unions ([ source ] ++ headers);
+      };
+      buildInputs = [ gcc ] ++ deps;
+      dontFixup = true;
+      buildPhase = ''
+        mkdir -p "$(dirname "$out")"
+        gcc -c ${flags} "${source}" -o "$out" || exit 1
+      '';
+      installPhase = "true";
+    };
+  
+  # Linking helper function
+  cmakeNixLD = { name, objects, type ? "executable", flags ? "", libs ? [] }:
+    stdenv.mkDerivation {
+      inherit name objects;
+      buildInputs = [ gcc ] ++ libs;
+      dontUnpack = true;
+      buildPhase = 
+        if type == "static" then ''
+          ar rcs "$out" $objects
+        '' else if type == "shared" then ''
+          mkdir -p $out
+          gcc -shared ${flags} $objects -o $out/lib${name}.so
+        '' else ''
+          gcc ${flags} $objects ${lib.concatMapStrings (l: "${l} ") libs} -o "$out"
+        '';
+      installPhase = "true";
+    };
+in
+  # Usage becomes much cleaner:
+  calculator_main_o = cmakeNixCC {
+    name = "main.o";
+    source = "main.c";
+    headers = [ ./math.h ];
+    flags = "-O3 -DNDEBUG";
+  };
+  
+  link_calculator = cmakeNixLD {
+    name = "calculator";
+    objects = [ 
+        calculator_main_o
+        calculator_math_o
+    ];
+  };
+```
+
+**Benefits**:
+- 50-70% reduction in generated code size
+- Consistent error handling and output paths
+- Easier to maintain and debug
+- Better abstraction of build logic
+- Simpler to add new features
+
+**Implementation Notes**:
+- Define helper functions at the top of generated default.nix
+- Functions should handle all target types (executable, static, shared)
+- Include proper error handling and mkdir -p for outputs
+- Consider platform-specific variations (though Nix is Unix-only)
+
+**Priority**: MEDIUM-HIGH - Improves maintainability and reduces fragility
+
+
+#############################
+
+
 DONE: Refactor Nix generator: Make functions that prints Nix lists, derivations, etc - so it doesnt become a jumble of string concat cout - but so the code becomes more readable and intentful.
 
 DONE: Make sure Nix derivations use src = fileset union, rather than all files, or at least globbing - e.g. "all .c files" or "all .py" files.
