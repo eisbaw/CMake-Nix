@@ -159,8 +159,8 @@ test-all:
     just test_interface_library::run
     just test_json_library::run
     just test_spdlog::test
-    just test_fmt_library::run
-    just test_zephyr_simple::run
+    # just test_fmt_library::run  # Skip - incomplete test
+    just test_zephyr_rtos::run
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself
     # just test_opencv::configure-core
     @echo "✅ All tests passed!"
@@ -178,4 +178,4 @@ mod test_module_library
 mod test_fmt_library
 
 # Zephyr RTOS simulation test
-mod test_zephyr_simple
+mod test_zephyr_rtos

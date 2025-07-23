@@ -10,6 +10,7 @@
 #include "cmMakefile.h"
 #include "cmSystemTools.h"
 #include <set>
+#include <cctype>
 
 cmNixCustomCommandGenerator::cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config)
   : CustomCommand(cc)
@@ -22,69 +23,178 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
 {
   nixFileStream << "  " << this->GetDerivationName() << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << this->GetDerivationName() << "\";\n";
-  nixFileStream << "    buildInputs = [ pkgs.coreutils pkgs.cmake";
+  
+  // Check if we need any build inputs
+  bool needsCoreutils = false;
+  bool hasNonEchoCommands = false;
+  
+  // Analyze commands to determine what tools we need
+  for (const auto& commandLine : this->CustomCommand->GetCommandLines()) {
+    if (!commandLine.empty()) {
+      const std::string& cmd = commandLine[0];
+      // Check if this is a cmake -E echo command with redirection
+      if (commandLine.size() >= 3 && cmd.find("cmake") != std::string::npos && 
+          commandLine[1] == "-E" && commandLine[2] == "echo") {
+        // Only skip if there's no shell redirection
+        bool hasRedirection = false;
+        for (const auto& arg : commandLine) {
+          if (arg == ">" || arg == ">>") {
+            hasRedirection = true;
+            break;
+          }
+        }
+        if (!hasRedirection) {
+          continue;
+        }
+      }
+      hasNonEchoCommands = true;
+      needsCoreutils = true;
+    }
+  }
+  
+  // Only include necessary build inputs
+  nixFileStream << "    buildInputs = [";
+  if (needsCoreutils) {
+    nixFileStream << " pkgs.coreutils";
+  }
   
   // Add dependencies on other custom commands
   std::vector<std::string> depends = this->GetDepends();
+  std::set<std::string> uniqueDepends;
   for (const std::string& dep : depends) {
-    // Check if this dependency is a custom command output
-    std::string depDerivName = "custom_" + cmSystemTools::GetFilenameWithoutExtension(dep);
-    nixFileStream << " " << depDerivName;
-  }
-  
-  nixFileStream << "];\n";
-  nixFileStream << "    phases = [ \"buildPhase\" ];\n";
-  nixFileStream << "    buildPhase = ''\n";
-  nixFileStream << "      mkdir -p $out\n";
-  
-  // Copy dependent files from other custom command outputs
-  for (const std::string& dep : depends) {
-    std::string depDerivName = "custom_" + cmSystemTools::GetFilenameWithoutExtension(dep);
-    std::string depFile = cmSystemTools::GetFilenameName(dep);
-    nixFileStream << "      cp ${" << depDerivName << "}/" << depFile << " .\n";
-  }
-  
-  nixFileStream << "";
-
-  // Execute commands with proper shell handling
-  for (const auto& commandLine : this->CustomCommand->GetCommandLines()) {
-    nixFileStream << "      ";
-    bool first = true;
-    for (const std::string& arg : commandLine) {
-      if (!first) {
-        nixFileStream << " ";
-      }
-      first = false;
-      
-      // Handle shell operators properly
-      if (arg == ">" || arg == ">>" || arg == "<" || arg == "|" || arg == "&&" || arg == "||") {
-        nixFileStream << arg;
-      } else if (arg.find("/cmake") != std::string::npos && arg.find("/bin/cmake") != std::string::npos) {
-        // Replace absolute cmake paths with just "cmake" from nixpkgs
-        nixFileStream << "cmake";
-      } else {
-        // Quote arguments that aren't shell operators
-        nixFileStream << "\"" << arg << "\"";
-      }
+    // Generate a unique derivation name for this dependency
+    std::string depDerivName = this->GetDerivationNameForPath(dep);
+    if (uniqueDepends.insert(depDerivName).second) {
+      nixFileStream << " " << depDerivName;
     }
-    nixFileStream << "\n";
   }
+  
+  nixFileStream << " ];\n";
+  
+  // For custom commands, we don't need to copy the entire source tree
+  // Only include the specific files we need
+  if (hasNonEchoCommands) {
+    nixFileStream << "    phases = [ \"buildPhase\" ];\n";
+    nixFileStream << "    buildPhase = ''\n";
+    nixFileStream << "      mkdir -p $out\n";
+    
+    // Copy dependent files from other custom command outputs
+    for (const std::string& dep : depends) {
+      std::string depDerivName = this->GetDerivationNameForPath(dep);
+      std::string depFile = cmSystemTools::GetFilenameName(dep);
+      nixFileStream << "      cp ${" << depDerivName << "}/" << depFile << " .\n";
+    }
+    
+    // Execute commands with proper shell handling
+    for (const auto& commandLine : this->CustomCommand->GetCommandLines()) {
+      if (commandLine.empty()) continue;
+      
+      // Check if this is a cmake -E echo command with redirection
+      if (commandLine.size() >= 3 && commandLine[0].find("cmake") != std::string::npos && 
+          commandLine[1] == "-E" && commandLine[2] == "echo") {
+        // Only skip if there's no shell redirection
+        bool hasRedirection = false;
+        for (const auto& arg : commandLine) {
+          if (arg == ">" || arg == ">>") {
+            hasRedirection = true;
+            break;
+          }
+        }
+        if (!hasRedirection) {
+          continue;
+        }
+      }
+      
+      nixFileStream << "      ";
+      bool first = true;
+      int skipNext = 0;
+      for (size_t i = 0; i < commandLine.size(); ++i) {
+        const std::string& arg = commandLine[i];
+        
+        // Skip -E and echo arguments after cmake command
+        if (skipNext > 0) {
+          skipNext--;
+          continue;
+        }
+        
+        if (!first) {
+          nixFileStream << " ";
+        }
+        first = false;
+        
+        // Handle shell operators properly
+        if (arg == ">" || arg == ">>" || arg == "<" || arg == "|" || arg == "&&" || arg == "||") {
+          nixFileStream << arg;
+        } else if (arg.find("/cmake") != std::string::npos && arg.find("/bin/cmake") != std::string::npos) {
+          // Replace absolute cmake paths with echo for -E echo commands
+          if (commandLine.size() >= 3 && commandLine[1] == "-E" && commandLine[2] == "echo") {
+            nixFileStream << "echo";
+            skipNext = 2; // Skip -E and echo
+          } else {
+            // For other cmake commands, we might need the actual cmake
+            nixFileStream << "\"" << arg << "\"";
+          }
+        } else {
+          // Quote arguments that aren't shell operators
+          nixFileStream << "\"" << arg << "\"";
+        }
+      }
+      nixFileStream << "\n";
+    }
 
-  // Copy outputs to derivation output
-  for (const std::string& output : this->CustomCommand->GetOutputs()) {
-    std::string outputFile = cmSystemTools::GetFilenameName(output);
-    nixFileStream << "      cp " << outputFile << " $out/" << outputFile << "\n";
+    // Copy outputs to derivation output
+    for (const std::string& output : this->CustomCommand->GetOutputs()) {
+      std::string outputFile = cmSystemTools::GetFilenameName(output);
+      nixFileStream << "      cp " << outputFile << " $out/" << outputFile << "\n";
+    }
+
+    nixFileStream << "    '';\n";
+  } else {
+    // If all commands were just echo commands, create an empty output
+    nixFileStream << "    phases = [ \"installPhase\" ];\n";
+    nixFileStream << "    installPhase = ''\n";
+    nixFileStream << "      mkdir -p $out\n";
+    for (const std::string& output : this->CustomCommand->GetOutputs()) {
+      std::string outputFile = cmSystemTools::GetFilenameName(output);
+      nixFileStream << "      touch $out/" << outputFile << "\n";
+    }
+    nixFileStream << "    '';\n";
   }
-
-  nixFileStream << "    '';\n";
+  
   nixFileStream << "  };\n\n";
 }
 
 std::string cmNixCustomCommandGenerator::GetDerivationName() const
 {
   // Create a unique name for the derivation based on the output file.
-  // This assumes that the first output file is unique enough.
-  return "custom_" + cmSystemTools::GetFilenameWithoutExtension(this->CustomCommand->GetOutputs()[0]);
+  // Include more of the path to avoid collisions in large projects like Zephyr
+  std::string firstOutput = this->CustomCommand->GetOutputs()[0];
+  return this->GetDerivationNameForPath(firstOutput);
+}
+
+std::string cmNixCustomCommandGenerator::GetDerivationNameForPath(const std::string& path) const
+{
+  // Create a sanitized derivation name from a path
+  // Replace directory separators and special chars with underscores
+  std::string result = "custom_";
+  
+  // Get relative path if possible for better names
+  std::string cleanPath = path;
+  if (cmSystemTools::FileIsFullPath(cleanPath)) {
+    cleanPath = cmSystemTools::RelativePath(
+      this->LocalGenerator->GetCurrentSourceDirectory(), cleanPath);
+  }
+  
+  // Replace problematic characters
+  for (char c : cleanPath) {
+    if (c == '/' || c == '\\' || c == '.' || c == '-' || c == ' ') {
+      result += '_';
+    } else if (std::isalnum(c)) {
+      result += c;
+    }
+  }
+  
+  return result;
 }
 
 std::vector<std::string> cmNixCustomCommandGenerator::GetOutputs() const

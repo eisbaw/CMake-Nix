@@ -22,6 +22,8 @@ public:
   std::vector<std::string> GetDepends() const;
 
 private:
+  std::string GetDerivationNameForPath(const std::string& path) const;
+  
   cmCustomCommand const* CustomCommand;
   cmLocalGenerator* LocalGenerator;
   std::string Config;
