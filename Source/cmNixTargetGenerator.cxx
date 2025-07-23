@@ -370,6 +370,22 @@ std::vector<std::string> cmNixTargetGenerator::GetCompileFlags(
     cmExpandList(configFlags, flags);
   }
   
+  // Get target-specific compile definitions
+  std::set<std::string> defines;
+  this->LocalGenerator->GetTargetDefines(this->GeneratorTarget, config, lang, defines);
+  for (const std::string& define : defines) {
+    flags.push_back("-D" + define);
+  }
+  
+  // Get target-specific compile options (including those from COMPILE_LANGUAGE expressions)
+  std::vector<BT<std::string>> compileOpts = this->LocalGenerator->GetTargetCompileFlags(
+    this->GeneratorTarget, config, lang, "");
+  for (const auto& opt : compileOpts) {
+    if (!opt.Value.empty()) {
+      cmExpandList(opt.Value, flags);
+    }
+  }
+  
   return flags;
 }
 
