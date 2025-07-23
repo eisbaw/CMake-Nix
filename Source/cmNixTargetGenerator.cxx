@@ -603,6 +603,16 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
     return dependencies;
   }
   
+  // Check cache first
+  auto cacheIt = this->TransitiveDependencyCache.find(filePath);
+  if (cacheIt != this->TransitiveDependencyCache.end()) {
+    // Return cached dependencies, but still need to mark them as visited
+    for (const auto& dep : cacheIt->second) {
+      visited.insert(dep);
+    }
+    return cacheIt->second;
+  }
+  
   // Determine the language based on file extension
   std::string ext = cmSystemTools::GetFilenameLastExtension(filePath);
   std::string lang;
@@ -759,6 +769,9 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
     std::vector<std::string> transDeps = this->GetTransitiveDependencies(absPath, visited, depth + 1);
     dependencies.insert(dependencies.end(), transDeps.begin(), transDeps.end());
   }
+  
+  // Cache the result before returning
+  this->TransitiveDependencyCache[filePath] = dependencies;
   
   return dependencies;
 } // PCH implementation methods for cmNixTargetGenerator

@@ -105,4 +105,7 @@ public:
 private:
   cmLocalNixGenerator* LocalGenerator;
   cmNixPackageMapper PackageMapper;
+  
+  // Cache for transitive dependencies to avoid exponential complexity
+  mutable std::map<std::string, std::vector<std::string>> TransitiveDependencyCache;
 }; 
