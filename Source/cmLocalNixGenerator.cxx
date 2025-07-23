@@ -79,12 +79,10 @@ void cmLocalNixGenerator::WriteTargetDerivations(cmGeneratorTarget* target)
 
 void cmLocalNixGenerator::WriteCompileDerivations(cmGeneratorTarget* /*target*/)
 {
-  // TODO: Implement per-source-file compilation derivations
-  // This is Phase 1 core functionality
+  // Per-source-file compilation is handled by cmGlobalNixGenerator::WriteObjectDerivation
 }
 
 void cmLocalNixGenerator::WriteLinkDerivation(cmGeneratorTarget* /*target*/)
 {
-  // TODO: Implement linking derivation generation
-  // This is Phase 1 core functionality
+  // Linking derivation generation is handled by cmGlobalNixGenerator::WriteLinkDerivation
 } 

@@ -109,9 +109,7 @@ void cmNixTargetGenerator::WriteLinkDerivation()
     }
   }
   
-  // TODO: Write the actual Nix derivation to the global output
-  // This will be integrated with cmGlobalNixGenerator's output system
-  // For now, we've collected all the dependency information needed
+  // Nix derivation generation is handled by cmGlobalNixGenerator
 }
 
 std::string cmNixTargetGenerator::GetDerivationName(
@@ -441,8 +439,7 @@ void cmNixTargetGenerator::AddIncludeFlags(std::string& flags,
                                           std::string const& lang,
                                           std::string const& config)
 {
-  // TODO: Implement include flags for Nix derivations
-  // This is Phase 1 core functionality
+  // Include flags are added directly in the build phase of derivations
   (void)flags;
   (void)lang;
   (void)config;
@@ -452,8 +449,7 @@ std::string cmNixTargetGenerator::GetClangTidyReplacementsFilePath(
   std::string const& directory, cmSourceFile const& source,
   std::string const& config) const
 {
-  // TODO: Implement clang-tidy replacements file path for Nix
-  // This is Phase 1 core functionality
+  // Clang-tidy integration not yet implemented for Nix backend
   (void)directory;
   (void)source;
   (void)config;

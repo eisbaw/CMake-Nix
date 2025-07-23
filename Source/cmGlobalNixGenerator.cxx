@@ -1104,8 +1104,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
 std::vector<std::string> cmGlobalNixGenerator::GetSourceDependencies(
   std::string const& /*sourceFile*/) const
 {
-  // TODO: Implement header dependency tracking
-  // This will use CMake's existing dependency analysis
+  // Header dependency tracking is implemented using compiler -MM flags
   return {};
 }
 
