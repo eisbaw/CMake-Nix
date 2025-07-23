@@ -1073,11 +1073,13 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
     
     // Use fileset union for minimal source sets
-    if (!fileList.empty()) {
-      writer.WriteFilesetUnionSrcAttribute(fileList);
-    } else {
-      // Fallback if no files detected
+    // But if the source file is generated, use whole directory to avoid issues
+    if (source->GetIsGenerated() || fileList.empty()) {
+      // For generated sources or when no files detected, use whole directory
       writer.WriteSourceAttribute("./.");
+    } else {
+      // For regular sources with dependencies, use minimal fileset
+      writer.WriteFilesetUnionSrcAttribute(fileList);
     }
   }
   
