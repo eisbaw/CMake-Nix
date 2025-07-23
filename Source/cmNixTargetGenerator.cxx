@@ -776,6 +776,9 @@ std::string cmNixTargetGenerator::GetPchDerivationName(
 bool cmNixTargetGenerator::NeedsPchSupport(
   std::string const& config, std::string const& language) const
 {
+  // Suppress unused parameter warning - config may be used in future
+  static_cast<void>(config);
+  
   // Check if this target has precompile headers for this language
   cmValue pchHeaders = this->GeneratorTarget->GetProperty("PRECOMPILE_HEADERS");
   if (!pchHeaders || pchHeaders->empty()) {

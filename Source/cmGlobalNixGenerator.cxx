@@ -185,7 +185,7 @@ cmGlobalNixGenerator::GenerateBuildCommand(
         }
         copyScript += "fi; ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript += "else echo '[NIX-TRACE] No location file for " + escapedTargetName + "'; ";
+          copyScript += "else echo '[NIX-TRACE] No location file for " + cmOutputConverter::EscapeForShell(escapedTargetName, cmOutputConverter::Shell_Flag_IsUnix) + "'; ";
         }
         copyScript += "fi; ";
       }
@@ -266,10 +266,10 @@ void cmGlobalNixGenerator::WriteNixFile()
   
   // Second pass: Write custom commands in dependency order
   std::set<std::string> written;
-  std::vector<const CustomCommandInfo*> orderedCommands;
+  std::vector<size_t> orderedCommands; // Store indices instead of pointers
   
   // Simple topological sort using Kahn's algorithm
-  std::map<std::string, std::vector<const CustomCommandInfo*>> dependents;
+  std::map<std::string, std::vector<size_t>> dependents; // Store indices
   std::map<std::string, int> inDegree;
   
   // Build dependency graph
@@ -277,34 +277,43 @@ void cmGlobalNixGenerator::WriteNixFile()
     inDegree[info.DerivationName] = 0;
   }
   
-  for (const auto& info : this->CustomCommands) {
+  // Build dependency graph using indices
+  for (size_t i = 0; i < this->CustomCommands.size(); ++i) {
+    const auto& info = this->CustomCommands[i];
     for (const std::string& dep : info.Depends) {
       auto depIt = this->CustomCommandOutputs.find(dep);
       if (depIt != this->CustomCommandOutputs.end()) {
-        dependents[depIt->second].push_back(&info);
-        inDegree[info.DerivationName]++;
+        // Find the index of the dependency
+        for (size_t j = 0; j < this->CustomCommands.size(); ++j) {
+          if (this->CustomCommands[j].DerivationName == depIt->second) {
+            dependents[depIt->second].push_back(i);
+            inDegree[info.DerivationName]++;
+            break;
+          }
+        }
       }
     }
   }
   
   // Find nodes with no dependencies
-  std::queue<const CustomCommandInfo*> q;
-  for (const auto& info : this->CustomCommands) {
-    if (inDegree[info.DerivationName] == 0) {
-      q.push(&info);
+  std::queue<size_t> q;
+  for (size_t i = 0; i < this->CustomCommands.size(); ++i) {
+    if (inDegree[this->CustomCommands[i].DerivationName] == 0) {
+      q.push(i);
     }
   }
   
   // Process in dependency order
   while (!q.empty()) {
-    const CustomCommandInfo* current = q.front();
+    size_t currentIdx = q.front();
     q.pop();
-    orderedCommands.push_back(current);
+    orderedCommands.push_back(currentIdx);
     
     // Reduce in-degree for dependents
-    for (const CustomCommandInfo* dependent : dependents[current->DerivationName]) {
-      if (--inDegree[dependent->DerivationName] == 0) {
-        q.push(dependent);
+    const std::string& currentName = this->CustomCommands[currentIdx].DerivationName;
+    for (size_t dependentIdx : dependents[currentName]) {
+      if (--inDegree[this->CustomCommands[dependentIdx].DerivationName] == 0) {
+        q.push(dependentIdx);
       }
     }
   }
@@ -327,35 +336,37 @@ void cmGlobalNixGenerator::WriteNixFile()
     
     // Find which commands weren't processed (part of cycles)
     std::set<std::string> processedNames;
-    for (const CustomCommandInfo* info : orderedCommands) {
-      processedNames.insert(info->DerivationName);
+    for (size_t idx : orderedCommands) {
+      processedNames.insert(this->CustomCommands[idx].DerivationName);
     }
     
-    std::vector<const CustomCommandInfo*> cyclicCommands;
-    for (const auto& info : this->CustomCommands) {
-      if (processedNames.find(info.DerivationName) == processedNames.end()) {
-        cyclicCommands.push_back(&info);
+    std::vector<size_t> cyclicCommands;
+    for (size_t i = 0; i < this->CustomCommands.size(); ++i) {
+      if (processedNames.find(this->CustomCommands[i].DerivationName) == processedNames.end()) {
+        cyclicCommands.push_back(i);
       }
     }
     
     // More debug output  
     if (this->GetCMakeInstance()->GetDebugOutput()) {
       std::cerr << "[DEBUG] Unprocessed commands: " << cyclicCommands.size() << std::endl;
-      for (const auto* cmd : cyclicCommands) {
-        std::cerr << "[DEBUG] Unprocessed: " << cmd->DerivationName << " (indegree=" << inDegree[cmd->DerivationName] << ")" << std::endl;
+      for (size_t idx : cyclicCommands) {
+        const auto& cmd = this->CustomCommands[idx];
+        std::cerr << "[DEBUG] Unprocessed: " << cmd.DerivationName << " (indegree=" << inDegree[cmd.DerivationName] << ")" << std::endl;
       }
     }
     
     msg << "Commands involved in circular dependencies (" << cyclicCommands.size() << " commands):\n";
     
     // Enhanced reporting with more context
-    for (const auto* info : cyclicCommands) {
-      msg << "  • " << info->DerivationName << "\n";
-      msg << "    Working directory: " << info->LocalGen->GetCurrentBinaryDirectory() << "\n";
+    for (size_t idx : cyclicCommands) {
+      const auto& info = this->CustomCommands[idx];
+      msg << "  • " << info.DerivationName << "\n";
+      msg << "    Working directory: " << info.LocalGen->GetCurrentBinaryDirectory() << "\n";
       
       // Show the command itself (first few words)
-      if (info->Command && !info->Command->GetCommandLines().empty()) {
-        const auto& cmdLine = info->Command->GetCommandLines()[0];
+      if (info.Command && !info.Command->GetCommandLines().empty()) {
+        const auto& cmdLine = info.Command->GetCommandLines()[0];
         if (!cmdLine.empty()) {
           std::string cmdStr = cmdLine[0];
           if (cmdLine.size() > 1) {
@@ -370,23 +381,23 @@ void cmGlobalNixGenerator::WriteNixFile()
       
       // Show outputs this command produces
       msg << "    Outputs: ";
-      if (info->Outputs.empty()) {
+      if (info.Outputs.empty()) {
         msg << "(none)";
       } else {
-        for (size_t i = 0; i < info->Outputs.size(); ++i) {
+        for (size_t i = 0; i < info.Outputs.size(); ++i) {
           if (i > 0) msg << ", ";
-          msg << cmSystemTools::GetFilenameName(info->Outputs[i]);
+          msg << cmSystemTools::GetFilenameName(info.Outputs[i]);
         }
       }
       msg << "\n";
       
       // Show dependencies this command has
       msg << "    Depends on: ";
-      if (info->Depends.empty()) {
+      if (info.Depends.empty()) {
         msg << "(none)";
       } else {
         bool first = true;
-        for (const std::string& dep : info->Depends) {
+        for (const std::string& dep : info.Depends) {
           if (!first) msg << ", ";
           first = false;
           
@@ -425,9 +436,10 @@ void cmGlobalNixGenerator::WriteNixFile()
       path.push_back(current);
       
       // Follow dependencies
-      for (const auto* info : cyclicCommands) {
-        if (info->DerivationName == current) {
-          for (const std::string& dep : info->Depends) {
+      for (size_t idx : cyclicCommands) {
+        const auto& info = this->CustomCommands[idx];
+        if (info.DerivationName == current) {
+          for (const std::string& dep : info.Depends) {
             auto depIt = this->CustomCommandOutputs.find(dep);
             if (depIt != this->CustomCommandOutputs.end()) {
               if (findCycle(depIt->second, visited, path)) {
@@ -447,9 +459,9 @@ void cmGlobalNixGenerator::WriteNixFile()
     std::set<std::string> visited;
     std::vector<std::string> path;
     bool foundCycle = false;
-    for (const auto* info : cyclicCommands) {
+    for (size_t idx : cyclicCommands) {
       if (!foundCycle) {
-        foundCycle = findCycle(info->DerivationName, visited, path);
+        foundCycle = findCycle(this->CustomCommands[idx].DerivationName, visited, path);
       }
     }
     
@@ -479,16 +491,16 @@ void cmGlobalNixGenerator::WriteNixFile()
       std::cerr << "WARNING: " << (this->CustomCommands.size() - orderedCommands.size()) << " commands have circular dependencies but will be processed anyway." << std::endl;
       
       // Process all commands regardless of dependencies - append the unprocessed ones to orderedCommands
-      for (const auto& info : this->CustomCommands) {
+      for (size_t i = 0; i < this->CustomCommands.size(); ++i) {
         bool found = false;
-        for (const CustomCommandInfo* ordered : orderedCommands) {
-          if (ordered == &info) {  // Compare pointers, not names
+        for (size_t idx : orderedCommands) {
+          if (idx == i) {
             found = true;
             break;
           }
         }
         if (!found) {
-          orderedCommands.push_back(&info);
+          orderedCommands.push_back(i);
         }
       }
       
@@ -501,7 +513,8 @@ void cmGlobalNixGenerator::WriteNixFile()
   }
   
   // Write commands in order
-  for (const CustomCommandInfo* info : orderedCommands) {
+  for (size_t idx : orderedCommands) {
+    const CustomCommandInfo* info = &this->CustomCommands[idx];
     try {
       std::string config = "Release";
       const auto& makefiles = this->GetCMakeInstance()->GetGlobalGenerator()->GetMakefiles();
@@ -588,8 +601,11 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         
         // Pre-compute and cache library dependencies for this target
         std::pair<cmGeneratorTarget*, std::string> cacheKey = {target.get(), config};
-        if (this->LibraryDependencyCache.find(cacheKey) == this->LibraryDependencyCache.end()) {
-          this->LibraryDependencyCache[cacheKey] = targetGen->GetTargetLibraryDependencies(config);
+        {
+          std::lock_guard<std::mutex> lock(this->CacheMutex);
+          if (this->LibraryDependencyCache.find(cacheKey) == this->LibraryDependencyCache.end()) {
+            this->LibraryDependencyCache[cacheKey] = targetGen->GetTargetLibraryDependencies(config);
+          }
         }
         
         for (cmSourceFile* source : sources) {
@@ -635,9 +651,12 @@ std::string cmGlobalNixGenerator::GetDerivationName(
   std::string cacheKey = targetName + "|" + sourceFile;
   
   // Check cache first
-  auto it = this->DerivationNameCache.find(cacheKey);
-  if (it != this->DerivationNameCache.end()) {
-    return it->second;
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    auto it = this->DerivationNameCache.find(cacheKey);
+    if (it != this->DerivationNameCache.end()) {
+      return it->second;
+    }
   }
   
   std::string result;
@@ -664,7 +683,10 @@ std::string cmGlobalNixGenerator::GetDerivationName(
   }
   
   // Cache the result
-  this->DerivationNameCache[cacheKey] = result;
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    this->DerivationNameCache[cacheKey] = result;
+  }
   return result;
 }
 
@@ -861,14 +883,17 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   // Get external library dependencies for compilation (headers) - use cache
   std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
   std::vector<std::string> libraryDeps;
-  auto libCacheIt = this->LibraryDependencyCache.find(cacheKey);
-  if (libCacheIt != this->LibraryDependencyCache.end()) {
-    libraryDeps = libCacheIt->second;
-  } else {
-    // Fallback: compute and cache
-    auto targetGen = cmNixTargetGenerator::New(target);
-    libraryDeps = targetGen->GetTargetLibraryDependencies(config);
-    this->LibraryDependencyCache[cacheKey] = libraryDeps;
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    auto libCacheIt = this->LibraryDependencyCache.find(cacheKey);
+    if (libCacheIt != this->LibraryDependencyCache.end()) {
+      libraryDeps = libCacheIt->second;
+    } else {
+      // Fallback: compute and cache
+      auto targetGen = cmNixTargetGenerator::New(target);
+      libraryDeps = targetGen->GetTargetLibraryDependencies(config);
+      this->LibraryDependencyCache[cacheKey] = libraryDeps;
+    }
   }
   
   // Build buildInputs list including external libraries for headers
@@ -1042,14 +1067,17 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
   std::vector<std::string> libraryDeps;
-  auto libCacheIt = this->LibraryDependencyCache.find(cacheKey);
-  if (libCacheIt != this->LibraryDependencyCache.end()) {
-    libraryDeps = libCacheIt->second;
-  } else {
-    // Fallback: compute and cache
-    auto targetGen = cmNixTargetGenerator::New(target);
-    libraryDeps = targetGen->GetTargetLibraryDependencies(config);
-    this->LibraryDependencyCache[cacheKey] = libraryDeps;
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    auto libCacheIt = this->LibraryDependencyCache.find(cacheKey);
+    if (libCacheIt != this->LibraryDependencyCache.end()) {
+      libraryDeps = libCacheIt->second;
+    } else {
+      // Fallback: compute and cache
+      auto targetGen = cmNixTargetGenerator::New(target);
+      libraryDeps = targetGen->GetTargetLibraryDependencies(config);
+      this->LibraryDependencyCache[cacheKey] = libraryDeps;
+    }
   }
   
   // Get link implementation for dependency processing
@@ -1326,9 +1354,12 @@ std::vector<std::string> cmGlobalNixGenerator::GetSourceDependencies(
 std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) const
 {
   // Check cache first
-  auto it = this->CompilerPackageCache.find(lang);
-  if (it != this->CompilerPackageCache.end()) {
-    return it->second;
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    auto it = this->CompilerPackageCache.find(lang);
+    if (it != this->CompilerPackageCache.end()) {
+      return it->second;
+    }
   }
   
   cmake* cm = this->GetCMakeInstance();
@@ -1388,16 +1419,22 @@ std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) co
   }
   
   // Cache the result
-  this->CompilerPackageCache[lang] = result;
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    this->CompilerPackageCache[lang] = result;
+  }
   return result;
 }
 
 std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) const
 {
   // Check cache first
-  auto it = this->CompilerCommandCache.find(lang);
-  if (it != this->CompilerCommandCache.end()) {
-    return it->second;
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    auto it = this->CompilerCommandCache.find(lang);
+    if (it != this->CompilerCommandCache.end()) {
+      return it->second;
+    }
   }
   
   // In Nix, we use the compiler from the Nix package
@@ -1434,7 +1471,10 @@ std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) co
   }
   
   // Cache the result
-  this->CompilerCommandCache[lang] = result;
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    this->CompilerCommandCache[lang] = result;
+  }
   return result;
 }
 

@@ -83,7 +83,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     for (const std::string& dep : depends) {
       std::string depDerivName = this->GetDerivationNameForPath(dep);
       std::string depFile = cmSystemTools::GetFilenameName(dep);
-      nixFileStream << "      cp ${" << depDerivName << "}/" << depFile << " .\n";
+      nixFileStream << "      cp ${" << depDerivName << "}/" 
+                    << cmOutputConverter::EscapeForShell(depFile, cmOutputConverter::Shell_Flag_IsUnix) << " .\n";
     }
     
     // Execute commands with proper shell handling
@@ -146,7 +147,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     // Copy outputs to derivation output
     for (const std::string& output : this->CustomCommand->GetOutputs()) {
       std::string outputFile = cmSystemTools::GetFilenameName(output);
-      nixFileStream << "      cp " << outputFile << " $out/" << outputFile << "\n";
+      std::string escapedOutputFile = cmOutputConverter::EscapeForShell(outputFile, cmOutputConverter::Shell_Flag_IsUnix);
+      nixFileStream << "      cp " << escapedOutputFile << " $out/" << escapedOutputFile << "\n";
     }
 
     nixFileStream << "    '';\n";

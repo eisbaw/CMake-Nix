@@ -7,6 +7,7 @@
 #include <iosfwd>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -158,6 +159,7 @@ private:
   mutable std::map<std::string, std::string> CompilerCommandCache;
   mutable std::map<std::pair<cmGeneratorTarget*, std::string>, std::vector<std::string>> LibraryDependencyCache;
   mutable std::map<std::string, std::string> DerivationNameCache;
+  mutable std::mutex CacheMutex; // Protects all cache maps above
   
   // Install rule tracking
   std::vector<cmGeneratorTarget*> InstallTargets;

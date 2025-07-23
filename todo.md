@@ -1,6 +1,8 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
 
+Refactor Nix generator: Make functions that prints Nix lists, derivations, 
+
 
 DONE: (cd test_zephyr_rtos/zephyr/ && nix-shell --run 'just build-via-nix') generates test_zephyr_rtos/zephyr/samples/philosophers/default.nix which has problems:
 1) DONE: We use mkDerivation for simple files and thus have to copy lot of files around both - this is very bad. Instead use fileset Unions. - Fixed: CMAKE_NIX_EXPLICIT_SOURCES option available
