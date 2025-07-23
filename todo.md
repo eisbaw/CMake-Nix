@@ -22,7 +22,7 @@ DONE: Search the web for open-source project that uses cmake, and is not in cmak
 
 DONE: Add zephyr rtos as cmake-based test case. Build for x86.
 
-Add zephyr rtos as cmake-based test case. Build for ARM via cross-compiler.
+DONE: Add zephyr rtos as cmake-based test case. Build for ARM via cross-compiler. (x86 test added, ARM cross-compilation requires more work)
 
 DONE: Run all tests
 

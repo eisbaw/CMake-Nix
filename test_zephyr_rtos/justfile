@@ -1,0 +1,14 @@
+# Zephyr RTOS Test Project
+# Test CMake Nix generator with Zephyr RTOS
+
+# Build Zephyr dining philosophers sample with Nix
+build-via-nix:
+    cd zephyr && just build-via-nix
+
+# Run the test
+run: build-via-nix
+    cd zephyr && just run
+
+# Clean generated files
+clean:
+    cd zephyr && just clean
