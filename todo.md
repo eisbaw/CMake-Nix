@@ -58,7 +58,7 @@ UPDATE (2025-07-24): Successfully refactored WriteObjectDerivation to use cmakeN
 
 ## NEW HIGH PRIORITY ISSUE (2025-01-29):
 
-### DONE: Improve Nix Derivation Source Attributes to Use Minimal Filesets
+### DONE (partially): Improve Nix Derivation Source Attributes to Use Minimal Filesets
 
 **Problem**: Currently all object file derivations use `src = ./.` which includes the entire directory in the Nix store hash. This causes unnecessary rebuilds when any unrelated file in the directory changes (e.g., README.md, other source files, etc).
 
@@ -96,6 +96,12 @@ grep "src = " $(fd -u default.nix) | grep -c "src = ./."
 - More precise dependency tracking
 
 **Priority**: HIGH - This is a performance regression from the intended design
+
+**Progress (2025-07-24)**:
+- Implemented fileset unions for regular (non-generated) source files
+- Each derivation now includes only the source file and its header dependencies
+- Generated sources still use whole directory to avoid "file does not exist" errors
+- TODO: Use lib.fileset.maybeMissing for generated files to complete this optimization
 
 
 ### DONE: Improve Generated Nix Code Quality with DRY Principles
