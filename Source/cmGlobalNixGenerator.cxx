@@ -1151,6 +1151,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     // Create lists for existing and generated files
     std::vector<std::string> existingFiles;
     std::vector<std::string> generatedFiles;
+    std::vector<std::string> configTimeGeneratedFiles;
     
     // Add the main source file
     std::string relativeSource = cmSystemTools::RelativePath(
@@ -1166,30 +1167,52 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     // Add dependencies (headers)
     // Note: headers from ObjectDerivation are already computed and stored
     for (const auto& dep : headers) {
-      // Convert absolute path to relative if needed
+      // Get full path for checking
+      std::string fullPath = dep;
+      if (!cmSystemTools::FileIsFullPath(dep)) {
+        fullPath = this->GetCMakeInstance()->GetHomeDirectory();
+        fullPath += "/";
+        fullPath += dep;
+      }
+      
+      // Check if file is in build directory
+      bool isInBuildDir = (fullPath.find(buildDir) == 0);
+      
+      // Convert to appropriate relative path
       std::string relDep;
-      if (cmSystemTools::FileIsFullPath(dep)) {
+      if (isInBuildDir) {
+        // For build directory files, make path relative to source directory
+        // since the fileset will be rooted at the source directory
+        std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+        relDep = cmSystemTools::RelativePath(srcDir, fullPath);
+      } else if (cmSystemTools::FileIsFullPath(dep)) {
+        // For source directory files, make path relative to source dir
         relDep = cmSystemTools::RelativePath(
           this->GetCMakeInstance()->GetHomeDirectory(), dep);
       } else {
         relDep = dep;
       }
       
-      // Only add if it's within the project and exists
-      if (!relDep.empty() && relDep.find("../") != 0) {
-        // Verify file exists (unless it's generated)
-        std::string fullPath = dep;
-        if (!cmSystemTools::FileIsFullPath(dep)) {
-          fullPath = this->GetCMakeInstance()->GetHomeDirectory();
-          fullPath += "/";
-          fullPath += dep;
-        }
-        
+      // Add if it's a valid relative path
+      if (!relDep.empty()) {
         if (cmSystemTools::FileExists(fullPath)) {
-          existingFiles.push_back(relDep);
-        } else if (source->GetIsGenerated()) {
-          // If the main source is generated, headers might be too
+          // Check if it's a configuration-time generated file (exists in build dir)
+          if (isInBuildDir) {
+            // This is a configuration-time generated file (like Zephyr's autoconf.h)
+            configTimeGeneratedFiles.push_back(fullPath);
+            if (this->GetCMakeInstance()->GetDebugOutput()) {
+              std::cerr << "[NIX-DEBUG] Added config-time generated header: " << fullPath << std::endl;
+            }
+          } else {
+            existingFiles.push_back(relDep);
+          }
+        } else {
+          // Header might be generated during build (custom commands)
           generatedFiles.push_back(relDep);
+          if (this->GetCMakeInstance()->GetDebugOutput()) {
+            std::cerr << "[NIX-DEBUG] Added build-time generated header: " << relDep 
+                      << " (full: " << fullPath << ")" << std::endl;
+          }
         }
       }
     }
@@ -1215,11 +1238,34 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
     }
     
-    // Use fileset union for minimal source sets with maybeMissing for generated files
-    if (existingFiles.empty() && generatedFiles.empty()) {
+    // Handle configuration-time generated files (like Zephyr's autoconf.h)
+    if (!configTimeGeneratedFiles.empty()) {
+      // Create a composite source that includes both source files and config-time generated files
+      writer.WriteIndented(2, "src = pkgs.runCommand \"composite-src-with-generated\" {} ''");
+      writer.WriteIndented(3, "mkdir -p $out");
+      
+      // Copy the source directory structure
+      writer.WriteIndented(3, "# Copy source files");
+      writer.WriteIndented(3, "cp -r ${./.}/* $out/ 2>/dev/null || true");
+      
+      // Copy configuration-time generated files to their correct locations
+      writer.WriteIndented(3, "# Copy configuration-time generated files");
+      for (const auto& genFile : configTimeGeneratedFiles) {
+        // Calculate the relative path within the build directory
+        std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
+        std::string destDir = cmSystemTools::GetFilenamePath(relPath);
+        if (!destDir.empty()) {
+          writer.WriteIndented(3, "mkdir -p $out/" + destDir);
+        }
+        writer.WriteIndented(3, "cp " + genFile + " $out/" + relPath);
+      }
+      
+      writer.WriteIndented(2, "'';");
+    } else if (existingFiles.empty() && generatedFiles.empty()) {
       // No files detected, use whole directory
       writer.WriteSourceAttribute("./.");
     } else {
+      // Use fileset union for minimal source sets with maybeMissing for generated files
       // Calculate relative path from build directory to source directory for out-of-source builds
       std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
       std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
