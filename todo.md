@@ -7,6 +7,11 @@ Once Zephyr is building with host toolchain, add ARM toolchain to our shell.nix 
 
 There are still many mkDerivations that compile C files, that are not making use of the cmakeNixCC function.
 
+UPDATE (2025-07-24): Investigation shows that cmakeNixCC helper function is defined in cmGlobalNixGenerator.cxx (lines 219-243) but not used. The following locations should be refactored:
+- cmGlobalNixMultiGenerator.cxx::WriteObjectDerivationForConfig (lines 182-309)
+- cmGlobalNixGenerator.cxx::WriteObjectDerivation (lines 836-1264)
+- Link operations should use cmakeNixLD helper (defined lines 247-294)
+
 
 #############################
 
@@ -385,6 +390,7 @@ DONE: All feature tests passing with `just dev`
 ### Code Duplication to Fix:
 1. **Library Dependency Processing**: Duplicated logic in cmGlobalNixGenerator.cxx:869-894 and 1052-1092
 2. **Compiler Detection Logic**: Duplicated between GetCompilerPackage and GetCompilerCommand
+3. **Object/Link Derivations**: cmakeNixCC and cmakeNixLD helper functions are defined but not used - inline mkDerivation blocks should be refactored to use these helpers
 
 ### Minor Issues to Fix:
 1. **Resource Leak**: cmNixTargetGenerator.cxx:536 - File close errors not checked
