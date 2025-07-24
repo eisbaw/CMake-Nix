@@ -101,7 +101,7 @@ grep "src = " $(fd -u default.nix) | grep -c "src = ./."
 - Implemented fileset unions for regular (non-generated) source files
 - Each derivation now includes only the source file and its header dependencies
 - Generated sources still use whole directory to avoid "file does not exist" errors
-- TODO: Use lib.fileset.maybeMissing for generated files to complete this optimization
+- DONE: Use lib.fileset.maybeMissing for generated files to complete this optimization
 
 
 ### DONE: Improve Generated Nix Code Quality with DRY Principles
@@ -485,11 +485,12 @@ DONE: All feature tests passing with `just dev`
 
 ### HIGH PRIORITY BUGS:
 
-4. **Incorrect Path Handling for Generated Files**:
+4. DONE: **Incorrect Path Handling for Generated Files**:
    - Location: cmGlobalNixGenerator.cxx:1224-1250
    - Issue: Generated files from custom commands use inconsistent path resolution
    - Impact: Build failures when custom commands generate files in subdirectories
    - Example: ${customCmd}/filename assumes file is in root, but may be in subdir
+   - Fixed: Path resolution now consistent between custom command generator and references
 
 5. **Missing Error Handling in Package File Creation**:
    - Location: cmNixTargetGenerator.cxx:621-660
@@ -511,11 +512,11 @@ DONE: All feature tests passing with `just dev`
    - Impact: O(2^n) complexity for deep dependency trees
    - Fix needed: Share visited set across multiple calls or use dynamic programming
 
-8. **Inefficient String Operations**:
+8. DONE: **Inefficient String Operations**:
    - Location: cmGlobalNixGenerator.cxx:162-203 (copyScript string building)
    - Issue: Multiple string concatenations in loop without reserve()
    - Impact: Quadratic time complexity for many targets
-   - Fix needed: Use ostringstream or reserve space
+   - Fixed: Now uses ostringstream for efficient string building
 
 9. **Redundant Compiler Invocations**:
    - Location: cmNixTargetGenerator.cxx:213-288
@@ -531,19 +532,19 @@ DONE: All feature tests passing with `just dev`
     - Impact: Potential for reading files outside project directory
     - Fix needed: Resolve symlinks before validation
 
-11. **Command Injection in Custom Commands**:
+11. DONE: **Command Injection in Custom Commands**:
     - Location: cmNixCustomCommandGenerator.cxx:86-87
     - Issue: EscapeForShell not applied to all parts of command construction
     - Impact: Malicious CMakeLists.txt could execute arbitrary commands
-    - Fix needed: Escape all user-provided strings
+    - Fixed: All user-provided strings are now properly escaped
 
 ### CODE QUALITY ISSUES:
 
-12. **Dead Code**:
+12. DONE: **Dead Code**:
     - Location: cmGlobalNixGenerator.cxx:213-301 (Helper functions)
     - Issue: cmakeNixCC and cmakeNixLD defined but never used
     - Impact: Confusion and maintenance burden
-    - Fix needed: Either use the helpers or remove them
+    - Fixed: Helper functions now used in both generators
 
 13. **Magic Constants**:
     - Location: Throughout codebase
