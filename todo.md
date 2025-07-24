@@ -746,3 +746,49 @@ The following refactoring opportunities were identified to improve code readabil
 4. **Low Priority**: Consistency improvements (items 46-49) - polish and maintainability
 5. **Future**: Architectural improvements (items 50-51) - long-term design improvements
 
+## REMAINING ACTIVE TODOS (2025-07-24)
+
+The following items are currently pending and need attention:
+
+### HIGH PRIORITY ISSUES
+
+52. **Fix Zephyr RTOS build issues - configuration-time generated files not tracked**:
+    - Issue: Zephyr generates header files during configuration (autoconf.h, devicetree_generated.h)
+    - Impact: Configuration-time generated files aren't tracked as custom command outputs
+    - Status: Requires investigation into CMake configuration phase vs build phase file generation
+    - Action: Need special handling for configuration-time vs build-time generated files
+
+### MEDIUM PRIORITY ISSUES
+
+53. **Fix code duplication in library dependency processing**:
+    - Location: Multiple places handling library dependencies with similar logic
+    - Issue: Repeated patterns for processing imported vs internal targets
+    - Impact: Maintenance burden, inconsistent behavior
+    - Action: Extract common dependency processing logic into shared utilities
+
+54. **Fix multi-config generator path issues for try_compile**:
+    - Location: cmGlobalNixMultiGenerator try-compile handling
+    - Issue: Multi-config generator has path issues with try_compile operations
+    - Impact: Compiler detection failures in multi-config mode
+    - Status: Try-compile fails due to absolute path usage in Nix environment
+    - Action: Fix path resolution for try-compile in multi-config generator
+
+### LOW PRIORITY ISSUES
+
+55. **Add missing test coverage for edge cases**:
+    - Issue: Gaps in test coverage for error conditions, edge cases, and failure modes
+    - Missing coverage includes:
+      - Error recovery tests (build failures, permission errors, disk full)
+      - Thread safety tests (parallel builds with mutable cache access)
+      - Scale tests (1000+ files, deep directory hierarchies)
+      - Cross-compilation tests (CMAKE_CROSSCOMPILING logic)
+      - Circular dependency tests (detection for regular targets)
+      - Complex custom command tests (WORKING_DIRECTORY, VERBATIM, multiple outputs)
+    - Action: Systematically add test cases for uncovered scenarios
+
+### NOTES:
+- Items 35-51 are refactoring opportunities for maintainability improvement
+- Items 52-55 are functional issues that need to be resolved
+- High priority items should be addressed before major refactoring work
+- Test coverage improvements can be done incrementally alongside other work
+
