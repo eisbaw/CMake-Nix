@@ -219,32 +219,39 @@ void cmGlobalNixMultiGenerator::WriteObjectDerivationForConfig(
   
   // Get configuration-specific compile flags
   std::vector<BT<std::string>> compileFlagsVec = lg->GetTargetCompileFlags(target, config, lang, "");
-  std::string compileFlags;
+  std::ostringstream compileFlagsStream;
+  bool firstFlag = true;
   for (const auto& flag : compileFlagsVec) {
-    if (!compileFlags.empty()) compileFlags += " ";
-    compileFlags += flag.Value;
+    if (!firstFlag) compileFlagsStream << " ";
+    firstFlag = false;
+    compileFlagsStream << flag.Value;
   }
+  std::string compileFlags = compileFlagsStream.str();
   
   // Get configuration-specific preprocessor definitions
   std::set<std::string> defines;
   lg->GetTargetDefines(target, config, lang, defines);
-  std::string defineFlags;
+  std::ostringstream defineFlagsStream;
+  bool firstDefine = true;
   for (const std::string& define : defines) {
-    if (!defineFlags.empty()) defineFlags += " ";
+    if (!firstDefine) defineFlagsStream << " ";
+    firstDefine = false;
     // Shell escape the define - need to handle quotes properly
-    std::string escapedDefine = "-D";
-    escapedDefine += lg->ConvertToOutputFormat(define, cmOutputConverter::SHELL);
-    defineFlags += escapedDefine;
+    defineFlagsStream << "-D" << lg->ConvertToOutputFormat(define, cmOutputConverter::SHELL);
   }
+  std::string defineFlags = defineFlagsStream.str();
   
   // Get include directories
   std::vector<std::string> includes;
   lg->GetIncludeDirectories(includes, target, lang, config);
-  std::string includeFlags;
+  std::ostringstream includeFlagsStream;
+  bool firstInclude = true;
   for (const std::string& inc : includes) {
-    if (!includeFlags.empty()) includeFlags += " ";
-    includeFlags += "-I" + lg->ConvertToOutputFormat(inc, cmOutputConverter::SHELL);
+    if (!firstInclude) includeFlagsStream << " ";
+    firstInclude = false;
+    includeFlagsStream << "-I" << lg->ConvertToOutputFormat(inc, cmOutputConverter::SHELL);
   }
+  std::string includeFlags = includeFlagsStream.str();
   
   // Get relative source path
   std::string relSourcePath = lg->MaybeRelativeToTopBinDir(sourceFile);
@@ -349,31 +356,37 @@ void cmGlobalNixMultiGenerator::WriteLinkDerivationForConfig(
   }
   
   // Get link flags
-  std::string linkFlags;
   cmLocalGenerator* lg = target->GetLocalGenerator();
+  std::ostringstream linkFlagsStream;
+  bool firstLinkFlag = true;
   
   // Get link options
   std::vector<BT<std::string>> linkOpts = target->GetLinkOptions(config, primaryLang);
   for (const auto& opt : linkOpts) {
-    if (!linkFlags.empty()) linkFlags += " ";
-    linkFlags += opt.Value;
+    if (!firstLinkFlag) linkFlagsStream << " ";
+    firstLinkFlag = false;
+    linkFlagsStream << opt.Value;
   }
   
   // Get link directories
   std::vector<BT<std::string>> linkDirs = target->GetLinkDirectories(config, primaryLang);
   for (const auto& dir : linkDirs) {
-    if (!linkFlags.empty()) linkFlags += " ";
-    linkFlags += "-L" + lg->ConvertToOutputFormat(dir.Value, cmOutputConverter::SHELL);
+    if (!firstLinkFlag) linkFlagsStream << " ";
+    firstLinkFlag = false;
+    linkFlagsStream << "-L" << lg->ConvertToOutputFormat(dir.Value, cmOutputConverter::SHELL);
   }
   
   // Get runtime path flags if needed
   if (targetType == cmStateEnums::SHARED_LIBRARY || targetType == cmStateEnums::EXECUTABLE) {
     std::string rpath;
     if (target->GetInstallRPATH(config, rpath) && !rpath.empty()) {
-      if (!linkFlags.empty()) linkFlags += " ";
-      linkFlags += "-Wl,-rpath," + rpath;
+      if (!firstLinkFlag) linkFlagsStream << " ";
+      firstLinkFlag = false;
+      linkFlagsStream << "-Wl,-rpath," << rpath;
     }
   }
+  
+  std::string linkFlags = linkFlagsStream.str();
   
   // Get library dependencies
   auto targetGen = cmNixTargetGenerator::New(target);

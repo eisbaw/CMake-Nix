@@ -503,14 +503,15 @@ std::vector<std::string> cmNixTargetGenerator::ParseCompilerDependencyOutput(
   std::string line;
   
   // Concatenate all lines (dependencies can be split across lines with \)
-  std::string fullOutput;
+  std::ostringstream fullOutputStream;
   while (std::getline(stream, line)) {
     // Remove trailing backslash and concatenate
     if (!line.empty() && line.back() == '\\') {
       line.pop_back();
     }
-    fullOutput += line + " ";
+    fullOutputStream << line << " ";
   }
+  std::string fullOutput = fullOutputStream.str();
   
   // Find the colon that separates object from dependencies
   size_t colonPos = fullOutput.find(':');
@@ -867,14 +868,15 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
         std::string line;
         
         // Concatenate all lines (dependencies can be split across lines with \)
-        std::string fullOutput;
+        std::ostringstream fullOutputStream;
         while (std::getline(stream, line)) {
           // Remove trailing backslash and concatenate
           if (!line.empty() && line.back() == '\\') {
             line.pop_back();
           }
-          fullOutput += line + " ";
+          fullOutputStream << line << " ";
         }
+        std::string fullOutput = fullOutputStream.str();
         
         // Find the colon that separates object from dependencies
         size_t colonPos = fullOutput.find(':');
