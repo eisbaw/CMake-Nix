@@ -1305,8 +1305,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       writer.WriteIndented(3, "# Copy configuration-time generated files");
       
       // Since configuration-time generated files exist in the build directory
-      // and Nix can't access them directly, we need to use builtins.path
-      // to import them into the Nix store
+      // and Nix can't access them directly with builtins.path (security restriction),
+      // we need to embed the file contents directly into the Nix expression
       for (const auto& genFile : configTimeGeneratedFiles) {
         // Calculate the relative path within the build directory
         std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
@@ -1315,9 +1315,29 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           writer.WriteIndented(3, "mkdir -p $out/" + destDir);
         }
         
-        // Create a proper Nix path reference
-        std::string fileBaseName = cmSystemTools::GetFilenameName(genFile);
-        writer.WriteIndented(3, "cp ${builtins.path { path = " + genFile + "; }} $out/" + relPath);
+        // Read the file content and embed it directly
+        cmsys::ifstream inFile(genFile.c_str(), std::ios::in | std::ios::binary);
+        if (inFile) {
+          std::ostringstream contents;
+          contents << inFile.rdbuf();
+          inFile.close();
+          
+          // Write the file content directly using a here-doc
+          writer.WriteIndented(3, "cat > $out/" + relPath + " <<'EOF'");
+          // Split content by lines and write each line
+          std::istringstream contentStream(contents.str());
+          std::string line;
+          while (std::getline(contentStream, line)) {
+            writer.WriteLine(line);
+          }
+          writer.WriteIndented(3, "EOF");
+        } else {
+          // If we can't read the file, issue a warning but continue
+          std::ostringstream msg;
+          msg << "Warning: Cannot read configuration-time generated file: " << genFile;
+          this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+          writer.WriteIndented(3, "# Warning: Could not read " + genFile);
+        }
       }
       
       writer.WriteIndented(2, "'';");
