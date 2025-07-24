@@ -433,3 +433,174 @@ DONE: All feature tests passing with `just dev`
 7. **Circular Dependency Tests**: Detection exists but not tested for regular targets
 8. **Complex Custom Command Tests**: WORKING_DIRECTORY, VERBATIM, multiple outputs not tested
 
+
+## COMPREHENSIVE CODE REVIEW (2025-07-24)
+
+### CRITICAL ISSUES:
+
+1. **Memory Leak in Dependency Graph**: 
+   - Location: cmGlobalNixGenerator.cxx:1943-2014
+   - Issue: The cmNixDependencyGraph stores mutable node data that is never cleared from cache when nodes are modified
+   - Impact: Memory grows unbounded in large projects with many targets
+   - Fix needed: Clear transitiveDepsComputed flag for all dependent nodes when adding new dependencies
+
+2. **Race Condition in Library Dependency Cache**:
+   - Location: cmGlobalNixGenerator.cxx:1800-1824
+   - Issue: GetCachedLibraryDependencies() checks cache, then computes outside lock, then writes to cache
+   - Impact: Multiple threads could compute and insert same key simultaneously
+   - Fix needed: Use double-checked locking pattern or compute inside lock
+
+3. **Unbounded Recursion Without Stack Protection**:
+   - Location: cmNixTargetGenerator.cxx:662-855 (GetTransitiveDependencies)
+   - Issue: While MAX_DEPTH exists, deep recursion could still overflow stack before hitting limit
+   - Impact: Stack overflow crash on pathological header dependency graphs
+   - Fix needed: Convert to iterative algorithm using explicit stack
+
+### HIGH PRIORITY BUGS:
+
+4. **Incorrect Path Handling for Generated Files**:
+   - Location: cmGlobalNixGenerator.cxx:1224-1250
+   - Issue: Generated files from custom commands use inconsistent path resolution
+   - Impact: Build failures when custom commands generate files in subdirectories
+   - Example: ${customCmd}/filename assumes file is in root, but may be in subdir
+
+5. **Missing Error Handling in Package File Creation**:
+   - Location: cmNixTargetGenerator.cxx:621-660
+   - Issue: CreateNixPackageFile() returns false on failure but callers ignore return value
+   - Impact: Silent failures when unable to create package files
+   - Fix needed: Propagate errors or issue warnings
+
+6. **Incomplete Escaping in Shell Commands**:
+   - Location: cmNixCustomCommandGenerator.cxx:110-145
+   - Issue: Shell operators like `;` and `&` not properly handled
+   - Impact: Command injection if custom commands contain semicolons
+   - Fix needed: Add escaping for all shell metacharacters
+
+### PERFORMANCE ISSUES:
+
+7. **Exponential Complexity in Transitive Dependencies**:
+   - Location: cmGlobalNixGenerator.cxx:1962-2014
+   - Issue: GetTransitiveSharedLibraries uses DFS without memoization across calls
+   - Impact: O(2^n) complexity for deep dependency trees
+   - Fix needed: Share visited set across multiple calls or use dynamic programming
+
+8. **Inefficient String Operations**:
+   - Location: cmGlobalNixGenerator.cxx:162-203 (copyScript string building)
+   - Issue: Multiple string concatenations in loop without reserve()
+   - Impact: Quadratic time complexity for many targets
+   - Fix needed: Use ostringstream or reserve space
+
+9. **Redundant Compiler Invocations**:
+   - Location: cmNixTargetGenerator.cxx:213-288
+   - Issue: ScanWithCompiler() called for every source file separately
+   - Impact: Slow configuration for large projects
+   - Fix needed: Batch dependency scanning or cache results persistently
+
+### SECURITY VULNERABILITIES:
+
+10. **Path Traversal in Source Validation**:
+    - Location: cmGlobalNixGenerator.cxx:876-891
+    - Issue: Path validation happens after normalization, could be bypassed with symlinks
+    - Impact: Potential for reading files outside project directory
+    - Fix needed: Resolve symlinks before validation
+
+11. **Command Injection in Custom Commands**:
+    - Location: cmNixCustomCommandGenerator.cxx:86-87
+    - Issue: EscapeForShell not applied to all parts of command construction
+    - Impact: Malicious CMakeLists.txt could execute arbitrary commands
+    - Fix needed: Escape all user-provided strings
+
+### CODE QUALITY ISSUES:
+
+12. **Dead Code**:
+    - Location: cmGlobalNixGenerator.cxx:213-301 (Helper functions)
+    - Issue: cmakeNixCC and cmakeNixLD defined but never used
+    - Impact: Confusion and maintenance burden
+    - Fix needed: Either use the helpers or remove them
+
+13. **Magic Constants**:
+    - Location: Throughout codebase
+    - Examples: MAX_DEPTH=100, hash modulo 10000, MAX_CYCLE_DEPTH=100
+    - Impact: Hard to maintain and reason about limits
+    - Fix needed: Define named constants in header
+
+14. **Inconsistent Error Reporting**:
+    - Location: Various
+    - Issue: Mix of cerr, IssueMessage WARNING, and FATAL_ERROR with no clear pattern
+    - Impact: Confusing user experience
+    - Fix needed: Establish clear error handling policy
+
+### MISSING FEATURES:
+
+15. **No Incremental Build Support**:
+    - Issue: Nix derivations always rebuild from scratch
+    - Impact: Slow iterative development
+    - Consider: Adding timestamp/checksum based change detection
+
+16. **No Progress Reporting**:
+    - Issue: No feedback during long Nix builds
+    - Impact: Users unsure if build is progressing
+    - Consider: Adding progress callbacks or status files
+
+17. **Limited Diagnostics**:
+    - Issue: When Nix build fails, hard to determine which derivation failed
+    - Impact: Difficult debugging
+    - Consider: Adding detailed error reporting with derivation names
+
+### INCOMPLETE IMPLEMENTATIONS:
+
+18. **PCH Support Incomplete**:
+    - Location: cmNixTargetGenerator.cxx:856-998
+    - Issue: PCH derivations created but not properly linked in build phase
+    - Impact: PCH files generated but not used, no performance benefit
+
+19. **Cross-compilation Half-Implemented**:
+    - Location: cmGlobalNixGenerator.cxx:1709-1711
+    - Issue: Only appends "-cross" to package name, no actual cross-compilation support
+    - Impact: Cross-compilation will fail
+
+20. **Module Library Support Broken**:
+    - Location: cmGlobalNixGenerator.cxx:1583-1589
+    - Issue: Module libraries treated like shared libraries but without proper flags
+    - Impact: Python/Ruby/etc modules won't load correctly
+
+### EDGE CASES NOT HANDLED:
+
+21. **Empty Source Files**: No handling for targets with no source files
+22. **Spaces in Target Names**: Will break Nix attribute names
+23. **Very Long Command Lines**: No response file support
+24. **Cyclic Header Dependencies**: Would cause infinite recursion
+25. **Unicode in Paths**: Inconsistent handling, may break on non-ASCII
+
+### RESOURCE MANAGEMENT:
+
+26. **File Descriptor Leaks**:
+    - Location: cmNixTargetGenerator.cxx:321-344
+    - Issue: ifstream not checked for close errors
+    - Impact: Potential fd exhaustion in large projects
+
+27. **Memory Growth in Caches**:
+    - Issue: All caches grow without bound
+    - Impact: Memory usage increases over time
+    - Fix needed: LRU eviction or size limits
+
+### THREAD SAFETY ISSUES:
+
+28. **Non-Atomic Cache Operations**:
+    - Location: Various GetCached* methods
+    - Issue: Check-then-act pattern not atomic
+    - Impact: Race conditions under parallel execution
+
+29. **Shared State Without Synchronization**:
+    - Location: PackageMapper in cmNixTargetGenerator
+    - Issue: No mutex protection for concurrent access
+    - Impact: Data corruption in parallel builds
+
+### HARDCODED ASSUMPTIONS:
+
+30. **Unix-Only Paths**: Hardcoded "/" separators throughout
+31. **GCC/Clang Only**: No support for other compilers (Intel, PGI, etc)
+32. **English Locale**: Error messages assume English
+33. **Nix Store Paths**: Assumes /nix/store exists
+34. **Single Architecture**: No multi-arch support
+
