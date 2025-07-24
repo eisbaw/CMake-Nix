@@ -256,6 +256,21 @@ void cmGlobalNixMultiGenerator::WriteObjectDerivationForConfig(
   // Get relative source path
   std::string relSourcePath = lg->MaybeRelativeToTopBinDir(sourceFile);
   
+  // For try_compile and other cases where we get absolute paths, make them relative
+  if (cmSystemTools::FileIsFullPath(relSourcePath)) {
+    // If it's an absolute path, try to make it relative to the source directory
+    std::string homeDir = this->GetCMakeInstance()->GetHomeDirectory();
+    std::string relPath = cmSystemTools::RelativePath(homeDir, relSourcePath);
+    
+    // If the relative path starts with ../, it's outside the source tree
+    // In this case, just use the filename
+    if (relPath.find("../") == 0 || relPath.empty()) {
+      relSourcePath = cmSystemTools::GetFilenameName(sourceFile);
+    } else {
+      relSourcePath = relPath;
+    }
+  }
+  
   // Combine all flags
   std::string allFlags;
   if (!compileFlags.empty()) {
@@ -275,7 +290,26 @@ void cmGlobalNixMultiGenerator::WriteObjectDerivationForConfig(
   nixFileStream << "    name = \"" << objectName << "\";\n";
   
   // Handle source specification
-  if (this->UseExplicitSources()) {
+  std::string homeDir = this->GetCMakeInstance()->GetHomeDirectory();
+  std::string relPath = cmSystemTools::RelativePath(homeDir, sourceFile);
+  bool isExternalSource = (relPath.find("../") == 0 || cmSystemTools::FileIsFullPath(relPath));
+  
+  if (isExternalSource) {
+    // For external sources (like try_compile), create a composite source
+    nixFileStream << "    src = pkgs.runCommand \"composite-src\" {} ''\n";
+    nixFileStream << "      mkdir -p $out\n";
+    nixFileStream << "      cp -r ${./.}/* $out/ 2>/dev/null || true\n";
+    nixFileStream << "      cp ${" << sourceFile << "} $out/" << cmSystemTools::GetFilenameName(sourceFile) << "\n";
+    
+    // For ABI detection files, also copy the required header file
+    std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
+    if (fileName.find("CMakeCCompilerABI.c") != std::string::npos ||
+        fileName.find("CMakeCXXCompilerABI.cpp") != std::string::npos) {
+      std::string abiSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
+      nixFileStream << "      cp ${" << abiSourceDir << "/CMakeCompilerABI.h} $out/CMakeCompilerABI.h\n";
+    }
+    nixFileStream << "    '';\n";
+  } else if (this->UseExplicitSources()) {
     // Write explicit source derivation using already computed dependencies
     std::string projectSourceRelPath = ""; // Multi-generator always uses project root
     this->WriteExplicitSourceDerivation(nixFileStream, source->GetFullPath(), dependencies, projectSourceRelPath);
