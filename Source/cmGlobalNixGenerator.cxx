@@ -346,10 +346,16 @@ void cmGlobalNixGenerator::WriteNixFile()
   // First pass: Collect all custom commands into temporary collections
   for (auto const& lg : this->LocalGenerators) {
     for (auto const& target : lg->GetGeneratorTargets()) {
+      if (this->GetCMakeInstance()->GetDebugOutput()) {
+        std::cerr << "[NIX-DEBUG] Checking target " << target->GetName() << " for custom commands" << std::endl;
+      }
       std::vector<cmSourceFile*> sources;
       target->GetSourceFiles(sources, "");
       for (cmSourceFile* source : sources) {
         if (cmCustomCommand const* cc = source->GetCustomCommand()) {
+          if (this->GetCMakeInstance()->GetDebugOutput()) {
+            std::cerr << "[NIX-DEBUG] Found custom command in source: " << source->GetFullPath() << std::endl;
+          }
           try {
             cmNixCustomCommandGenerator ccg(cc, target->GetLocalGenerator(), this->GetBuildConfiguration(target.get()));
             
@@ -368,6 +374,10 @@ void cmGlobalNixGenerator::WriteNixFile()
               // Populate CustomCommandOutputs map for dependency tracking
               for (const std::string& output : info.Outputs) {
                 tempCustomCommandOutputs[output] = info.DerivationName;
+                if (this->GetCMakeInstance()->GetDebugOutput()) {
+                  std::cerr << "[NIX-DEBUG] Registering custom command output: " 
+                            << output << " -> " << info.DerivationName << std::endl;
+                }
               }
             }
           } catch (const std::exception& e) {
@@ -651,6 +661,10 @@ void cmGlobalNixGenerator::WriteNixFile()
   }
   
   // Write commands in order
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-DEBUG] Writing " << orderedCommands.size() << " custom commands" << std::endl;
+    std::cerr << "[NIX-DEBUG] CustomCommandOutputs has " << this->CustomCommandOutputs.size() << " entries" << std::endl;
+  }
   for (size_t idx : orderedCommands) {
     const CustomCommandInfo* info = &localCustomCommands[idx];
     try {
@@ -866,6 +880,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   cmNixWriter writer(nixFileStream);
   
   std::string sourceFile = source->GetFullPath();
+  
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-DEBUG] WriteObjectDerivation for source: " << sourceFile 
+              << " (generated: " << source->GetIsGenerated() << ")" << std::endl;
+  }
   
   // Validate source path
   if (sourceFile.empty()) {
@@ -1128,14 +1147,19 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     auto targetGen = cmNixTargetGenerator::New(target);
     std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
     
-    // Create a list of files for the fileset
-    std::vector<std::string> fileList;
+    // Create lists for existing and generated files
+    std::vector<std::string> existingFiles;
+    std::vector<std::string> generatedFiles;
     
-    // Add the main source file - always add it
+    // Add the main source file
     std::string relativeSource = cmSystemTools::RelativePath(
       this->GetCMakeInstance()->GetHomeDirectory(), sourceFile);
     if (!relativeSource.empty() && relativeSource.find("../") != 0) {
-      fileList.push_back(relativeSource);
+      if (source->GetIsGenerated()) {
+        generatedFiles.push_back(relativeSource);
+      } else {
+        existingFiles.push_back(relativeSource);
+      }
     }
     
     // Add dependencies (headers)
@@ -1160,8 +1184,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           fullPath += dep;
         }
         
-        if (cmSystemTools::FileExists(fullPath) || source->GetIsGenerated()) {
-          fileList.push_back(relDep);
+        if (cmSystemTools::FileExists(fullPath)) {
+          existingFiles.push_back(relDep);
+        } else if (source->GetIsGenerated()) {
+          // If the main source is generated, headers might be too
+          generatedFiles.push_back(relDep);
         }
       }
     }
@@ -1176,19 +1203,22 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           std::string relPchHeader = cmSystemTools::RelativePath(
             this->GetCMakeInstance()->GetHomeDirectory(), pchHeader);
           if (!relPchHeader.empty() && relPchHeader.find("../") != 0) {
-            fileList.push_back(relPchHeader);
+            // PCH headers are typically generated
+            if (cmSystemTools::FileExists(pchHeader)) {
+              existingFiles.push_back(relPchHeader);
+            } else {
+              generatedFiles.push_back(relPchHeader);
+            }
           }
         }
       }
     }
     
-    // Use fileset union for minimal source sets
-    // But if the source file is generated, use whole directory to avoid issues
-    if (source->GetIsGenerated() || fileList.empty()) {
-      // For generated sources or when no files detected, use whole directory
+    // Use fileset union for minimal source sets with maybeMissing for generated files
+    if (existingFiles.empty() && generatedFiles.empty()) {
+      // No files detected, use whole directory
       writer.WriteSourceAttribute("./.");
     } else {
-      // For regular sources with dependencies, use minimal fileset
       // Calculate relative path from build directory to source directory for out-of-source builds
       std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
       std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
@@ -1205,7 +1235,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           rootPath = "./.";
         }
       }
-      writer.WriteFilesetUnionSrcAttribute(fileList, 2, rootPath);
+      writer.WriteFilesetUnionWithMaybeMissing(existingFiles, generatedFiles, 2, rootPath);
     }
   }
   
@@ -1258,6 +1288,18 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   auto it = this->CustomCommandOutputs.find(sourceFile);
   if (it != this->CustomCommandOutputs.end()) {
     buildInputs.push_back(it->second);
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Found custom command dependency for " << sourceFile 
+                << " -> " << it->second << std::endl;
+    }
+  } else {
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] No custom command found for " << sourceFile << std::endl;
+      std::cerr << "[NIX-DEBUG] Available custom command outputs:" << std::endl;
+      for (const auto& kv : this->CustomCommandOutputs) {
+        std::cerr << "[NIX-DEBUG]   " << kv.first << " -> " << kv.second << std::endl;
+      }
+    }
   }
   
   writer.WriteListAttribute("buildInputs", buildInputs);
@@ -1314,9 +1356,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   std::string sourcePath;
   if (!customCommandDep.empty()) {
     // Source is generated by a custom command - reference from derivation output
-    // Preserve the relative path structure from the build directory
-    std::string targetBuildDir = target->GetLocalGenerator()->GetCurrentBinaryDirectory();
-    std::string relativePath = cmSystemTools::RelativePath(targetBuildDir, sourceFile);
+    // Use the top-level build directory as the base for consistent path resolution
+    // This matches what cmNixCustomCommandGenerator uses
+    std::string topBuildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+    std::string relativePath = cmSystemTools::RelativePath(topBuildDir, sourceFile);
     sourcePath = "${" + customCommandDep + "}/" + relativePath;
   } else {
     // All files (source and generated) - use relative path from source directory

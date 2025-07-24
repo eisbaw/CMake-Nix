@@ -170,6 +170,50 @@ void cmNixWriter::WriteFilesetUnionSrcAttribute(const std::vector<std::string>& 
   WriteIndented(indentLevel, "};");
 }
 
+void cmNixWriter::WriteFilesetUnionWithMaybeMissing(
+    const std::vector<std::string>& existingFiles,
+    const std::vector<std::string>& generatedFiles,
+    int indentLevel,
+    const std::string& root)
+{
+  // If no files at all, just use root
+  if (existingFiles.empty() && generatedFiles.empty()) {
+    WriteIndented(indentLevel, "src = " + root + ";");
+    return;
+  }
+  
+  WriteIndented(indentLevel, "src = lib.fileset.toSource {");
+  WriteIndented(indentLevel + 1, "root = " + root + ";");
+  
+  std::string separator = (root.back() == '/') ? "" : "/";
+  
+  // Handle single file case
+  if (existingFiles.size() + generatedFiles.size() == 1) {
+    if (!existingFiles.empty()) {
+      WriteIndented(indentLevel + 1, "fileset = " + root + separator + existingFiles[0] + ";");
+    } else {
+      WriteIndented(indentLevel + 1, "fileset = lib.fileset.maybeMissing (" + root + separator + generatedFiles[0] + ");");
+    }
+  } else {
+    // Multiple files - use union
+    WriteIndented(indentLevel + 1, "fileset = lib.fileset.unions [");
+    
+    // Add existing files
+    for (const auto& file : existingFiles) {
+      WriteIndented(indentLevel + 2, root + separator + file);
+    }
+    
+    // Add generated files with maybeMissing
+    for (const auto& file : generatedFiles) {
+      WriteIndented(indentLevel + 2, "(lib.fileset.maybeMissing (" + root + separator + file + "))");
+    }
+    
+    WriteIndented(indentLevel + 1, "];");
+  }
+  
+  WriteIndented(indentLevel, "};");
+}
+
 void cmNixWriter::StartLetBinding(int indentLevel)
 {
   WriteIndented(indentLevel, "let");

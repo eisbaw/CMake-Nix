@@ -59,6 +59,12 @@ public:
                                     int indentLevel = 2,
                                     const std::string& root = "./.");
   
+  // Fileset with maybeMissing for generated files
+  void WriteFilesetUnionWithMaybeMissing(const std::vector<std::string>& existingFiles,
+                                         const std::vector<std::string>& generatedFiles,
+                                         int indentLevel = 2,
+                                         const std::string& root = "./.");
+  
   // Let binding helpers
   void StartLetBinding(int indentLevel = 0);
   void EndLetBinding(int indentLevel = 0);

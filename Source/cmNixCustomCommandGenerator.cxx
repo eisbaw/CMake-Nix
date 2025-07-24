@@ -10,6 +10,7 @@
 #include "cmMakefile.h"
 #include "cmSystemTools.h"
 #include "cmOutputConverter.h"
+#include "cmake.h"
 #include <set>
 #include <cctype>
 
@@ -153,8 +154,9 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       std::string outputFile = cmSystemTools::GetFilenameName(output);
       std::string escapedOutputFile = cmOutputConverter::EscapeForShell(outputFile, cmOutputConverter::Shell_Flag_IsUnix);
       
-      // Get relative path from build directory to preserve structure
-      std::string buildDir = this->LocalGenerator->GetCurrentBinaryDirectory();
+      // Get relative path from top-level build directory to preserve structure
+      // This ensures consistent paths when files are referenced from other directories
+      std::string buildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
       std::string relativePath = cmSystemTools::RelativePath(buildDir, output);
       
       // Create directory structure if needed
@@ -174,8 +176,9 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     nixFileStream << "    installPhase = ''\n";
     nixFileStream << "      mkdir -p $out\n";
     for (const std::string& output : this->CustomCommand->GetOutputs()) {
-      // Get relative path from build directory to preserve structure
-      std::string buildDir = this->LocalGenerator->GetCurrentBinaryDirectory();
+      // Get relative path from top-level build directory to preserve structure
+      // This ensures consistent paths when files are referenced from other directories
+      std::string buildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
       std::string relativePath = cmSystemTools::RelativePath(buildDir, output);
       
       // Create directory structure if needed

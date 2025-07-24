@@ -1,0 +1,33 @@
+[NIX-DEBUG] Target test_app has 3 source files
+[NIX-DEBUG]   Source: /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_command_subdir/main.c (Unity: no)
+[NIX-DEBUG]   Source: /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_command_subdir/generated/config.h (Unity: no)
+[NIX-DEBUG]   Source: /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_command_subdir/generated/config.h.rule (Unity: no)
+CMake Warning:
+  Compiler dependency scan failed for
+  /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_command_subdir/main.c
+  with exit code 1:
+  /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_command_subdir/main.c:2:10:
+  fatal error: generated/config.h: No such file or directory
+
+      2 | #include "generated/config.h"
+        |          ^~~~~~~~~~~~~~~~~~~~
+
+  compilation terminated.
+
+
+
+[NIX-DEBUG] PCH check for /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_command_subdir/main.c: pchSources.size=0, skipPch=0, lang=C
+CMake Warning:
+  Compiler dependency scan failed for
+  /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_command_subdir/main.c
+  with exit code 1:
+  /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_command_subdir/main.c:2:10:
+  fatal error: generated/config.h: No such file or directory
+
+      2 | #include "generated/config.h"
+        |          ^~~~~~~~~~~~~~~~~~~~
+
+  compilation terminated.
+
+
+
