@@ -632,3 +632,117 @@ DONE: All feature tests passing with `just dev`
 33. **Nix Store Paths**: Assumes /nix/store exists
 34. **Single Architecture**: No multi-arch support
 
+## REFACTORING OPPORTUNITIES FOR IMPROVED MAINTAINABILITY (2025-07-24)
+
+The following refactoring opportunities were identified to improve code readability, maintainability, and reuse:
+
+### HIGH PRIORITY - Code Duplication Elimination
+
+35. **Extract NixShellCommandBuilder Utility Class**:
+    - Location: Multiple files (cmNixCustomCommandGenerator.cxx, cmGlobalNixGenerator.cxx)
+    - Issue: String escaping and shell command construction patterns duplicated throughout
+    - Benefit: Centralized shell command handling, consistent escaping, easier testing
+    - Extract: `BuildCommand()`, `EscapeArgument()`, `QuoteVariable()` methods
+
+36. **Extract NixIdentifierUtils Class**:
+    - Location: cmGlobalNixGenerator, cmNixTargetGenerator, cmNixCustomCommandGenerator
+    - Issue: Derivation name generation and path sanitization logic duplicated
+    - Benefit: Consistent naming rules, easier to maintain identifier constraints
+    - Extract: `SanitizeName()`, `GenerateDerivationName()`, `ValidateIdentifier()` methods
+
+37. **Extract NixPathResolver Utility Class**:
+    - Location: Multiple classes handling relative path computation
+    - Issue: Similar patterns for source/build directory relationships scattered
+    - Benefit: Centralized path handling, consistent relative path computation
+    - Extract: `RelativeToSource()`, `RelativeToBuild()`, `NormalizePath()` methods
+
+### MEDIUM PRIORITY - Method Decomposition
+
+38. **Decompose cmGlobalNixGenerator::WriteObjectDerivation() (~200+ lines)**:
+    - Issue: Single method handles validation, compiler detection, dependencies, and generation
+    - Break into: `ValidateSourceFile()`, `CollectCompilerInfo()`, `ResolveDependencies()`, `GenerateObjectDerivationExpression()`
+    - Benefit: Easier testing, clearer responsibilities, better error handling
+
+39. **Decompose cmGlobalNixGenerator::WriteLinkDerivation() (~300+ lines)**:
+    - Issue: Massive method handling all aspects of link derivation generation
+    - Break into: `GenerateCompileFlags()`, `ResolveLibraryDependencies()`, `WriteBuildScript()`
+    - Benefit: Reduced complexity, easier to debug specific linking issues
+
+40. **Decompose cmNixTargetGenerator::GetTargetLibraryDependencies() (~100+ lines)**:
+    - Issue: Complex logic mixing imported vs internal target handling  
+    - Break into: `ProcessImportedTargets()`, `ProcessInternalTargets()`, `ProcessExternalLibraries()`
+    - Benefit: Clearer separation of concerns, easier to extend
+
+41. **Decompose cmGlobalNixGenerator::GenerateBuildCommand() (~150+ lines)**:
+    - Issue: Handles both regular builds and try-compile with complex script generation
+    - Break into: `GenerateRegularBuildCommand()`, `GenerateTryCompileBuildCommand()`, `CreateCopyScript()`
+    - Benefit: Separate concerns, easier to maintain build vs try-compile logic
+
+### MEDIUM PRIORITY - Missing Abstractions
+
+42. **Create NixBuildConfiguration Class**:
+    - Location: Configuration handling scattered throughout with repeated GetSafeDefinition() calls
+    - Issue: No central place for build configuration logic
+    - Benefit: Centralized configuration access, easier to add new config options
+    - Include: `GetBuildType()`, `IsDebugBuild()`, `GetCompilerFlags()` methods
+
+43. **Create NixCompilerResolver Class**:
+    - Location: GetCompilerPackage() and GetCompilerCommand() logic could be unified
+    - Issue: Compiler detection logic scattered and inconsistent
+    - Benefit: Single place for compiler resolution, easier to add new compilers
+    - Include: `ResolveCompiler()`, `GetCompilerPackage()`, `GetCompilerFlags()` methods
+
+44. **Create NixTryCompileHandler Class**:
+    - Location: Try-compile special case logic scattered throughout
+    - Issue: Try-compile handling mixed with regular build logic
+    - Benefit: Cleaner separation, easier to debug try-compile issues
+    - Include: `HandleTryCompile()`, `GenerateTryCompileScript()`, `CopyTryCompileResults()` methods
+
+45. **Create NixDebugLogger Utility Class**:
+    - Location: Debug logging patterns repeated throughout
+    - Issue: Inconsistent debug output, hard to control debug levels
+    - Benefit: Centralized logging, consistent formatting, configurable levels
+    - Include: `LogTrace()`, `LogDebug()`, `LogInfo()`, `LogWarning()` methods
+
+### LOW PRIORITY - Consistency Improvements
+
+46. **Standardize Error Handling Approach**:
+    - Issue: Mix of IssueMessage(), std::cerr, and silent failures
+    - Benefit: Consistent error reporting, easier debugging
+    - Action: Choose one approach and use throughout
+
+47. **Standardize on cmNixWriter Throughout**:
+    - Issue: Mix of cmNixWriter, std::ostringstream, and direct string concatenation
+    - Benefit: Consistent output generation, better formatting control
+    - Action: Enhance cmNixWriter with missing methods, use everywhere
+
+48. **Improve Variable and Method Naming**:
+    - Issue: Unclear names like WriteObjectDerivationUsingWriter(), UseExplicitSources()
+    - Benefit: Self-documenting code, easier for new contributors
+    - Action: Rename for clarity, add documentation comments
+
+49. **Create Unified Caching Strategy**:
+    - Issue: Inconsistent caching patterns (some methods cache, others don't)
+    - Benefit: Predictable performance, easier to reason about cache invalidation
+    - Action: Define caching policy, implement consistently
+
+### ARCHITECTURAL IMPROVEMENTS
+
+50. **Enhance cmNixDependencyGraph Usage**:
+    - Issue: Dependency resolution logic embedded in global generator despite having dependency graph class
+    - Benefit: Better separation of concerns, reusable dependency logic
+    - Action: Move more dependency logic into the graph class
+
+51. **Create Strategy Pattern for Command Types in Custom Commands**:
+    - Location: cmNixCustomCommandGenerator complex logic for different command types
+    - Issue: Complex conditional logic for echo vs other commands
+    - Benefit: Extensible command handling, cleaner code
+    - Action: Create EchoCommandStrategy, GenericCommandStrategy, etc.
+
+### IMPLEMENTATION PRIORITY:
+1. **High Priority**: Code duplication elimination (items 35-37) - immediate maintenance benefits
+2. **Medium Priority**: Method decomposition (items 38-41) - improves testability and debugging  
+3. **Medium Priority**: Missing abstractions (items 42-45) - architectural improvements
+4. **Low Priority**: Consistency improvements (items 46-49) - polish and maintainability
+5. **Future**: Architectural improvements (items 50-51) - long-term design improvements
+
