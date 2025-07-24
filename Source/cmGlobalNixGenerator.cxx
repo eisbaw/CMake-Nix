@@ -1176,14 +1176,22 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
       
       // Check if file is in build directory
+      std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
       bool isInBuildDir = (fullPath.find(buildDir) == 0);
+      bool isInSourceDir = (fullPath.find(srcDir) == 0);
+      
+      // Only consider it a config-time generated file if:
+      // 1. It's in the build directory
+      // 2. It's NOT also in the source directory (in-source builds)
+      // 3. OR the build dir and source dir are different and file is only in build dir
+      bool isConfigTimeGenerated = isInBuildDir && 
+        (buildDir != srcDir || !isInSourceDir);
       
       // Convert to appropriate relative path
       std::string relDep;
-      if (isInBuildDir) {
+      if (isInBuildDir && buildDir != srcDir) {
         // For build directory files, make path relative to source directory
         // since the fileset will be rooted at the source directory
-        std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
         relDep = cmSystemTools::RelativePath(srcDir, fullPath);
       } else if (cmSystemTools::FileIsFullPath(dep)) {
         // For source directory files, make path relative to source dir
@@ -1197,7 +1205,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       if (!relDep.empty()) {
         if (cmSystemTools::FileExists(fullPath)) {
           // Check if it's a configuration-time generated file (exists in build dir)
-          if (isInBuildDir) {
+          if (isConfigTimeGenerated) {
             // This is a configuration-time generated file (like Zephyr's autoconf.h)
             configTimeGeneratedFiles.push_back(fullPath);
             if (this->GetCMakeInstance()->GetDebugOutput()) {
