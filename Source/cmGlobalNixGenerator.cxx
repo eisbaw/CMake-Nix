@@ -340,6 +340,7 @@ void cmGlobalNixGenerator::WriteNixFile()
   // Use temporary collections to avoid race conditions
   std::vector<CustomCommandInfo> tempCustomCommands;
   std::map<std::string, std::string> tempCustomCommandOutputs;
+  std::set<std::string> processedDerivationNames;  // Track already processed derivation names
   
   // First pass: Collect all custom commands into temporary collections
   for (auto const& lg : this->LocalGenerators) {
@@ -358,11 +359,15 @@ void cmGlobalNixGenerator::WriteNixFile()
             info.Command = cc;
             info.LocalGen = target->GetLocalGenerator();
             
-            tempCustomCommands.push_back(info);
-            
-            // Populate CustomCommandOutputs map for dependency tracking
-            for (const std::string& output : info.Outputs) {
-              tempCustomCommandOutputs[output] = info.DerivationName;
+            // Check if we've already processed a command with this name
+            if (processedDerivationNames.find(info.DerivationName) == processedDerivationNames.end()) {
+              tempCustomCommands.push_back(info);
+              processedDerivationNames.insert(info.DerivationName);
+              
+              // Populate CustomCommandOutputs map for dependency tracking
+              for (const std::string& output : info.Outputs) {
+                tempCustomCommandOutputs[output] = info.DerivationName;
+              }
             }
           } catch (const std::exception& e) {
             std::cerr << "Exception in custom command processing: " << e.what() << std::endl;
@@ -1147,9 +1152,18 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       } else {
         // This is a file import - adjust path for subdirectory sources
         if (!projectSourceRelPath.empty() && lib.find("./") == 0) {
-          // Convert relative path to be relative to project root
-          buildInputs.push_back("(import " + projectSourceRelPath + "/" + 
-                               lib.substr(2) + " { inherit pkgs; })");
+          // Check if the path already has parent directory navigation
+          std::string pathAfterDot = lib.substr(2);
+          if (pathAfterDot.find("../") == 0) {
+            // Path already navigates to parent, don't prepend projectSourceRelPath
+            buildInputs.push_back("(import " + lib + " { inherit pkgs; })");
+          } else {
+            // Convert relative path to be relative to project root
+            std::string separator = (projectSourceRelPath.empty() || 
+                                   projectSourceRelPath.back() == '/') ? "" : "/";
+            buildInputs.push_back("(import " + projectSourceRelPath + separator + 
+                                 pathAfterDot + " { inherit pkgs; })");
+          }
         } else {
           buildInputs.push_back("(import " + lib + " { inherit pkgs; })");
         }
@@ -1277,6 +1291,12 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
   std::string projectSourceRelPath = cmSystemTools::RelativePath(buildDir, sourceDir);
   
+  // Debug output
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[DEBUG] WriteLinkDerivation: sourceDir=" << sourceDir 
+              << ", buildDir=" << buildDir << ", projectSourceRelPath=" << projectSourceRelPath << std::endl;
+  }
+  
   // Check if this is a try_compile
   bool isTryCompile = buildDir.find("CMakeScratch") != std::string::npos;
   
@@ -1345,8 +1365,17 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
       } else {
         // This is a file import - adjust path for subdirectory sources
         if (!projectSourceRelPath.empty() && lib.find("./") == 0) {
-          // Convert relative path to be relative to project root
-          nixFileStream << " (import " << projectSourceRelPath << "/" << lib.substr(2) << " { inherit pkgs; })";
+          // Check if the path already has parent directory navigation
+          std::string pathAfterDot = lib.substr(2);
+          if (pathAfterDot.find("../") == 0) {
+            // Path already navigates to parent, don't prepend projectSourceRelPath
+            nixFileStream << " (import " << lib << " { inherit pkgs; })";
+          } else {
+            // Convert relative path to be relative to project root
+            std::string separator = (projectSourceRelPath.empty() || 
+                                   projectSourceRelPath.back() == '/') ? "" : "/";
+            nixFileStream << " (import " << projectSourceRelPath << separator << pathAfterDot << " { inherit pkgs; })";
+          }
         } else {
           nixFileStream << " (import " << lib << " { inherit pkgs; })";
         }

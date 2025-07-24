@@ -178,8 +178,33 @@ std::string cmNixCustomCommandGenerator::GetDerivationName() const
     // Return a fallback name if no outputs (shouldn't happen in valid CMake)
     return "custom_command_no_output";
   }
+  
+  // Use the first output as the base for the name
   std::string firstOutput = outputs[0];
-  return this->GetDerivationNameForPath(firstOutput);
+  std::string baseName = this->GetDerivationNameForPath(firstOutput);
+  
+  // If there are multiple outputs, append a hash of all outputs to ensure uniqueness
+  if (outputs.size() > 1) {
+    // Create a simple hash from all outputs
+    size_t hash = 0;
+    for (const auto& output : outputs) {
+      hash ^= std::hash<std::string>{}(output) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    }
+    baseName += "_" + std::to_string(hash % 10000); // Add last 4 digits of hash
+  }
+  
+  // Also add hash of the command itself to ensure different commands with same output get unique names
+  if (!this->CustomCommand->GetCommandLines().empty()) {
+    size_t cmdHash = 0;
+    for (const auto& cmdLine : this->CustomCommand->GetCommandLines()) {
+      for (const auto& arg : cmdLine) {
+        cmdHash ^= std::hash<std::string>{}(arg) + 0x9e3779b9 + (cmdHash << 6) + (cmdHash >> 2);
+      }
+    }
+    baseName += "_" + std::to_string(cmdHash % 10000);
+  }
+  
+  return baseName;
 }
 
 std::string cmNixCustomCommandGenerator::GetDerivationNameForPath(const std::string& path) const

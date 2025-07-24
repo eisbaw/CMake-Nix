@@ -536,24 +536,83 @@ std::vector<std::string> cmNixTargetGenerator::GetTargetLibraryDependencies(
 std::string cmNixTargetGenerator::FindOrCreateNixPackage(
   std::string const& libName) const
 {
+  // Skip linker flags - they should not be treated as packages
+  if (libName.find("-Wl,") == 0 || libName.find("-l") == 0 || 
+      libName.find("-L") == 0 || libName.find("-framework") == 0) {
+    return "";
+  }
+  
   // Try to find existing pkg_<name>.nix file
   std::string nixFile = this->PackageMapper.GetNixPackageForTarget(libName);
   if (nixFile.empty()) {
     return "";
   }
 
-  std::string nixFilePath = this->GetMakefile()->GetCurrentSourceDirectory() + "/pkg_" + nixFile + ".nix";
+  // Sanitize the filename - replace problematic characters with underscore
+  std::string sanitizedNixFile = nixFile;
+  for (char& c : sanitizedNixFile) {
+    if (c == ',' || c == ' ' || c == '(' || c == ')' || c == '\'' || c == '"') {
+      c = '_';
+    }
+  }
+
+  // First check in the current source directory
+  std::string nixFilePath = this->GetMakefile()->GetCurrentSourceDirectory() + "/pkg_" + sanitizedNixFile + ".nix";
+  
+  // If not found, check in parent directories (common for Zephyr builds)
+  if (!cmSystemTools::FileExists(nixFilePath)) {
+    // Try project source directory
+    std::string projectDir = this->GetMakefile()->GetHomeDirectory();
+    nixFilePath = projectDir + "/pkg_" + sanitizedNixFile + ".nix";
+  }
   
   if (cmSystemTools::FileExists(nixFilePath)) {
     // Package file exists, return relative path for Nix import
     std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
-    return "./" + cmSystemTools::RelativePath(sourceDir, nixFilePath);
+    std::string relPath = cmSystemTools::RelativePath(sourceDir, nixFilePath);
+    
+    // If RelativePath returns an absolute path (starting with /), it's likely
+    // because RelativePath failed. Just compute a simple relative path.
+    if (!relPath.empty() && relPath[0] == '/') {
+      // This means RelativePath failed - just use basename with parent nav
+      std::string basename = cmSystemTools::GetFilenameName(nixFilePath);
+      
+      // For now, assume it's in the parent directory (typical for Zephyr)
+      return "./../../" + basename;
+    }
+    
+    // Check if the relative path makes sense
+    if (relPath.find("..") == std::string::npos && nixFilePath.find(sourceDir) == std::string::npos) {
+      // The file is not in a subdirectory and relPath doesn't navigate up
+      // This suggests the file is in a parent directory
+      std::string basename = cmSystemTools::GetFilenameName(nixFilePath);
+      return "./../../" + basename;
+    }
+    
+    return "./" + relPath;
   }
   
   // File doesn't exist, try to auto-generate it
   if (this->CreateNixPackageFile(libName, nixFilePath)) {
     std::string sourceDir = this->GetMakefile()->GetCurrentSourceDirectory();
-    return "./" + cmSystemTools::RelativePath(sourceDir, nixFilePath);
+    std::string relPath = cmSystemTools::RelativePath(sourceDir, nixFilePath);
+    
+    // Handle the case where the file was created in a parent directory
+    if (!relPath.empty() && relPath[0] == '/') {
+      // This means RelativePath failed - just use basename with parent nav
+      std::string basename = cmSystemTools::GetFilenameName(nixFilePath);
+      return "./../../" + basename;
+    }
+    
+    // Check if the relative path makes sense
+    if (relPath.find("..") == std::string::npos && nixFilePath.find(sourceDir) == std::string::npos) {
+      // The file is not in a subdirectory and relPath doesn't navigate up
+      // This suggests the file is in a parent directory
+      std::string basename = cmSystemTools::GetFilenameName(nixFilePath);
+      return "./../../" + basename;
+    }
+    
+    return "./" + relPath;
   }
   
   return ""; // Could not find or create package
@@ -562,6 +621,12 @@ std::string cmNixTargetGenerator::FindOrCreateNixPackage(
 bool cmNixTargetGenerator::CreateNixPackageFile(
   std::string const& libName, std::string const& filePath) const
 {
+  // Skip linker flags - they should not be treated as packages
+  if (libName.find("-Wl,") == 0 || libName.find("-l") == 0 || 
+      libName.find("-L") == 0 || libName.find("-framework") == 0) {
+    return false;
+  }
+  
   // Try to map to known Nix package first
   std::string nixPackage = this->PackageMapper.GetNixPackageForTarget(libName);
   
