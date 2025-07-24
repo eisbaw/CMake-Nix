@@ -26,6 +26,12 @@ UPDATE (2025-07-24): Investigation shows that cmakeNixCC helper function is defi
 - cmGlobalNixGenerator.cxx::WriteObjectDerivation (lines 836-1264)
 - Link operations should use cmakeNixLD helper (defined lines 247-294)
 
+UPDATE (2025-07-24): Attempted refactoring of WriteObjectDerivation to use cmakeNixCC but found complexity:
+- Current implementation handles external sources by creating composite sources
+- Custom command outputs need special handling
+- Source path resolution is complex (external vs internal, custom command generated)
+- The cmakeNixCC helper needs enhancement to handle these cases or multiple helper variants needed
+
 
 #############################
 
