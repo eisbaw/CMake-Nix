@@ -138,28 +138,33 @@ void cmNixWriter::WriteFilesetUnion(const std::string& name,
 }
 
 void cmNixWriter::WriteFilesetUnionSrcAttribute(const std::vector<std::string>& files,
-                                               int indentLevel)
+                                               int indentLevel,
+                                               const std::string& root)
 {
   if (files.empty()) {
-    WriteIndented(indentLevel, "src = ./.;");
+    WriteIndented(indentLevel, "src = " + root + ";");
     return;
   }
   
   // For single files, we need to use fileset.toSource
   if (files.size() == 1) {
     WriteIndented(indentLevel, "src = lib.fileset.toSource {");
-    WriteIndented(indentLevel + 1, "root = ./.;");
-    WriteIndented(indentLevel + 1, "fileset = ./" + files[0] + ";");
+    WriteIndented(indentLevel + 1, "root = " + root + ";");
+    // Don't add extra slash if root already ends with one
+    std::string separator = (root.back() == '/') ? "" : "/";
+    WriteIndented(indentLevel + 1, "fileset = " + root + separator + files[0] + ";");
     WriteIndented(indentLevel, "};");
     return;
   }
   
   // For multiple files, use fileset union with toSource
   WriteIndented(indentLevel, "src = lib.fileset.toSource {");
-  WriteIndented(indentLevel + 1, "root = ./.;");
+  WriteIndented(indentLevel + 1, "root = " + root + ";");
   WriteIndented(indentLevel + 1, "fileset = lib.fileset.unions [");
   for (const auto& file : files) {
-    WriteIndented(indentLevel + 2, "./" + file);
+    // Don't add extra slash if root already ends with one
+    std::string separator = (root.back() == '/') ? "" : "/";
+    WriteIndented(indentLevel + 2, root + separator + file);
   }
   WriteIndented(indentLevel + 1, "];");
   WriteIndented(indentLevel, "};");

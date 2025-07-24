@@ -302,7 +302,8 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
 
 void cmGlobalNixGenerator::WriteNixFile()
 {
-  std::string nixFile = this->GetCMakeInstance()->GetHomeDirectory();
+  // Write to binary directory to support out-of-source builds
+  std::string nixFile = this->GetCMakeInstance()->GetHomeOutputDirectory();
   nixFile += "/default.nix";
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
@@ -1180,7 +1181,23 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       writer.WriteSourceAttribute("./.");
     } else {
       // For regular sources with dependencies, use minimal fileset
-      writer.WriteFilesetUnionSrcAttribute(fileList);
+      // Calculate relative path from build directory to source directory for out-of-source builds
+      std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+      std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+      std::string rootPath = "./.";
+      if (srcDir != bldDir) {
+        rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
+        if (!rootPath.empty()) {
+          rootPath = "./" + rootPath;
+          // Remove any trailing slash to avoid Nix errors
+          if (rootPath.back() == '/') {
+            rootPath.pop_back();
+          }
+        } else {
+          rootPath = "./.";
+        }
+      }
+      writer.WriteFilesetUnionSrcAttribute(fileList, 2, rootPath);
     }
   }
   
