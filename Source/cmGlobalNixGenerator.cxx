@@ -731,6 +731,14 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         std::vector<cmSourceFile*> sources;
         target->GetSourceFiles(sources, "");
         
+        if (cmSystemTools::GetEnv("CMAKE_NIX_DEBUG")) {
+          std::cerr << "[NIX-DEBUG] Target " << target->GetName() << " has " << sources.size() << " source files" << std::endl;
+          for (cmSourceFile* source : sources) {
+            std::cerr << "[NIX-DEBUG]   Source: " << source->GetFullPath() 
+                      << " (Unity: " << (source->GetProperty("UNITY_SOURCE_FILE") ? "yes" : "no") << ")" << std::endl;
+          }
+        }
+        
         // Pre-create target generator and cache configuration for efficiency
         auto targetGen = cmNixTargetGenerator::New(target.get());
         std::string config = this->GetBuildConfiguration(target.get());
@@ -745,8 +753,14 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         }
         
         for (cmSourceFile* source : sources) {
-          // Skip Unity-generated source files as we don't support Unity builds
-          if (source->GetProperty("UNITY_SOURCE_FILE")) {
+          // Skip Unity-generated batch files (unity_X_cxx.cxx) as we don't support Unity builds
+          // But still process the original source files
+          std::string sourcePath = source->GetFullPath();
+          if (sourcePath.find("/Unity/unity_") != std::string::npos && 
+              sourcePath.find("_cxx.cxx") != std::string::npos) {
+            if (cmSystemTools::GetEnv("CMAKE_NIX_DEBUG")) {
+              std::cerr << "[NIX-DEBUG] Skipping Unity batch file: " << sourcePath << std::endl;
+            }
             continue;
           }
           
@@ -1478,8 +1492,11 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   }
   
   for (cmSourceFile* source : sources) {
-    // Skip Unity-generated source files as we don't support Unity builds
-    if (source->GetProperty("UNITY_SOURCE_FILE")) {
+    // Skip Unity-generated batch files (unity_X_cxx.cxx) as we don't support Unity builds
+    // But still process the original source files
+    std::string sourcePath = source->GetFullPath();
+    if (sourcePath.find("/Unity/unity_") != std::string::npos && 
+        sourcePath.find("_cxx.cxx") != std::string::npos) {
       continue;
     }
     
