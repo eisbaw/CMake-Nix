@@ -172,16 +172,17 @@ cmGlobalNixGenerator::GenerateBuildCommand(
         // Read the target location file and copy the binary
         std::string escapedTargetName = cmOutputConverter::EscapeForShell(tname, cmOutputConverter::Shell_Flag_IsUnix);
         std::string locationFile = escapedTargetName + "_loc";
+        std::string escapedLocationFile = cmOutputConverter::EscapeForShell(locationFile, cmOutputConverter::Shell_Flag_IsUnix);
         
-        copyScript << "if [ -f " << locationFile << " ]; then ";
-        copyScript << "TARGET_LOCATION=$(cat " << locationFile << "); ";
+        copyScript << "if [ -f " << escapedLocationFile << " ]; then ";
+        copyScript << "TARGET_LOCATION=$(cat " << escapedLocationFile << "); ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript << "echo '[NIX-TRACE] Target location: '$TARGET_LOCATION; ";
+          copyScript << "echo '[NIX-TRACE] Target location: '\"$TARGET_LOCATION\"; ";
         }
         copyScript << "if [ -f \"result\" ]; then ";
         copyScript << "STORE_PATH=$(readlink result); ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript << "echo '[NIX-TRACE] Store path: '$STORE_PATH; ";
+          copyScript << "echo '[NIX-TRACE] Store path: '\"$STORE_PATH\"; ";
         }
         copyScript << "cp \"$STORE_PATH\" \"$TARGET_LOCATION\" 2>/dev/null";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
@@ -1732,16 +1733,18 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     writer.WriteComment("Handle try_compile COPY_FILE requirement");
     writer.StartMultilineString("postBuildPhase");
     writer.WriteMultilineLine("# Create output location in build directory for CMake COPY_FILE");
-    writer.WriteMultilineLine("COPY_DEST=\"" + buildDir + "/" + targetName + "\"");
+    std::string escapedBuildDir = cmOutputConverter::EscapeForShell(buildDir, cmOutputConverter::Shell_Flag_IsUnix);
+    std::string escapedTargetName = cmOutputConverter::EscapeForShell(targetName, cmOutputConverter::Shell_Flag_IsUnix);
+    writer.WriteMultilineLine("COPY_DEST=" + escapedBuildDir + "/" + escapedTargetName);
     writer.WriteMultilineLine("cp \"$out\" \"$COPY_DEST\"");
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      writer.WriteMultilineLine("echo '[NIX-TRACE] Copied try_compile output to: '$COPY_DEST");
+      writer.WriteMultilineLine("echo '[NIX-TRACE] Copied try_compile output to: '\"$COPY_DEST\"");
     }
     writer.WriteMultilineLine("# Write location file that CMake expects to find the executable path");
-    writer.WriteMultilineLine("echo \"$COPY_DEST\" > \"" + buildDir + "/" + targetName + "_loc\"");
+    writer.WriteMultilineLine("echo \"$COPY_DEST\" > " + escapedBuildDir + "/" + escapedTargetName + "_loc");
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      writer.WriteMultilineLine("echo '[NIX-TRACE] Wrote location file: " + buildDir + "/" + targetName + "_loc'");
-      writer.WriteMultilineLine("echo '[NIX-TRACE] Location file contains: '$COPY_DEST");
+      writer.WriteMultilineLine("echo '[NIX-TRACE] Wrote location file: '" + escapedBuildDir + "/" + escapedTargetName + "_loc");
+      writer.WriteMultilineLine("echo '[NIX-TRACE] Location file contains: '\"$COPY_DEST\"");
     }
     writer.EndMultilineString();
   }
@@ -2036,15 +2039,20 @@ void cmGlobalNixGenerator::WriteInstallRules(cmGeneratedFileStream& nixFileStrea
       dest = installGens[0]->GetDestination(this->GetBuildConfiguration(target));
     }
     
-    nixFileStream << "      mkdir -p $out/" << dest << "\n";
+    std::string escapedDest = cmOutputConverter::EscapeForShell(dest, cmOutputConverter::Shell_Flag_IsUnix);
+    std::string escapedTargetName = cmOutputConverter::EscapeForShell(targetName, cmOutputConverter::Shell_Flag_IsUnix);
+    
+    nixFileStream << "      mkdir -p $out/" << escapedDest << "\n";
     
     // Determine installation destination based on target type
     if (target->GetType() == cmStateEnums::EXECUTABLE) {
-      nixFileStream << "      cp $src $out/" << dest << "/" << targetName << "\n";
+      nixFileStream << "      cp $src $out/" << escapedDest << "/" << escapedTargetName << "\n";
     } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-      nixFileStream << "      cp -r $src/* $out/" << dest << "/ 2>/dev/null || true\n";
+      nixFileStream << "      cp -r $src/* $out/" << escapedDest << "/ 2>/dev/null || true\n";
     } else if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
-      nixFileStream << "      cp $src $out/" << dest << "/" << this->GetLibraryPrefix() << targetName << this->GetStaticLibraryExtension() << "\n";
+      std::string libName = this->GetLibraryPrefix() + targetName + this->GetStaticLibraryExtension();
+      std::string escapedLibName = cmOutputConverter::EscapeForShell(libName, cmOutputConverter::Shell_Flag_IsUnix);
+      nixFileStream << "      cp $src $out/" << escapedDest << "/" << escapedLibName << "\n";
     }
     
     nixFileStream << "    '';\n";
