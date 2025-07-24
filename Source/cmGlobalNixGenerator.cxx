@@ -1258,6 +1258,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       
       // Copy configuration-time generated files to their correct locations
       writer.WriteIndented(3, "# Copy configuration-time generated files");
+      
+      // Since configuration-time generated files exist in the build directory
+      // and Nix can't access them directly, we need to use builtins.path
+      // to import them into the Nix store
       for (const auto& genFile : configTimeGeneratedFiles) {
         // Calculate the relative path within the build directory
         std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
@@ -1265,7 +1269,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         if (!destDir.empty()) {
           writer.WriteIndented(3, "mkdir -p $out/" + destDir);
         }
-        writer.WriteIndented(3, "cp " + genFile + " $out/" + relPath);
+        
+        // Create a proper Nix path reference
+        std::string fileBaseName = cmSystemTools::GetFilenameName(genFile);
+        writer.WriteIndented(3, "cp ${builtins.path { path = " + genFile + "; }} $out/" + relPath);
       }
       
       writer.WriteIndented(2, "'';");
@@ -1363,6 +1370,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   // Filter out external headers (from /nix/store) and collect only project headers
   std::vector<std::string> projectHeaders;
+  
   for (const std::string& header : headers) {
     // Skip headers from Nix store - they're provided by buildInputs packages
     if (header.find("/nix/store/") != std::string::npos) {
@@ -1370,6 +1378,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
     // Skip absolute paths outside project (system headers)
     if (cmSystemTools::FileIsFullPath(header)) {
+      continue;
+    }
+    // Skip configuration-time generated files that are already in composite source
+    // These would have paths like "build/zephyr/include/..." when build != source
+    if (header.find("build/") == 0 || header.find("./build/") == 0) {
       continue;
     }
     projectHeaders.push_back(header);
