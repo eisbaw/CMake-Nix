@@ -28,12 +28,15 @@ Progress made (2025-07-24):
 - Fixed double slash path concatenation issue in library imports
 - Successfully configured Zephyr philosophers sample with Nix generator
 - Build starts but fails due to missing generated headers in Nix derivations
+- Fixed custom command outputs to preserve directory structure
+- Fixed path resolution for generated files in subdirectories
 
 Remaining issues:
 - Zephyr generates many header files during configuration (autoconf.h, devicetree_generated.h)
-- These generated files are referenced by absolute paths in the build
-- Nix derivations need to include these generated files as inputs
-- May need enhanced custom command support for Zephyr's complex code generation
+- These configuration-time generated files aren't tracked as custom command outputs
+- Path inconsistency: fileset uses correct relative paths (./../build/...) but propagatedInputs uses incorrect paths (./build/...)
+- The Nix generator doesn't properly handle files generated during CMake configuration phase
+- May need special handling for configuration-time generated files vs build-time generated files
 
 Once Zephyr is building with host toolchain, add ARM toolchain to our shell.nix and build some blinky or other simple app for an ARM-based Nordic board.
 
