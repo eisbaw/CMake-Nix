@@ -153,6 +153,12 @@ private:
   // Helper method to get library dependencies with caching
   std::vector<std::string> GetCachedLibraryDependencies(cmGeneratorTarget* target, 
                                                         const std::string& config) const;
+  
+  // Helper method to process library dependencies for buildInputs
+  void ProcessLibraryDependenciesForBuildInputs(
+    const std::vector<std::string>& libraryDeps,
+    std::vector<std::string>& buildInputs,
+    const std::string& projectSourceRelPath) const;
 protected:
   // Platform abstraction helpers
   std::string GetObjectFileExtension() const { return ".o"; }
