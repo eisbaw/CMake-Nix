@@ -7,7 +7,15 @@ DONE - Fixed PCH (Precompiled Header) support (test_pch now passes)
 DONE - Fixed Unity build support (test_unity_build now passes)
 DONE - Fixed out-of-source builds with correct fileset roots
 
-Fix review comments as git notes, see git log -10 .
+DONE - Fix review comments as git notes, see git log -10 .
+
+Fixed critical issues (2025-07-24):
+- Fixed regression where internal CMake targets were ignored in library dependencies
+- Added thread safety to TransitiveDependencyCache with mutex protection
+- Added path canonicalization for consistent cache keys
+- Added cache size limit to prevent unbounded memory growth
+- Removed unnecessary vector include from cmNixPackageMapper.h
+- Moved GetGeneratorTarget() back to protected visibility
 
 
 
