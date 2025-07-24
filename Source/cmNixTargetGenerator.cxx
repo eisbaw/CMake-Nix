@@ -251,6 +251,31 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
   
   command.push_back(source->GetFullPath());
   
+  // Debug output before running command
+  if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[DEBUG] ScanWithCompiler for " << source->GetFullPath() << std::endl;
+    
+    // Show raw compileFlags vector
+    std::cerr << "[DEBUG] Raw compileFlags (" << compileFlags.size() << " flags):" << std::endl;
+    for (size_t i = 0; i < compileFlags.size(); ++i) {
+      std::cerr << "[DEBUG]   [" << i << "] = \"" << compileFlags[i] << "\"" << std::endl;
+    }
+    
+    // Show raw includeFlags vector
+    std::cerr << "[DEBUG] Raw includeFlags (" << includeFlags.size() << " flags):" << std::endl;
+    for (size_t i = 0; i < includeFlags.size(); ++i) {
+      std::cerr << "[DEBUG]   [" << i << "] = \"" << includeFlags[i] << "\"" << std::endl;
+    }
+    
+    // Show full command being executed
+    std::cerr << "[DEBUG] Full dependency scan command:" << std::endl;
+    std::cerr << "[DEBUG]   ";
+    for (const auto& arg : command) {
+      std::cerr << "\"" << arg << "\" ";
+    }
+    std::cerr << std::endl;
+  }
+  
   // Execute compiler to get dependencies
   std::string output;
   std::string error;
@@ -271,6 +296,14 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
       }
       this->Makefile->GetCMakeInstance()->IssueMessage(
         MessageType::WARNING, msg.str());
+      
+      // Additional debug output for failed commands
+      if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+        std::cerr << "[DEBUG] Dependency scan command failed!" << std::endl;
+        std::cerr << "[DEBUG] Exit code: " << result << std::endl;
+        std::cerr << "[DEBUG] Error output: " << error << std::endl;
+        std::cerr << "[DEBUG] Standard output: " << output << std::endl;
+      }
     }
   } else {
     // Always report command execution failures
@@ -282,6 +315,12 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
     }
     this->Makefile->GetCMakeInstance()->IssueMessage(
       MessageType::WARNING, msg.str());
+    
+    // Additional debug output for command execution failure
+    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[DEBUG] Failed to execute dependency scan command!" << std::endl;
+      std::cerr << "[DEBUG] Error: " << error << std::endl;
+    }
   }
   
   return dependencies;
@@ -360,14 +399,24 @@ std::vector<std::string> cmNixTargetGenerator::GetCompileFlags(
   // Get language-specific flags
   std::string langFlags = this->GetMakefile()->GetSafeDefinition("CMAKE_" + lang + "_FLAGS");
   if (!langFlags.empty()) {
-    cmExpandList(langFlags, flags);
+    // Trim leading/trailing spaces before expanding
+    langFlags = cmTrimWhitespace(langFlags);
+    // Use ParseUnixCommandLine to properly handle quoted arguments
+    std::vector<std::string> parsedFlags;
+    cmSystemTools::ParseUnixCommandLine(langFlags.c_str(), parsedFlags);
+    flags.insert(flags.end(), parsedFlags.begin(), parsedFlags.end());
   }
   
   // Get configuration-specific flags
   std::string configFlags = this->GetMakefile()->GetSafeDefinition(
     "CMAKE_" + lang + "_FLAGS_" + cmSystemTools::UpperCase(config));
   if (!configFlags.empty()) {
-    cmExpandList(configFlags, flags);
+    // Trim leading/trailing spaces before expanding
+    configFlags = cmTrimWhitespace(configFlags);
+    // Use ParseUnixCommandLine to properly handle quoted arguments
+    std::vector<std::string> parsedFlags;
+    cmSystemTools::ParseUnixCommandLine(configFlags.c_str(), parsedFlags);
+    flags.insert(flags.end(), parsedFlags.begin(), parsedFlags.end());
   }
   
   // Get target-specific compile definitions
@@ -382,9 +431,47 @@ std::vector<std::string> cmNixTargetGenerator::GetCompileFlags(
     this->GeneratorTarget, config, lang, "");
   for (const auto& opt : compileOpts) {
     if (!opt.Value.empty()) {
-      cmExpandList(opt.Value, flags);
+      std::string trimmedOpt = cmTrimWhitespace(opt.Value);
+      
+      // Check if the entire string is wrapped in quotes
+      if (trimmedOpt.length() >= 2 && 
+          trimmedOpt.front() == '"' && trimmedOpt.back() == '"') {
+        // Remove the outer quotes
+        trimmedOpt = trimmedOpt.substr(1, trimmedOpt.length() - 2);
+      }
+      
+      // Use ParseUnixCommandLine to properly handle quoted arguments
+      std::vector<std::string> parsedFlags;
+      cmSystemTools::ParseUnixCommandLine(trimmedOpt.c_str(), parsedFlags);
+      
+      // If ParseUnixCommandLine returns a single flag that contains spaces,
+      // it might need to be split further (unless it's a quoted argument)
+      std::vector<std::string> finalFlags;
+      for (const auto& flag : parsedFlags) {
+        if (flag.find(' ') != std::string::npos && 
+            flag.front() != '"' && flag.front() != '\'') {
+          // This flag contains spaces but isn't quoted, so split it
+          std::istringstream iss(flag);
+          std::string subflag;
+          while (iss >> subflag) {
+            if (!subflag.empty()) {
+              finalFlags.push_back(subflag);
+            }
+          }
+        } else {
+          finalFlags.push_back(flag);
+        }
+      }
+      
+      flags.insert(flags.end(), finalFlags.begin(), finalFlags.end());
     }
   }
+  
+  // Remove any empty or whitespace-only flags
+  flags.erase(std::remove_if(flags.begin(), flags.end(),
+    [](const std::string& flag) {
+      return flag.empty() || std::all_of(flag.begin(), flag.end(), ::isspace);
+    }), flags.end());
   
   return flags;
 }

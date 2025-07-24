@@ -1,6 +1,12 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
 
+Fix compile issues reported by nix-shell --run 'just dev' .
+
+Fix review comments as git notes, see git log -10 .
+
+
+
 DONE (partially) - Make Zephyr RTOS's dining philosophers app build with Nix using cmake nix generator. It has bee the posix one. Use zephyr host toolchain. Zephyr build will require more packages, so add its own shell-zephyr.nix file.
 
 Progress made (2025-07-24):

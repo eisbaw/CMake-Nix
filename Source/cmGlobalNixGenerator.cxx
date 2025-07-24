@@ -751,7 +751,8 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
           }
           
           std::string const& lang = source->GetLanguage();
-          if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA") {
+          if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || 
+              lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
             std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
             this->AddObjectDerivation(target->GetName(), this->GetDerivationName(target->GetName(), source->GetFullPath()), source->GetFullPath(), targetGen->GetObjectFileName(source), lang, dependencies);
             this->WriteObjectDerivation(nixFileStream, target.get(), source);
@@ -911,11 +912,43 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   std::ostringstream compileFlagsStream;
   bool firstFlag = true;
   for (const auto& flag : compileFlagsVec) {
-    if (!firstFlag) compileFlagsStream << " ";
-    compileFlagsStream << flag.Value;
-    firstFlag = false;
+    if (!flag.Value.empty()) {
+      std::string trimmedFlag = cmTrimWhitespace(flag.Value);
+      
+      // Check if the entire string is wrapped in quotes
+      if (trimmedFlag.length() >= 2 && 
+          trimmedFlag.front() == '"' && trimmedFlag.back() == '"') {
+        // Remove the outer quotes
+        trimmedFlag = trimmedFlag.substr(1, trimmedFlag.length() - 2);
+      }
+      
+      // Parse the flag string to handle multi-flag strings like "-fPIC -pthread"
+      std::vector<std::string> parsedFlags;
+      cmSystemTools::ParseUnixCommandLine(trimmedFlag.c_str(), parsedFlags);
+      
+      // If ParseUnixCommandLine returns a single flag that contains spaces,
+      // it might need to be split further (unless it's a quoted argument)
+      for (const auto& pFlag : parsedFlags) {
+        if (pFlag.find(' ') != std::string::npos && 
+            pFlag.front() != '"' && pFlag.front() != '\'') {
+          // This flag contains spaces but isn't quoted, so split it
+          std::istringstream iss(pFlag);
+          std::string subflag;
+          while (iss >> subflag) {
+            if (!subflag.empty()) {
+              if (!firstFlag) compileFlagsStream << " ";
+              compileFlagsStream << subflag;
+              firstFlag = false;
+            }
+          }
+        } else {
+          if (!firstFlag) compileFlagsStream << " ";
+          compileFlagsStream << pFlag;
+          firstFlag = false;
+        }
+      }
+    }
   }
-  std::string compileFlags = compileFlagsStream.str();
   
   // Add PCH compile options if applicable
   // First check if this is a PCH source file
@@ -932,6 +965,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   cmSourceFile* sf = target->Target->GetMakefile()->GetOrCreateSource(sourceFile);
   bool skipPch = sf && sf->GetPropertyAsBool("SKIP_PRECOMPILE_HEADERS");
   
+  if (cmSystemTools::GetEnv("CMAKE_NIX_DEBUG")) {
+    std::cerr << "[NIX-DEBUG] PCH check for " << sourceFile << ": pchSources.size=" << pchSources.size() 
+              << ", skipPch=" << skipPch << ", lang=" << lang << std::endl;
+  }
+  
   if (!pchSources.empty() && !skipPch) {
     std::string pchOptions;
     if (pchSources.find(sourceFile) != pchSources.end()) {
@@ -945,6 +983,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     } else {
       // This is a regular source file - add use options
       pchOptions = target->GetPchUseCompileOptions(config, lang);
+      if (cmSystemTools::GetEnv("CMAKE_NIX_DEBUG")) {
+        std::cerr << "[NIX-DEBUG] PCH use options for " << sourceFile << ": " << pchOptions << std::endl;
+      }
     }
     
     if (!pchOptions.empty()) {
@@ -980,6 +1021,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       firstFlag = false;
     }
   }
+  
+  // Extract the final compile flags string after all modifications
+  std::string compileFlags = compileFlagsStream.str();
   
   // Get configuration-specific preprocessor definitions
   std::set<std::string> defines;
@@ -1440,7 +1484,8 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     }
     
     std::string const& lang = source->GetLanguage();
-    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA") {
+    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || 
+        lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
       // Exclude PCH source files from linking
       if (pchSources.find(source->GetFullPath()) == pchSources.end()) {
         std::string objDerivName = this->GetDerivationName(
