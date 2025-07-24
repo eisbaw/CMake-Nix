@@ -5,7 +5,6 @@
 #include "cmConfigure.h"
 
 #include <string>
-#include <vector>
 #include <map>
 
 class cmNixPackageMapper

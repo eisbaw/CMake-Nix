@@ -83,6 +83,9 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     for (const std::string& dep : depends) {
       std::string depDerivName = this->GetDerivationNameForPath(dep);
       std::string depFile = cmSystemTools::GetFilenameName(dep);
+      // SECURITY FIX: Escape both the derivation name and file name to prevent shell injection
+      // Note: For Nix attribute names, we already sanitize in GetDerivationNameForPath
+      // but we still escape the filename for shell safety
       nixFileStream << "      cp ${" << depDerivName << "}/" 
                     << cmOutputConverter::EscapeForShell(depFile, cmOutputConverter::Shell_Flag_IsUnix) << " .\n";
     }

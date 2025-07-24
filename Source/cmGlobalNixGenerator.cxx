@@ -404,19 +404,24 @@ void cmGlobalNixGenerator::WriteNixFile()
     inDegree[info.DerivationName] = 0;
   }
   
-  // Build dependency graph using indices
+  // PERFORMANCE FIX: Create map for O(1) lookup instead of O(n) search
+  std::map<std::string, size_t> derivNameToIndex;
+  for (size_t i = 0; i < localCustomCommands.size(); ++i) {
+    derivNameToIndex[localCustomCommands[i].DerivationName] = i;
+  }
+  
+  // Build dependency graph using indices - now O(n*m) instead of O(n²*m)
   for (size_t i = 0; i < localCustomCommands.size(); ++i) {
     const auto& info = localCustomCommands[i];
     for (const std::string& dep : info.Depends) {
       auto depIt = localCustomCommandOutputs.find(dep);
       if (depIt != localCustomCommandOutputs.end()) {
-        // Find the index of the dependency
-        for (size_t j = 0; j < localCustomCommands.size(); ++j) {
-          if (localCustomCommands[j].DerivationName == depIt->second) {
-            dependents[depIt->second].push_back(i);
-            inDegree[info.DerivationName]++;
-            break;
-          }
+        // Use the map for O(1) lookup
+        auto indexIt = derivNameToIndex.find(depIt->second);
+        if (indexIt != derivNameToIndex.end()) {
+          dependents[depIt->second].push_back(i);
+          inDegree[info.DerivationName]++;
+          break;
         }
       }
     }
@@ -890,13 +895,16 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   }
   
   // Additional security check for path traversal
+  // CRITICAL FIX: Resolve symlinks BEFORE validation to prevent bypasses
   std::string normalizedPath = cmSystemTools::CollapseFullPath(sourceFile);
+  std::string resolvedPath = cmSystemTools::GetRealPath(normalizedPath);
   std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
+  std::string resolvedProjectDir = cmSystemTools::GetRealPath(projectDir);
   
-  // Check if normalized path is outside project directory (unless it's a system file)
-  if (!cmSystemTools::IsSubDirectory(normalizedPath, projectDir) &&
-      !cmSystemTools::IsSubDirectory(normalizedPath, "/usr") &&
-      !cmSystemTools::IsSubDirectory(normalizedPath, "/nix/store")) {
+  // Check if resolved path is outside project directory (unless it's a system file)
+  if (!cmSystemTools::IsSubDirectory(resolvedPath, resolvedProjectDir) &&
+      !cmSystemTools::IsSubDirectory(resolvedPath, "/usr") &&
+      !cmSystemTools::IsSubDirectory(resolvedPath, "/nix/store")) {
     // Check if it's in the CMake build directory
     std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
     if (!cmSystemTools::IsSubDirectory(normalizedPath, buildDir)) {
@@ -1881,7 +1889,7 @@ std::vector<std::string> cmGlobalNixGenerator::GetCachedLibraryDependencies(
 {
   std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
   
-  // Check cache first
+  // Double-checked locking pattern to prevent race condition
   {
     std::lock_guard<std::mutex> lock(this->CacheMutex);
     auto it = this->LibraryDependencyCache.find(cacheKey);
@@ -1890,12 +1898,20 @@ std::vector<std::string> cmGlobalNixGenerator::GetCachedLibraryDependencies(
     }
   }
   
-  // Compute dependencies and cache them
+  // Compute dependencies outside the lock
   auto targetGen = cmNixTargetGenerator::New(target);
   std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
   
+  // Check again inside lock in case another thread computed it
   {
     std::lock_guard<std::mutex> lock(this->CacheMutex);
+    // Check if another thread already inserted while we were computing
+    auto it = this->LibraryDependencyCache.find(cacheKey);
+    if (it != this->LibraryDependencyCache.end()) {
+      // Another thread beat us, use their result
+      return it->second;
+    }
+    // We're the first, insert our result
     this->LibraryDependencyCache[cacheKey] = libraryDeps;
   }
   
@@ -2035,6 +2051,20 @@ void cmGlobalNixGenerator::cmNixDependencyGraph::AddDependency(const std::string
     // Clear cached transitive dependencies since graph has changed
     it->second.transitiveDepsComputed = false;
     it->second.transitiveDependencies.clear();
+    
+    // CRITICAL FIX: Clear cache for all nodes that might depend on 'from'
+    // When 'from' gets a new dependency, any node that transitively depends on 'from'
+    // needs its cache invalidated as well
+    for (auto& nodePair : nodes) {
+      if (nodePair.second.transitiveDepsComputed) {
+        // If this node's transitive deps include 'from', clear its cache
+        if (nodePair.second.transitiveDependencies.count(from) > 0 ||
+            nodePair.first == from) {
+          nodePair.second.transitiveDepsComputed = false;
+          nodePair.second.transitiveDependencies.clear();
+        }
+      }
+    }
   }
 }
 

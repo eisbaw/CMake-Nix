@@ -602,18 +602,35 @@ std::vector<std::string> cmNixTargetGenerator::GetTargetLibraryDependencies(
   
   // Process each library dependency
   for (const cmLinkItem& item : linkImpl->Libraries) {
-    if (item.Target && item.Target->IsImported()) {
+    if (item.Target) {
+      // Handle CMake targets (both internal and imported)
+      if (item.Target->IsImported()) {
+        // Handle imported targets with package mapping
         std::string targetName = item.Target->GetName();
         std::string nixPackage = this->PackageMapper.GetNixPackageForTarget(targetName);
         if (!nixPackage.empty()) {
           nixPackages.push_back("__NIXPKG__" + nixPackage);
         }
-    } else if (!item.Target) {
-        std::string libName = item.AsStr();
-        std::string nixPackage = this->FindOrCreateNixPackage(libName);
-        if (!nixPackage.empty()) {
-          nixPackages.push_back(nixPackage);
+        // If no mapping found, fall through to handle as external library
+        else {
+          std::string libName = item.AsStr();
+          std::string externalPkg = this->FindOrCreateNixPackage(libName);
+          if (!externalPkg.empty()) {
+            nixPackages.push_back(externalPkg);
+          }
         }
+      } else {
+        // Internal project targets - these are handled as Nix derivation dependencies
+        // They don't need to be in nixPackages, they're handled elsewhere
+        continue;
+      }
+    } else {
+      // External libraries (not CMake targets)
+      std::string libName = item.AsStr();
+      std::string nixPackage = this->FindOrCreateNixPackage(libName);
+      if (!nixPackage.empty()) {
+        nixPackages.push_back(nixPackage);
+      }
     }
   }
   

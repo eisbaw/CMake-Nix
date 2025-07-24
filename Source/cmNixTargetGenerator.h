@@ -54,7 +54,7 @@ public:
     std::string const& directory, cmSourceFile const& source,
     std::string const& config) const override;
 
-public:
+protected:
   cmGeneratorTarget* GetGeneratorTarget() const
   {
     return this->GeneratorTarget;
@@ -73,6 +73,7 @@ public:
   /// Generate linking derivation
   void WriteLinkDerivation();
 
+public:
   /// Get the derivation name for a source file
   std::string GetDerivationName(cmSourceFile const* source) const;
 
