@@ -1,7 +1,11 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
 
-Fix compile issues reported by nix-shell --run 'just dev' .
+DONE - Fix compile issues reported by nix-shell --run 'just dev' .
+DONE - Fixed ASM language support (test_asm_language now passes)
+DONE - Fixed PCH (Precompiled Header) support (test_pch now passes) 
+DONE - Fixed Unity build support (test_unity_build now passes)
+DONE - Fixed out-of-source builds with correct fileset roots
 
 Fix review comments as git notes, see git log -10 .
 
