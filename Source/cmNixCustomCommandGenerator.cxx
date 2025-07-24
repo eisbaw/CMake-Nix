@@ -148,11 +148,23 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       nixFileStream << "\n";
     }
 
-    // Copy outputs to derivation output
+    // Copy outputs to derivation output, preserving directory structure
     for (const std::string& output : this->CustomCommand->GetOutputs()) {
       std::string outputFile = cmSystemTools::GetFilenameName(output);
       std::string escapedOutputFile = cmOutputConverter::EscapeForShell(outputFile, cmOutputConverter::Shell_Flag_IsUnix);
-      nixFileStream << "      cp " << escapedOutputFile << " $out/" << escapedOutputFile << "\n";
+      
+      // Get relative path from build directory to preserve structure
+      std::string buildDir = this->LocalGenerator->GetCurrentBinaryDirectory();
+      std::string relativePath = cmSystemTools::RelativePath(buildDir, output);
+      
+      // Create directory structure if needed
+      std::string outputDir = cmSystemTools::GetFilenamePath(relativePath);
+      if (!outputDir.empty()) {
+        nixFileStream << "      mkdir -p $out/" << cmOutputConverter::EscapeForShell(outputDir, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
+      }
+      
+      // Copy file to proper location
+      nixFileStream << "      cp " << escapedOutputFile << " $out/" << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
     }
 
     nixFileStream << "    '';\n";
@@ -162,9 +174,18 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     nixFileStream << "    installPhase = ''\n";
     nixFileStream << "      mkdir -p $out\n";
     for (const std::string& output : this->CustomCommand->GetOutputs()) {
-      std::string outputFile = cmSystemTools::GetFilenameName(output);
-      std::string escapedOutputFile = cmOutputConverter::EscapeForShell(outputFile, cmOutputConverter::Shell_Flag_IsUnix);
-      nixFileStream << "      touch $out/" << escapedOutputFile << "\n";
+      // Get relative path from build directory to preserve structure
+      std::string buildDir = this->LocalGenerator->GetCurrentBinaryDirectory();
+      std::string relativePath = cmSystemTools::RelativePath(buildDir, output);
+      
+      // Create directory structure if needed
+      std::string outputDir = cmSystemTools::GetFilenamePath(relativePath);
+      if (!outputDir.empty()) {
+        nixFileStream << "      mkdir -p $out/" << cmOutputConverter::EscapeForShell(outputDir, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
+      }
+      
+      // Create empty file at proper location
+      nixFileStream << "      touch $out/" << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
     }
     nixFileStream << "    '';\n";
   }
