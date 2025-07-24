@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <mutex>
 
 #include "cmCommonTargetGenerator.h"
 #include "cmNixPackageMapper.h"
@@ -108,5 +109,7 @@ private:
   cmNixPackageMapper PackageMapper;
   
   // Cache for transitive dependencies to avoid exponential complexity
+  // Using mutable to allow caching in const methods
   mutable std::map<std::string, std::vector<std::string>> TransitiveDependencyCache;
+  mutable std::mutex TransitiveDependencyCacheMutex;
 }; 

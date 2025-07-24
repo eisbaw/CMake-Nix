@@ -775,28 +775,34 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
     return dependencies;
   }
   
-  // Check if already visited
-  if (!visited.insert(filePath).second) {
+  // Canonicalize the path to ensure consistent cache keys
+  std::string canonicalPath = cmSystemTools::GetRealPath(filePath);
+  
+  // Check if already visited (using canonical path)
+  if (!visited.insert(canonicalPath).second) {
     return dependencies; // Already processed this file
   }
   
   // Check if file exists
-  if (!cmSystemTools::FileExists(filePath)) {
+  if (!cmSystemTools::FileExists(canonicalPath)) {
     return dependencies;
   }
   
-  // Check cache first
-  auto cacheIt = this->TransitiveDependencyCache.find(filePath);
-  if (cacheIt != this->TransitiveDependencyCache.end()) {
-    // Return cached dependencies, but still need to mark them as visited
-    for (const auto& dep : cacheIt->second) {
-      visited.insert(dep);
+  // Check cache first (with thread safety)
+  {
+    std::lock_guard<std::mutex> lock(this->TransitiveDependencyCacheMutex);
+    auto cacheIt = this->TransitiveDependencyCache.find(canonicalPath);
+    if (cacheIt != this->TransitiveDependencyCache.end()) {
+      // Return cached dependencies, but still need to mark them as visited
+      for (const auto& dep : cacheIt->second) {
+        visited.insert(dep);
+      }
+      return cacheIt->second;
     }
-    return cacheIt->second;
   }
   
   // Determine the language based on file extension
-  std::string ext = cmSystemTools::GetFilenameLastExtension(filePath);
+  std::string ext = cmSystemTools::GetFilenameLastExtension(canonicalPath);
   std::string lang;
   if (ext == ".h" || ext == ".hpp" || ext == ".hxx" || ext == ".H" || 
       ext == ".hh" || ext == ".h++" || ext == ".hp") {
@@ -845,7 +851,7 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
       }
     }
     
-    command.push_back(filePath);
+    command.push_back(canonicalPath);
     
     // Execute compiler to get dependencies
     std::string output;
@@ -952,11 +958,20 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
     dependencies.insert(dependencies.end(), transDeps.begin(), transDeps.end());
   }
   
-  // Cache the result before returning
-  this->TransitiveDependencyCache[filePath] = dependencies;
+  // Cache the result before returning (with thread safety)
+  {
+    std::lock_guard<std::mutex> lock(this->TransitiveDependencyCacheMutex);
+    // Limit cache size to prevent unbounded growth (LRU would be better, but this is simple)
+    const size_t MAX_CACHE_SIZE = 10000;
+    if (this->TransitiveDependencyCache.size() >= MAX_CACHE_SIZE) {
+      // Simple eviction: clear the entire cache when it gets too big
+      this->TransitiveDependencyCache.clear();
+    }
+    this->TransitiveDependencyCache[canonicalPath] = dependencies;
+  }
   
   return dependencies;
-} // PCH implementation methods for cmNixTargetGenerator
+}
 
 void cmNixTargetGenerator::WritePchDerivations()
 {
