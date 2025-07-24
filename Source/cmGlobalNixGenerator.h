@@ -159,6 +159,13 @@ private:
     const std::vector<std::string>& libraryDeps,
     std::vector<std::string>& buildInputs,
     const std::string& projectSourceRelPath) const;
+  
+  // Helper method to process library dependencies for linking
+  void ProcessLibraryDependenciesForLinking(
+    cmGeneratorTarget* target,
+    const std::string& config,
+    std::vector<std::string>& linkFlagsList,
+    std::set<std::string>& transitiveDeps) const;
 protected:
   // Platform abstraction helpers
   std::string GetObjectFileExtension() const { return ".o"; }

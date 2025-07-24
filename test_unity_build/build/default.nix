@@ -210,7 +210,7 @@ let
   # Linking derivations
   link_unity_app = stdenv.mkDerivation {
     name = "unity_app";
-    buildInputs = [ gcc ];
+    buildInputs = [gcc ];
     dontUnpack = true;
     objects = [
       unity_app_src_file1_cpp_o
@@ -227,7 +227,7 @@ let
 
   link_normal_app = stdenv.mkDerivation {
     name = "normal_app";
-    buildInputs = [ gcc ];
+    buildInputs = [gcc ];
     dontUnpack = true;
     objects = [
       normal_app_src_file1_cpp_o

@@ -105,7 +105,10 @@ let
     name = "compress.o";
     src = lib.fileset.toSource {
       root = ./..;
-      fileset = ./../compress.c;
+      fileset = lib.fileset.unions [
+        ./../compress.c
+        ./../../../../../../../nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev/include/zlib.h
+      ];
     };
     buildInputs = [
       gcc
@@ -141,7 +144,7 @@ let
   # Linking derivations
   link_threaded_app = stdenv.mkDerivation {
     name = "threaded_app";
-    buildInputs = [ gcc ];
+    buildInputs = [gcc ];
     dontUnpack = true;
     objects = [
       threaded_app_test_find_package_threaded_c_o
@@ -155,7 +158,7 @@ let
 
   link_compress_app = stdenv.mkDerivation {
     name = "compress_app";
-    buildInputs = [ gcc zlib ];
+    buildInputs = [gcc zlib ];
     dontUnpack = true;
     objects = [
       compress_app_test_find_package_compress_c_o
@@ -169,7 +172,7 @@ let
 
   link_opengl_app = stdenv.mkDerivation {
     name = "opengl_app";
-    buildInputs = [ gcc libGL ];
+    buildInputs = [gcc libGL ];
     dontUnpack = true;
     objects = [
       opengl_app_test_find_package_opengl_c_o

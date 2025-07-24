@@ -165,7 +165,7 @@ let
   # Linking derivations
   link_mylib = stdenv.mkDerivation {
     name = "libmylib.so";
-    buildInputs = [ gcc ];
+    buildInputs = [gcc ];
     dontUnpack = true;
     objects = [
       mylib_test_shared_library_lib_c_o
@@ -180,7 +180,7 @@ let
 
   link_versioned_lib = stdenv.mkDerivation {
     name = "libversioned_lib.so";
-    buildInputs = [ gcc ];
+    buildInputs = [gcc ];
     dontUnpack = true;
     objects = [
       versioned_lib_test_shared_library_versioned_c_o
@@ -197,7 +197,7 @@ let
 
   link_app = stdenv.mkDerivation {
     name = "app";
-    buildInputs = [ gcc link_mylib ];
+    buildInputs = [gcc link_mylib ];
     dontUnpack = true;
     objects = [
       app_test_shared_library_main_c_o
@@ -211,7 +211,7 @@ let
 
   link_static_helper = stdenv.mkDerivation {
     name = "static_helper";
-    buildInputs = [ gcc ];
+    buildInputs = [gcc ];
     dontUnpack = true;
     objects = [
       static_helper_test_shared_library_helper_c_o
@@ -225,7 +225,7 @@ let
 
   link_mixed_app = stdenv.mkDerivation {
     name = "mixed_app";
-    buildInputs = [ gcc link_mylib ];
+    buildInputs = [gcc link_mylib ];
     dontUnpack = true;
     objects = [
       mixed_app_test_shared_library_mixed_c_o

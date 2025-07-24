@@ -150,7 +150,7 @@ let
   # Linking derivations
   link_c_program = stdenv.mkDerivation {
     name = "c_program";
-    buildInputs = [ gcc ];
+    buildInputs = [gcc ];
     dontUnpack = true;
     objects = [
       c_program_test_compiler_detection_main_c_o
@@ -164,7 +164,7 @@ let
 
   link_cpp_program = stdenv.mkDerivation {
     name = "cpp_program";
-    buildInputs = [ gcc ];
+    buildInputs = [gcc ];
     dontUnpack = true;
     objects = [
       cpp_program_test_compiler_detection_main_cpp_o
@@ -178,7 +178,7 @@ let
 
   link_mixed_program = stdenv.mkDerivation {
     name = "mixed_program";
-    buildInputs = [ gcc ];
+    buildInputs = [gcc ];
     dontUnpack = true;
     objects = [
       mixed_program_test_compiler_detection_main_c_o

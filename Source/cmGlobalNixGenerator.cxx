@@ -1142,6 +1142,51 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       std::string abiSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
       writer.WriteIndented(3, "cp ${" + abiSourceDir + "/CMakeCompilerABI.h} $out/CMakeCompilerABI.h");
     }
+    
+    // Get header dependencies for external source
+    auto targetGen = cmNixTargetGenerator::New(target);
+    std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
+    
+    // Copy header dependencies that are outside the project tree
+    std::set<std::string> copiedDirs;
+    for (const std::string& dep : dependencies) {
+      std::string fullPath;
+      if (cmSystemTools::FileIsFullPath(dep)) {
+        fullPath = dep;
+      } else {
+        fullPath = this->GetCMakeInstance()->GetHomeDirectory() + "/" + dep;
+      }
+      
+      // Skip if it's a system header or in Nix store
+      if (fullPath.find("/nix/store/") != std::string::npos ||
+          fullPath.find("/usr/include/") != std::string::npos) {
+        continue;
+      }
+      
+      // Check if this header is outside the project directory
+      std::string relPath = cmSystemTools::RelativePath(
+        this->GetCMakeInstance()->GetHomeDirectory(), fullPath);
+      if (!relPath.empty() && relPath.find("../") == 0) {
+        // This is an external header, need to copy it
+        std::string headerDir = cmSystemTools::GetFilenamePath(fullPath);
+        std::string headerFile = cmSystemTools::GetFilenameName(fullPath);
+        
+        // Create directory structure in composite source
+        std::string relDir = cmSystemTools::RelativePath(
+          cmSystemTools::GetFilenamePath(sourceFile), headerDir);
+        if (!relDir.empty() && copiedDirs.find(relDir) == copiedDirs.end()) {
+          writer.WriteIndented(3, "mkdir -p $out/" + relDir);
+          copiedDirs.insert(relDir);
+        }
+        
+        // Copy the header file if it exists
+        if (cmSystemTools::FileExists(fullPath)) {
+          std::string destPath = relDir.empty() ? headerFile : relDir + "/" + headerFile;
+          writer.WriteIndented(3, "cp ${" + fullPath + "} $out/" + destPath + " 2>/dev/null || true");
+        }
+      }
+    }
+    
     writer.WriteIndented(2, "'';");
   } else {
     // Regular project source - always use fileset for better performance
@@ -1635,45 +1680,8 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   // Get library link flags for build phase - use vector for efficient concatenation
   std::vector<std::string> linkFlagsList;
   
-  if (linkImpl) {
-    // Reserve space for efficiency
-    linkFlagsList.reserve(linkImpl->Libraries.size() + transitiveDeps.size());
-    
-    for (const cmLinkItem& item : linkImpl->Libraries) {
-      if (item.Target && item.Target->IsImported()) {
-        // This is an imported target from find_package
-        std::string importedTargetName = item.Target->GetName();
-        // Need to create target generator for package mapper access
-        auto targetGen = cmNixTargetGenerator::New(target);
-        std::string flags = targetGen->GetPackageMapper().GetLinkFlags(importedTargetName);
-        if (!flags.empty()) {
-          linkFlagsList.push_back(flags);
-        }
-      } else if (item.Target && !item.Target->IsImported()) {
-        // This is a CMake target within the same project
-        std::string depTargetName = item.Target->GetName();
-        std::string depDerivName = this->GetDerivationName(depTargetName);
-        
-        // Add appropriate link flags based on target type using direct references
-        if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-          // For shared libraries, use Nix string interpolation
-          linkFlagsList.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
-                                 depTargetName + this->GetSharedLibraryExtension());
-        } else if (item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
-          // For module libraries, use Nix string interpolation (no lib prefix)
-          linkFlagsList.push_back("${" + depDerivName + "}/" + depTargetName + 
-                                 this->GetSharedLibraryExtension());
-        } else if (item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
-          // For static libraries, link the archive directly using string interpolation
-          linkFlagsList.push_back("${" + depDerivName + "}");
-        }
-      } else if (!item.Target) { 
-        // External library (not a target)
-        std::string libName = item.AsStr();
-        linkFlagsList.push_back("-l" + libName);
-      }
-    }
-  }
+  // Use helper method to process library dependencies
+  this->ProcessLibraryDependenciesForLinking(target, config, linkFlagsList, transitiveDeps);
   
   // Add transitive shared library dependencies to linkFlags (excluding direct ones)
   for (const std::string& depTarget : transitiveDeps) {
@@ -1972,6 +1980,66 @@ std::vector<std::string> cmGlobalNixGenerator::GetCachedLibraryDependencies(
   }
   
   return libraryDeps;
+}
+
+void cmGlobalNixGenerator::ProcessLibraryDependenciesForLinking(
+  cmGeneratorTarget* target,
+  const std::string& config,
+  std::vector<std::string>& linkFlagsList,
+  std::set<std::string>& transitiveDeps) const
+{
+  // Get link implementation
+  cmLinkImplementation const* linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
+  if (!linkImpl) {
+    return;
+  }
+  
+  // Get package mapper for imported targets
+  auto targetGen = cmNixTargetGenerator::New(target);
+  
+  // Process each library dependency
+  for (const cmLinkItem& item : linkImpl->Libraries) {
+    if (item.Target && item.Target->IsImported()) {
+      // This is an imported target from find_package
+      std::string importedTargetName = item.Target->GetName();
+      std::string flags = targetGen->GetPackageMapper().GetLinkFlags(importedTargetName);
+      if (!flags.empty()) {
+        linkFlagsList.push_back(flags);
+      }
+    } else if (item.Target && !item.Target->IsImported()) {
+      // This is a CMake target within the same project
+      std::string depTargetName = item.Target->GetName();
+      std::string depDerivName = this->GetDerivationName(depTargetName);
+      
+      // Add appropriate link flags based on target type using direct references
+      if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+        // For shared libraries, use Nix string interpolation
+        linkFlagsList.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                               depTargetName + this->GetSharedLibraryExtension());
+      } else if (item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+        // For module libraries, use Nix string interpolation (no lib prefix)
+        linkFlagsList.push_back("${" + depDerivName + "}/" + depTargetName + 
+                               this->GetSharedLibraryExtension());
+      } else if (item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
+        // For static libraries, link the archive directly using string interpolation
+        linkFlagsList.push_back("${" + depDerivName + "}");
+      }
+    } else if (!item.Target) { 
+      // External library (not a target)
+      std::string libName = item.AsStr();
+      linkFlagsList.push_back("-l" + libName);
+    }
+  }
+  
+  // Process transitive dependencies for shared libraries
+  for (const cmLinkItem& item : linkImpl->Libraries) {
+    if (item.Target && !item.Target->IsImported() && 
+        item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+      transitiveDeps.insert(item.Target->GetName());
+      std::set<std::string> childDeps = this->DependencyGraph.GetTransitiveSharedLibraries(item.Target->GetName());
+      transitiveDeps.insert(childDeps.begin(), childDeps.end());
+    }
+  }
 }
 
 void cmGlobalNixGenerator::ProcessLibraryDependenciesForBuildInputs(
