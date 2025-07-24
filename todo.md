@@ -760,18 +760,20 @@ The following items are currently pending and need attention:
 
 ### MEDIUM PRIORITY ISSUES
 
-53. **Fix code duplication in library dependency processing**:
+53. DONE: **Fix code duplication in library dependency processing**:
     - Location: Multiple places handling library dependencies with similar logic
     - Issue: Repeated patterns for processing imported vs internal targets
     - Impact: Maintenance burden, inconsistent behavior
     - Action: Extract common dependency processing logic into shared utilities
+    - Fixed: Created ProcessLibraryDependenciesForLinking helper method to consolidate duplicated logic
 
-54. **Fix multi-config generator path issues for try_compile**:
+54. DONE: **Fix multi-config generator path issues for try_compile**:
     - Location: cmGlobalNixMultiGenerator try-compile handling
     - Issue: Multi-config generator has path issues with try_compile operations
     - Impact: Compiler detection failures in multi-config mode
     - Status: Try-compile fails due to absolute path usage in Nix environment
     - Action: Fix path resolution for try-compile in multi-config generator
+    - Fixed: Added proper path resolution and external source handling for try_compile sources
 
 ### LOW PRIORITY ISSUES
 
