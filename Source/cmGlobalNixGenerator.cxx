@@ -158,7 +158,10 @@ cmGlobalNixGenerator::GenerateBuildCommand(
     copyCommand.Add("sh");
     copyCommand.Add("-c");
     
-    std::string copyScript = "set -e; ";
+    // Use ostringstream for efficient string concatenation
+    std::ostringstream copyScript;
+    copyScript << "set -e; ";
+    
     for (auto const& tname : targetNames) {
       if (!tname.empty()) {
         if (this->GetCMakeInstance()->GetDebugOutput()) {
@@ -169,34 +172,37 @@ cmGlobalNixGenerator::GenerateBuildCommand(
         // Read the target location file and copy the binary
         std::string escapedTargetName = cmOutputConverter::EscapeForShell(tname, cmOutputConverter::Shell_Flag_IsUnix);
         std::string locationFile = escapedTargetName + "_loc";
-        copyScript += "if [ -f " + locationFile + " ]; then ";
-        copyScript += "TARGET_LOCATION=$(cat " + locationFile + "); ";
+        
+        copyScript << "if [ -f " << locationFile << " ]; then ";
+        copyScript << "TARGET_LOCATION=$(cat " << locationFile << "); ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript += "echo '[NIX-TRACE] Target location: '$TARGET_LOCATION; ";
+          copyScript << "echo '[NIX-TRACE] Target location: '$TARGET_LOCATION; ";
         }
-        copyScript += "if [ -f \"result\" ]; then ";
-        copyScript += "STORE_PATH=$(readlink result); ";
+        copyScript << "if [ -f \"result\" ]; then ";
+        copyScript << "STORE_PATH=$(readlink result); ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript += "echo '[NIX-TRACE] Store path: '$STORE_PATH; ";
+          copyScript << "echo '[NIX-TRACE] Store path: '$STORE_PATH; ";
         }
-        copyScript += "cp \"$STORE_PATH\" \"$TARGET_LOCATION\" 2>/dev/null";
+        copyScript << "cp \"$STORE_PATH\" \"$TARGET_LOCATION\" 2>/dev/null";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript += " || echo '[NIX-TRACE] Copy failed'";
+          copyScript << " || echo '[NIX-TRACE] Copy failed'";
         }
-        copyScript += "; ";
+        copyScript << "; ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript += "else echo '[NIX-TRACE] No result symlink found'; ";
+          copyScript << "else echo '[NIX-TRACE] No result symlink found'; ";
         }
-        copyScript += "fi; ";
+        copyScript << "fi; ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript += "else echo '[NIX-TRACE] No location file for " + cmOutputConverter::EscapeForShell(escapedTargetName, cmOutputConverter::Shell_Flag_IsUnix) + "'; ";
+          copyScript << "else echo '[NIX-TRACE] No location file for " 
+                     << cmOutputConverter::EscapeForShell(escapedTargetName, cmOutputConverter::Shell_Flag_IsUnix) 
+                     << "'; ";
         }
-        copyScript += "fi; ";
+        copyScript << "fi; ";
       }
     }
-    copyScript += "true"; // Ensure script always succeeds
+    copyScript << "true"; // Ensure script always succeeds
     
-    copyCommand.Add(copyScript);
+    copyCommand.Add(copyScript.str());
     
     return { std::move(makeCommand), std::move(copyCommand) };
   }
@@ -897,11 +903,14 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   // Get configuration-specific compile flags
   // Use the vector version to properly capture all flags including those from target_compile_options
   std::vector<BT<std::string>> compileFlagsVec = lg->GetTargetCompileFlags(target, config, lang, "");
-  std::string compileFlags;
+  std::ostringstream compileFlagsStream;
+  bool firstFlag = true;
   for (const auto& flag : compileFlagsVec) {
-    if (!compileFlags.empty()) compileFlags += " ";
-    compileFlags += flag.Value;
+    if (!firstFlag) compileFlagsStream << " ";
+    compileFlagsStream << flag.Value;
+    firstFlag = false;
   }
+  std::string compileFlags = compileFlagsStream.str();
   
   // Add PCH compile options if applicable
   // First check if this is a PCH source file
@@ -961,44 +970,51 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         pos += relPath.length();
       }
       
-      if (!compileFlags.empty()) compileFlags += " ";
-      compileFlags += processedOptions;
+      if (!firstFlag) compileFlagsStream << " ";
+      compileFlagsStream << processedOptions;
+      firstFlag = false;
     }
   }
   
   // Get configuration-specific preprocessor definitions
   std::set<std::string> defines;
   lg->GetTargetDefines(target, config, lang, defines);
-  std::string defineFlags;
+  std::ostringstream defineFlagsStream;
+  bool firstDefine = true;
   for (const std::string& define : defines) {
-    if (!defineFlags.empty()) defineFlags += " ";
-    defineFlags += "-D" + define;
+    if (!firstDefine) defineFlagsStream << " ";
+    defineFlagsStream << "-D" << define;
+    firstDefine = false;
   }
+  std::string defineFlags = defineFlagsStream.str();
   
   // Get include directories from target with proper configuration
   // Use LocalGenerator to properly evaluate generator expressions
   std::vector<std::string> includes;
   lg->GetIncludeDirectories(includes, target, lang, config);
   
-  std::string includeFlags;
+  std::ostringstream includeFlagsStream;
   // When using filesets, we need to compute include paths relative to the source directory
   // since that's where the build will happen in the Nix derivation
   bool willUseFileset = !source->GetIsGenerated();
   std::string basePath = willUseFileset ? 
     this->GetCMakeInstance()->GetHomeDirectory() : 
     this->GetCMakeInstance()->GetHomeOutputDirectory();
-    
+  
+  bool firstInclude = true;
   for (const auto& inc : includes) {
     // Skip include directories from Nix store - these are provided by buildInputs packages
     if (inc.find("/nix/store/") != std::string::npos) {
       continue;
     }
     
-    if (!includeFlags.empty()) includeFlags += " ";
+    if (!firstInclude) includeFlagsStream << " ";
     // Convert absolute include paths to relative for Nix build environment
     std::string relativeInclude = cmSystemTools::RelativePath(basePath, inc);
-    includeFlags += "-I" + (!relativeInclude.empty() ? relativeInclude : inc);
+    includeFlagsStream << "-I" << (!relativeInclude.empty() ? relativeInclude : inc);
+    firstInclude = false;
   }
+  std::string includeFlags = includeFlagsStream.str();
   
   // Start the derivation
   writer.StartDerivation(derivName, 1);
@@ -1074,6 +1090,22 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         
         if (cmSystemTools::FileExists(fullPath) || source->GetIsGenerated()) {
           fileList.push_back(relDep);
+        }
+      }
+    }
+    
+    // Add PCH header file to fileset if this source uses PCH
+    if (!pchSources.empty() && !skipPch && pchSources.find(sourceFile) == pchSources.end()) {
+      // This is a regular source file that uses PCH
+      for (const std::string& arch : pchArchs) {
+        std::string pchHeader = target->GetPchHeader(config, lang, arch);
+        if (!pchHeader.empty()) {
+          // Convert to relative path
+          std::string relPchHeader = cmSystemTools::RelativePath(
+            this->GetCMakeInstance()->GetHomeDirectory(), pchHeader);
+          if (!relPchHeader.empty() && relPchHeader.find("../") != 0) {
+            fileList.push_back(relPchHeader);
+          }
         }
       }
     }
@@ -1204,16 +1236,17 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   }
   
   // Combine all flags: compile flags + defines + includes
-  std::string allFlags;
-  if (!compileFlags.empty()) allFlags += compileFlags + " ";
-  if (!defineFlags.empty()) allFlags += defineFlags + " ";
-  if (!includeFlags.empty()) allFlags += includeFlags + " ";
+  std::ostringstream allFlagsStream;
+  if (!compileFlags.empty()) allFlagsStream << compileFlags << " ";
+  if (!defineFlags.empty()) allFlagsStream << defineFlags << " ";
+  if (!includeFlags.empty()) allFlagsStream << includeFlags << " ";
   
   // Add -fPIC for shared and module libraries
   if (target->GetType() == cmStateEnums::SHARED_LIBRARY ||
       target->GetType() == cmStateEnums::MODULE_LIBRARY) {
-    allFlags += "-fPIC ";
+    allFlagsStream << "-fPIC ";
   }
+  std::string allFlags = allFlagsStream.str();
   
   // Remove trailing space
   if (!allFlags.empty() && allFlags.back() == ' ') {

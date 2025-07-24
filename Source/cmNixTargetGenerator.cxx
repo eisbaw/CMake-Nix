@@ -486,11 +486,18 @@ std::string cmNixTargetGenerator::GetClangTidyReplacementsFilePath(
   std::string const& directory, cmSourceFile const& source,
   std::string const& config) const
 {
-  // Clang-tidy integration not yet implemented for Nix backend
-  (void)directory;
-  (void)source;
-  (void)config;
-  return "";
+  // Generate clang-tidy replacements file path similar to other generators
+  std::string filename = cmSystemTools::GetFilenameName(source.GetFullPath());
+  std::string basename = cmSystemTools::GetFilenameWithoutLastExtension(filename);
+  
+  // Create path: <directory>/<config>/<basename>.yaml
+  std::string replacementsFile = directory;
+  if (!config.empty()) {
+    replacementsFile = cmStrCat(replacementsFile, "/", config);
+  }
+  replacementsFile = cmStrCat(replacementsFile, "/", basename, ".yaml");
+  
+  return replacementsFile;
 }
 
 // Pure Nix library support implementation
@@ -577,6 +584,12 @@ bool cmNixTargetGenerator::CreateNixPackageFile(
   
   file << content.str();
   file.close();
+  
+  // Check if the file was closed successfully
+  if (file.fail()) {
+    std::cerr << "Warning: Failed to close file: " << filePath << std::endl;
+    return false;
+  }
   
   return true;
 }

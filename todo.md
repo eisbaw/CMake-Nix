@@ -1,6 +1,12 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
 
+Make Zephyr RTOS's dining philosophers app build with Nix using cmake nix generator. It has bee the posix one. Use zephyr host toolchain. Zephyr build will require more packages, so add its own shell-zephyr.nix file.
+
+Once Zephyr is building with host toolchain, add ARM toolchain to our shell.nix and build some blinky or other simple app for an ARM-based Nordic board.
+
+There are still many mkDerivations that compile C files, that are not making use of the cmakeNixCC function.
+
 
 #############################
 
@@ -161,6 +167,7 @@ DONE: (cd test_zephyr_rtos/zephyr/ && nix-shell --run 'just build-via-nix') gene
 2) DONE: What does cmake "-E" "echo" "" do? It does nothing, so remove it. - Fixed: Skip echo commands without redirection
 3) DONE: Why do we depend on cmake inside the derivations? That should not be nessecary as we come from cmake outside, and cmake shall produce stuff simpler than itself. - Fixed: Removed cmake from buildInputs
 4) DONE: Attribute name collisions, e.g. custom_include appears multiple times. Ensure we do not duplicate attribute names, or else we have to qualify them if they are not identical. - Fixed: Generate unique derivation names based on full path
+   NOTE (2025-07-24): Issue still occurs with Zephyr RTOS build - multiple custom commands generate the same derivation name "custom_samples_philosophers_build_zephyr_misc_generated_syscallslinks_include". Need better uniqueness strategy.
 
 
 
