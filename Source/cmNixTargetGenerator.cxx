@@ -382,6 +382,7 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithRegex(
     }
   }
   
+  sourceFile.close();
   return dependencies;
 }
 
@@ -937,6 +938,7 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
           }
         }
       }
+      headerFile.close();
     }
   }
   
