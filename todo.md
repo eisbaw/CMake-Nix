@@ -290,8 +290,10 @@ DONE: Update todo.md with actual Nix generator codebase state. Review codebase. 
 3. DONE: **Fixed Fortran language support**:
    - Issue: GetCompilerPackage returned "gcc" for Fortran instead of "gfortran"
    - Issue: Primary language detection for linking didn't include Fortran
+   - Issue: cmakeNixCC helper function didn't handle gfortran compiler properly
    - Solution: Updated GetCompilerPackage to return "gfortran" for Fortran language
    - Solution: Added Fortran language detection in primary language selection
+   - Solution: Added explicit gfortran check in cmakeNixCC helper function
    - Impact: Fortran projects now build successfully with proper compiler and linker
 
 ### Additional Test Cases Needed:
