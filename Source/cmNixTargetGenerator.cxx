@@ -146,6 +146,8 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
   
   // Skip dependency scanning unless CMAKE_NIX_EXPLICIT_SOURCES is enabled
   // This avoids redundant compiler invocations during configuration
+  // Note: This means header files won't be automatically included in filesets,
+  // so projects need to use src = ./. or CMAKE_NIX_EXPLICIT_SOURCES=ON
   cmValue explicitSources = this->GetMakefile()->GetDefinition("CMAKE_NIX_EXPLICIT_SOURCES");
   if (!explicitSources || !cmIsOn(*explicitSources)) {
     return dependencies; // Skip scanning to improve performance
