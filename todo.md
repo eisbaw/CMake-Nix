@@ -1,6 +1,12 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
 
+DONE - Fixed linker argument order for static libraries (objects must come before libraries)
+DONE - Fixed shared library naming in cmakeNixLD to use base target name without prefix/extension
+DONE - Fixed C++ linking by adding compilerCommand parameter to cmakeNixLD helper
+DONE - Fixed null version/soversion handling in shared library builds using Nix conditionals
+DONE - Fixed library parameter quoting in WriteLinkDerivation to prevent Nix syntax errors
+
 DONE - Fix compile issues reported by nix-shell --run 'just dev' .
 DONE - Fixed ASM language support (test_asm_language now passes)
 DONE - Fixed PCH (Precompiled Header) support (test_pch now passes) 
