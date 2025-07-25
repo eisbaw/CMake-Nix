@@ -259,12 +259,12 @@ std::string cmNixCustomCommandGenerator::GetDerivationNameForPath(const std::str
   return result;
 }
 
-std::vector<std::string> cmNixCustomCommandGenerator::GetOutputs() const
+const std::vector<std::string>& cmNixCustomCommandGenerator::GetOutputs() const
 {
   return this->CustomCommand->GetOutputs();
 }
 
-std::vector<std::string> cmNixCustomCommandGenerator::GetDepends() const
+const std::vector<std::string>& cmNixCustomCommandGenerator::GetDepends() const
 {
   return this->CustomCommand->GetDepends();
 }

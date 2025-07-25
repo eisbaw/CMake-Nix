@@ -366,7 +366,7 @@ void cmGlobalNixGenerator::WriteNixFile()
       }
       std::vector<cmSourceFile*> sources;
       target->GetSourceFiles(sources, "");
-      for (cmSourceFile* source : sources) {
+      for (const cmSourceFile* source : sources) {
         if (cmCustomCommand const* cc = source->GetCustomCommand()) {
           if (this->GetCMakeInstance()->GetDebugOutput()) {
             std::cerr << "[NIX-DEBUG] Found custom command in source: " << source->GetFullPath() << std::endl;
@@ -802,7 +802,7 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         
         if (cmSystemTools::GetEnv("CMAKE_NIX_DEBUG")) {
           std::cerr << "[NIX-DEBUG] Target " << target->GetName() << " has " << sources.size() << " source files" << std::endl;
-          for (cmSourceFile* source : sources) {
+          for (const cmSourceFile* source : sources) {
             std::cerr << "[NIX-DEBUG]   Source: " << source->GetFullPath() 
                       << " (Unity: " << (source->GetProperty("UNITY_SOURCE_FILE") ? "yes" : "no") << ")" << std::endl;
           }
@@ -821,7 +821,7 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
           }
         }
         
-        for (cmSourceFile* source : sources) {
+        for (const cmSourceFile* source : sources) {
           // Skip Unity-generated batch files (unity_X_cxx.cxx) as we don't support Unity builds
           // But still process the original source files
           std::string sourcePath = source->GetFullPath();
@@ -939,7 +939,7 @@ void cmGlobalNixGenerator::AddObjectDerivation(std::string const& targetName, st
 
 void cmGlobalNixGenerator::WriteObjectDerivation(
   cmGeneratedFileStream& nixFileStream, cmGeneratorTarget* target, 
-  cmSourceFile* source)
+  const cmSourceFile* source)
 {
   cmNixWriter writer(nixFileStream);
   

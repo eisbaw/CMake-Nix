@@ -18,7 +18,9 @@ DONE - Fixed PCH (Precompiled Header) support (test_pch now passes)
 DONE - Fixed Unity build support (test_unity_build now passes)
 DONE - Fixed out-of-source builds with correct fileset roots
 
-DONE - Fix review comments as git notes, see git log -10 .
+Fix review comments again as git notes, see git log -10 .
+
+Review todo.md if what is DONE really is DONE.
 
 Fixed critical issues (2025-07-24):
 - Fixed regression where internal CMake targets were ignored in library dependencies

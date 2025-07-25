@@ -18,8 +18,8 @@ public:
 
   void Generate(cmGeneratedFileStream& nixFileStream);
   std::string GetDerivationName() const;
-  std::vector<std::string> GetOutputs() const;
-  std::vector<std::string> GetDepends() const;
+  const std::vector<std::string>& GetOutputs() const;
+  const std::vector<std::string>& GetDepends() const;
 
 private:
   // Constants

@@ -92,14 +92,14 @@ protected:
   virtual void WritePerTranslationUnitDerivations(cmGeneratedFileStream& nixFileStream);
   virtual void WriteLinkingDerivations(cmGeneratedFileStream& nixFileStream);
   void WriteObjectDerivation(cmGeneratedFileStream& nixFileStream, 
-                            cmGeneratorTarget* target, cmSourceFile* source);
+                            cmGeneratorTarget* target, const cmSourceFile* source);
   void WriteLinkDerivation(cmGeneratedFileStream& nixFileStream, 
                           cmGeneratorTarget* target);
   
   // New helper methods for object derivation refactoring
   void WriteObjectDerivationUsingWriter(cmNixWriter& writer, 
                                        cmGeneratorTarget* target, 
-                                       cmSourceFile* source);
+                                       const cmSourceFile* source);
   
   // Helper methods for WriteLinkDerivation refactoring
   void WriteLinkDerivationHeader(cmGeneratedFileStream& nixFileStream,
