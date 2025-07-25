@@ -719,6 +719,12 @@ std::string cmNixTargetGenerator::FindOrCreateNixPackage(
     }
     
     return "./" + relPath;
+  } else {
+    // Issue warning when package file creation fails
+    std::ostringstream msg;
+    msg << "Warning: Could not create Nix package file for library '" << libName 
+        << "' at '" << nixFilePath << "'";
+    this->Makefile->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
   }
   
   return ""; // Could not find or create package

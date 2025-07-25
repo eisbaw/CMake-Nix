@@ -31,12 +31,15 @@ Progress made (2025-07-24):
 - Fixed custom command outputs to preserve directory structure
 - Fixed path resolution for generated files in subdirectories
 
+Progress made (2025-07-25):
+- Fixed configuration-time generated files handling by embedding file contents directly in Nix expressions
+- Replaced builtins.path usage (which has security restrictions) with here-doc embedding
+- Configuration-time generated files like Zephyr's autoconf.h and devicetree_generated.h are now properly included
+
 Remaining issues:
-- Zephyr generates many header files during configuration (autoconf.h, devicetree_generated.h)
-- These configuration-time generated files aren't tracked as custom command outputs
 - Path inconsistency: fileset uses correct relative paths (./../build/...) but propagatedInputs uses incorrect paths (./build/...)
-- The Nix generator doesn't properly handle files generated during CMake configuration phase
-- May need special handling for configuration-time generated files vs build-time generated files
+- Need to test if Zephyr now builds successfully with the configuration-time generated files fix
+- Zephyr build environment may have additional requirements or issues
 
 Once Zephyr is building with host toolchain, add ARM toolchain to our shell.nix and build some blinky or other simple app for an ARM-based Nordic board.
 
