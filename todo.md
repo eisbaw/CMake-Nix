@@ -41,10 +41,12 @@ Progress made (2025-07-25):
 - Fixed configuration-time generated files handling by embedding file contents directly in Nix expressions
 - Replaced builtins.path usage (which has security restrictions) with here-doc embedding
 - Configuration-time generated files like Zephyr's autoconf.h and devicetree_generated.h are now properly included
+- DONE: Fixed path normalization for paths containing .. segments before using in Nix string interpolation
+- DONE: Removed propagatedInputs for header dependencies to avoid Nix evaluation errors with relative paths
 
 Remaining issues:
-- Path inconsistency: fileset uses correct relative paths (./../build/...) but propagatedInputs uses incorrect paths (./build/...)
-- Need to test if Zephyr now builds successfully with the configuration-time generated files fix
+- Here-document generation issue: Large generated files may cause unterminated here-doc warnings
+- Need to investigate the permission denied error when writing to composite source
 - Zephyr build environment may have additional requirements or issues
 
 Once Zephyr is building with host toolchain, add ARM toolchain to our shell.nix and build some blinky or other simple app for an ARM-based Nordic board.
