@@ -22,6 +22,9 @@ public:
   std::vector<std::string> GetDepends() const;
 
 private:
+  // Constants
+  static constexpr int HASH_SUFFIX_DIGITS = 10000; // Number of hash digits for unique suffixes
+  
   std::string GetDerivationNameForPath(const std::string& path) const;
   
   cmCustomCommand const* CustomCommand;

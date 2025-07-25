@@ -262,23 +262,23 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
   
   // Debug output before running command
   if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[DEBUG] ScanWithCompiler for " << source->GetFullPath() << std::endl;
+    std::cerr << "[NIX-DEBUG] ScanWithCompiler for " << source->GetFullPath() << std::endl;
     
     // Show raw compileFlags vector
-    std::cerr << "[DEBUG] Raw compileFlags (" << compileFlags.size() << " flags):" << std::endl;
+    std::cerr << "[NIX-DEBUG] Raw compileFlags (" << compileFlags.size() << " flags):" << std::endl;
     for (size_t i = 0; i < compileFlags.size(); ++i) {
-      std::cerr << "[DEBUG]   [" << i << "] = \"" << compileFlags[i] << "\"" << std::endl;
+      std::cerr << "[NIX-DEBUG]   [" << i << "] = \"" << compileFlags[i] << "\"" << std::endl;
     }
     
     // Show raw includeFlags vector
-    std::cerr << "[DEBUG] Raw includeFlags (" << includeFlags.size() << " flags):" << std::endl;
+    std::cerr << "[NIX-DEBUG] Raw includeFlags (" << includeFlags.size() << " flags):" << std::endl;
     for (size_t i = 0; i < includeFlags.size(); ++i) {
-      std::cerr << "[DEBUG]   [" << i << "] = \"" << includeFlags[i] << "\"" << std::endl;
+      std::cerr << "[NIX-DEBUG]   [" << i << "] = \"" << includeFlags[i] << "\"" << std::endl;
     }
     
     // Show full command being executed
-    std::cerr << "[DEBUG] Full dependency scan command:" << std::endl;
-    std::cerr << "[DEBUG]   ";
+    std::cerr << "[NIX-DEBUG] Full dependency scan command:" << std::endl;
+    std::cerr << "[NIX-DEBUG]   ";
     for (const auto& arg : command) {
       std::cerr << "\"" << arg << "\" ";
     }
@@ -308,10 +308,10 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
       
       // Additional debug output for failed commands
       if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-        std::cerr << "[DEBUG] Dependency scan command failed!" << std::endl;
-        std::cerr << "[DEBUG] Exit code: " << result << std::endl;
-        std::cerr << "[DEBUG] Error output: " << error << std::endl;
-        std::cerr << "[DEBUG] Standard output: " << output << std::endl;
+        std::cerr << "[NIX-DEBUG] Dependency scan command failed!" << std::endl;
+        std::cerr << "[NIX-DEBUG] Exit code: " << result << std::endl;
+        std::cerr << "[NIX-DEBUG] Error output: " << error << std::endl;
+        std::cerr << "[NIX-DEBUG] Standard output: " << output << std::endl;
       }
     }
   } else {
@@ -327,8 +327,8 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
     
     // Additional debug output for command execution failure
     if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[DEBUG] Failed to execute dependency scan command!" << std::endl;
-      std::cerr << "[DEBUG] Error: " << error << std::endl;
+      std::cerr << "[NIX-DEBUG] Failed to execute dependency scan command!" << std::endl;
+      std::cerr << "[NIX-DEBUG] Error: " << error << std::endl;
     }
   }
   
@@ -786,8 +786,7 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
   std::vector<std::string> dependencies;
   
   // Limit recursion depth to prevent stack overflow
-  const int MAX_DEPTH = 100;
-  if (depth > MAX_DEPTH) {
+  if (depth > MAX_HEADER_RECURSION_DEPTH) {
     std::cerr << "[WARNING] Header dependency recursion depth exceeded for: " << filePath << std::endl;
     return dependencies;
   }
@@ -917,17 +916,17 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
     } else {
       // Log compiler error without failing the build
       if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-        std::cerr << "[DEBUG] Compiler header dependency scan failed for " << filePath
+        std::cerr << "[NIX-DEBUG] Compiler header dependency scan failed for " << filePath
                   << " with exit code " << result << std::endl;
         if (!error.empty()) {
-          std::cerr << "[DEBUG] Compiler error: " << error << std::endl;
+          std::cerr << "[NIX-DEBUG] Compiler error: " << error << std::endl;
         }
       }
     }
   } else {
     // Log command execution failure
     if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[DEBUG] Failed to execute header dependency scanning command for " 
+      std::cerr << "[NIX-DEBUG] Failed to execute header dependency scanning command for " 
                 << filePath << std::endl;
     }
   }
@@ -981,8 +980,7 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
   {
     std::lock_guard<std::mutex> lock(this->TransitiveDependencyCacheMutex);
     // Limit cache size to prevent unbounded growth (LRU would be better, but this is simple)
-    const size_t MAX_CACHE_SIZE = 10000;
-    if (this->TransitiveDependencyCache.size() >= MAX_CACHE_SIZE) {
+    if (this->TransitiveDependencyCache.size() >= MAX_DEPENDENCY_CACHE_SIZE) {
       // Simple eviction: clear the entire cache when it gets too big
       this->TransitiveDependencyCache.clear();
     }

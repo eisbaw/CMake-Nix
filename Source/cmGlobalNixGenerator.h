@@ -196,6 +196,9 @@ private:
   static const std::string GccCompiler;
   static const std::string ClangCompiler;
   
+  // Numeric constants
+  static constexpr int MAX_CYCLE_DETECTION_DEPTH = 100; // Maximum depth for cycle detection
+  
   // Map from output file to custom command derivation name
   std::map<std::string, std::string> CustomCommandOutputs;
   

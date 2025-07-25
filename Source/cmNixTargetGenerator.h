@@ -105,6 +105,10 @@ public:
   std::vector<std::string> GetPchDependencies(cmSourceFile const* source, std::string const& config) const;
 
 private:
+  // Constants
+  static constexpr int MAX_HEADER_RECURSION_DEPTH = 100; // Maximum depth for header dependency scanning
+  static constexpr size_t MAX_DEPENDENCY_CACHE_SIZE = 10000; // Maximum entries in dependency cache
+  
   cmLocalNixGenerator* LocalGenerator;
   cmNixPackageMapper PackageMapper;
   

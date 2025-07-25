@@ -217,7 +217,7 @@ std::string cmNixCustomCommandGenerator::GetDerivationName() const
     for (const auto& output : outputs) {
       hash ^= std::hash<std::string>{}(output) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
     }
-    baseName += "_" + std::to_string(hash % 10000); // Add last 4 digits of hash
+    baseName += "_" + std::to_string(hash % HASH_SUFFIX_DIGITS); // Add last 4 digits of hash
   }
   
   // Also add hash of the command itself to ensure different commands with same output get unique names
@@ -228,7 +228,7 @@ std::string cmNixCustomCommandGenerator::GetDerivationName() const
         cmdHash ^= std::hash<std::string>{}(arg) + 0x9e3779b9 + (cmdHash << 6) + (cmdHash >> 2);
       }
     }
-    baseName += "_" + std::to_string(cmdHash % 10000);
+    baseName += "_" + std::to_string(cmdHash % HASH_SUFFIX_DIGITS);
   }
   
   return baseName;

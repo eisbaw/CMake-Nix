@@ -560,11 +560,10 @@ void cmGlobalNixGenerator::WriteNixFile()
     
     // Try to detect and report specific cycles
     msg << "Cycle Analysis:\n";
-    const int MAX_CYCLE_DEPTH = 100;
     std::function<bool(const std::string&, std::set<std::string>&, std::vector<std::string>&, int)> findCycle;
     findCycle = [&](const std::string& current, std::set<std::string>& visited, std::vector<std::string>& path, int depth) -> bool {
       // Prevent stack overflow with depth limit
-      if (depth > MAX_CYCLE_DEPTH) {
+      if (depth > MAX_CYCLE_DETECTION_DEPTH) {
         std::cerr << "[WARNING] Cycle detection depth limit exceeded at: " << current << std::endl;
         return false;
       }
