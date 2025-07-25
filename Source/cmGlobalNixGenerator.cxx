@@ -1137,13 +1137,15 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
     // Copy external source file to build dir root
     std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
-    writer.WriteIndented(3, "cp ${" + sourceFile + "} $out/" + fileName);
+    // Use builtins.path for absolute paths
+    writer.WriteIndented(3, "cp ${builtins.path { path = \"" + sourceFile + "\"; }} $out/" + fileName);
     
     // For ABI detection files, also copy the required header file
     if (fileName.find("CMakeCCompilerABI.c") != std::string::npos ||
         fileName.find("CMakeCXXCompilerABI.cpp") != std::string::npos) {
       std::string abiSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-      writer.WriteIndented(3, "cp ${" + abiSourceDir + "/CMakeCompilerABI.h} $out/CMakeCompilerABI.h");
+      std::string abiHeaderFile = abiSourceDir + "/CMakeCompilerABI.h";
+      writer.WriteIndented(3, "cp ${builtins.path { path = \"" + abiHeaderFile + "\"; }} $out/CMakeCompilerABI.h");
     }
     
     // Get header dependencies for external source
@@ -1187,7 +1189,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           // Normalize the path to resolve .. segments before using in Nix expression
           std::string normalizedHeaderPath = cmSystemTools::CollapseFullPath(fullPath);
           std::string destPath = relDir.empty() ? headerFile : relDir + "/" + headerFile;
-          writer.WriteIndented(3, "cp ${" + normalizedHeaderPath + "} $out/" + destPath + " 2>/dev/null || true");
+          // Use builtins.path for absolute paths
+          writer.WriteIndented(3, "cp ${builtins.path { path = \"" + normalizedHeaderPath + "\"; }} $out/" + destPath + " 2>/dev/null || true");
         }
       }
     }
