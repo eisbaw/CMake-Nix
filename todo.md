@@ -76,8 +76,9 @@ UPDATE (2025-07-25): Successfully completed cmakeNixLD refactoring:
 - Added postBuildPhase parameter to cmakeNixLD helper for try_compile support
 - All tests pass successfully with the refactored code
 
-NOTE (2025-07-25): WriteObjectDerivation in cmGlobalNixGenerator.cxx still uses writer.StartDerivation (stdenv.mkDerivation) 
+DONE NOTE (2025-07-25): WriteObjectDerivation in cmGlobalNixGenerator.cxx still uses writer.StartDerivation (stdenv.mkDerivation) 
 instead of cmakeNixCC helper. This should be refactored to complete the DRY principle implementation.
+- Fixed (2025-07-30): Refactored WriteObjectDerivation to use cmakeNixCC helper function
 
 
 #############################
@@ -431,8 +432,8 @@ DONE: All feature tests passing with `just dev`
 6. DONE: **Debug Output**: Debug statements in cmGlobalNixGenerator.cxx:207,217 not controlled by debug flag (should use GetDebug()) - Fixed: Now using GetDebugOutput()
 
 ### Medium Priority Issues:
-7. **Performance**: String concatenation in loops without reservation in cmGlobalNixGenerator.cxx:157-198
-8. **Code Duplication**: Library dependency processing duplicated in cmGlobalNixGenerator.cxx:869-894 and 1052-1092
+7. DONE: **Performance**: String concatenation in loops without reservation in cmGlobalNixGenerator.cxx:157-198 - Fixed: Already using ostringstream
+8. DONE: **Code Duplication**: Library dependency processing duplicated in cmGlobalNixGenerator.cxx:869-894 and 1052-1092 - Fixed: Created ProcessLibraryDependenciesForLinking and ProcessLibraryDependenciesForBuildInputs helper methods
 9. DONE: **Hardcoded Values**: Compiler fallbacks hardcoded in cmGlobalNixGenerator.cxx:1367-1376 - should be configurable - Fixed: Already configurable via CMAKE_NIX_<LANG>_COMPILER_PACKAGE cache variables
 10. DONE: **Path Validation**: No validation of source paths in cmGlobalNixGenerator.cxx:803-816 - Fixed: Added comprehensive path validation including traversal detection
 11. DONE: **Edge Cases**: Numeric suffix detection in cmGlobalNixGenerator.cxx:124-131 fails with non-ASCII digits - Fixed: Using explicit ASCII range check
@@ -993,9 +994,10 @@ DONE 71. **Invalid Nix Syntax for Special Character Target Names**:
 ## NEW FINDINGS FROM CODE REVIEW (2025-07-29)
 
 ### Performance Issues:
-72. **String Concatenation in Loops**: cmGlobalNixGenerator.cxx:157-198 - Using operator+ in loops without reserve()
+72. DONE: **String Concatenation in Loops**: cmGlobalNixGenerator.cxx:157-198 - Using operator+ in loops without reserve()
     - Impact: Quadratic time complexity for many targets
     - Fix: Use ostringstream or reserve string capacity
+    - Fixed: Already using ostringstream for efficient string concatenation
 
 73. **Code Duplication in Compiler Detection**: GetCompilerPackage and GetCompilerCommand have duplicated logic
     - Impact: Maintenance burden, inconsistent behavior  
