@@ -101,6 +101,28 @@ protected:
                                        cmGeneratorTarget* target, 
                                        const cmSourceFile* source);
   
+  // Helper methods for WriteObjectDerivation decomposition
+  bool ValidateSourceFile(const cmSourceFile* source, 
+                         cmGeneratorTarget* target,
+                         std::string& sourceFile) const;
+  void WriteExternalSourceDerivation(cmGeneratedFileStream& nixFileStream,
+                                    cmGeneratorTarget* target,
+                                    const cmSourceFile* source,
+                                    const std::string& sourceFile,
+                                    const std::string& derivName,
+                                    const std::string& objectName);
+  void WriteRegularSourceDerivation(cmGeneratedFileStream& nixFileStream,
+                                   cmGeneratorTarget* target,
+                                   const cmSourceFile* source,
+                                   const std::string& sourceFile,
+                                   const std::string& derivName,
+                                   const std::string& objectName);
+  std::string DetermineCompilerPackage(cmGeneratorTarget* target,
+                                      const cmSourceFile* source) const;
+  std::string GetCompileFlags(cmGeneratorTarget* target,
+                             const cmSourceFile* source,
+                             const std::string& config) const;
+  
   // Helper methods for WriteLinkDerivation refactoring
   void WriteLinkDerivationHeader(cmGeneratedFileStream& nixFileStream,
                                  cmGeneratorTarget* target,

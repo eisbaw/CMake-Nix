@@ -22,14 +22,15 @@ Fix review comments again as git notes, see git log -10 .
 
 Review todo.md if what is DONE really is DONE.
 
-Ensure code is production ready.
+Ensure code is production ready. Break up large functions into intentions - and compose back functionality. This also allows for better re-use.
 
 Check if zephyr rtos'es dining philosphers are truly building and executing as native sim.
 
 Search web for large CMake based project, add it as a test case.
 
-Check off PRD.md Phases 
+Check off PRD.md Phases - what we have. Add missing tasks to todo.md.
 
+Look for assumptions in our Nix generator backend. We want to be extremely correct and general.
 
 Fixed critical issues (2025-07-24):
 - Fixed regression where internal CMake targets were ignored in library dependencies

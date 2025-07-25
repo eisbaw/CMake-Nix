@@ -943,87 +943,52 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
 {
   cmNixWriter writer(nixFileStream);
   
-  std::string sourceFile = source->GetFullPath();
-  
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] WriteObjectDerivation for source: " << sourceFile 
-              << " (generated: " << source->GetIsGenerated() << ")" << std::endl;
-  }
-  
-  // Validate source path
-  if (sourceFile.empty()) {
-    std::ostringstream msg;
-    msg << "Empty source file path for target " << target->GetName();
-    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+  // Validate the source file
+  std::string sourceFile;
+  if (!this->ValidateSourceFile(source, target, sourceFile)) {
     return;
-  }
-  
-  // Check if file exists (unless it's a generated file)
-  if (!source->GetIsGenerated() && !cmSystemTools::FileExists(sourceFile)) {
-    std::ostringstream msg;
-    msg << "Source file does not exist: " << sourceFile << " for target " << target->GetName();
-    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-    // Continue anyway as it might be generated later
-  }
-  
-  // Validate path doesn't contain dangerous characters that could break Nix expressions
-  if (sourceFile.find('"') != std::string::npos || 
-      sourceFile.find('$') != std::string::npos ||
-      sourceFile.find('`') != std::string::npos ||
-      sourceFile.find('\n') != std::string::npos ||
-      sourceFile.find('\r') != std::string::npos) {
-    std::ostringstream msg;
-    msg << "Source file path contains potentially dangerous characters: " << sourceFile;
-    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-  }
-  
-  // Additional security check for path traversal
-  // CRITICAL FIX: Resolve symlinks BEFORE validation to prevent bypasses
-  std::string normalizedPath = cmSystemTools::CollapseFullPath(sourceFile);
-  std::string resolvedPath = cmSystemTools::GetRealPath(normalizedPath);
-  std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
-  std::string resolvedProjectDir = cmSystemTools::GetRealPath(projectDir);
-  
-  // Check if resolved path is outside project directory (unless it's a system file)
-  if (!cmSystemTools::IsSubDirectory(resolvedPath, resolvedProjectDir) &&
-      !cmSystemTools::IsSubDirectory(resolvedPath, "/usr") &&
-      !cmSystemTools::IsSubDirectory(resolvedPath, "/nix/store")) {
-    // Check if it's in the CMake build directory
-    std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-    if (!cmSystemTools::IsSubDirectory(normalizedPath, buildDir)) {
-      std::ostringstream msg;
-      msg << "Source file path appears to be outside project directory: " << sourceFile;
-      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-    }
   }
   std::string derivName = this->GetDerivationName(target->GetName(), sourceFile);
   ObjectDerivation const& od = this->ObjectDerivations[derivName];
 
   std::string objectName = od.ObjectFileName;
-  std::string lang = od.Language;
-  std::vector<std::string> headers = od.Dependencies;
   
-  // Get the configuration (Debug, Release, etc.)
-  std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
-  if (config.empty()) {
-    config = "Release"; // Default configuration
+  // Determine if this is an external source
+  std::string initialRelativePath = cmSystemTools::RelativePath(
+    this->GetCMakeInstance()->GetHomeDirectory(), sourceFile);
+  bool isExternalSource = (initialRelativePath.find("../") == 0 || 
+                          cmSystemTools::FileIsFullPath(initialRelativePath));
+  
+  if (isExternalSource) {
+    this->WriteExternalSourceDerivation(nixFileStream, target, source, sourceFile, 
+                                       derivName, objectName);
+  } else {
+    this->WriteRegularSourceDerivation(nixFileStream, target, source, sourceFile, 
+                                      derivName, objectName);
   }
-  
-  // Get the local generator for this target
-  cmLocalGenerator* lg = target->GetLocalGenerator();
-  
-  // Get configuration-specific compile flags
-  // Use the vector version to properly capture all flags including those from target_compile_options
-  std::vector<BT<std::string>> compileFlagsVec = lg->GetTargetCompileFlags(target, config, lang, "");
-  std::ostringstream compileFlagsStream;
-  bool firstFlag = true;
-  for (const auto& flag : compileFlagsVec) {
-    if (!flag.Value.empty()) {
-      std::string trimmedFlag = cmTrimWhitespace(flag.Value);
-      
-      // Check if the entire string is wrapped in quotes
-      if (trimmedFlag.length() >= 2 && 
-          trimmedFlag.front() == '"' && trimmedFlag.back() == '"') {
+}
+
+void cmGlobalNixGenerator::WriteExternalSourceDerivation(
+  cmGeneratedFileStream& nixFileStream, cmGeneratorTarget* target,
+  const cmSourceFile* source, const std::string& sourceFile,
+  const std::string& derivName, const std::string& objectName)
+{
+  // TODO: Implement external source derivation generation
+  // This will handle sources outside the project tree with composite sources
+}
+
+void cmGlobalNixGenerator::WriteRegularSourceDerivation(
+  cmGeneratedFileStream& nixFileStream, cmGeneratorTarget* target,
+  const cmSourceFile* source, const std::string& sourceFile,
+  const std::string& derivName, const std::string& objectName)
+{
+  // TODO: Implement regular source derivation generation
+  // This will handle sources within the project tree
+}
+
+void cmGlobalNixGenerator::WriteLinkDerivation(
+  cmGeneratedFileStream& nixFileStream, cmGeneratorTarget* target)
+{
         // Remove the outer quotes
         trimmedFlag = trimmedFlag.substr(1, trimmedFlag.length() - 2);
       }
@@ -2167,6 +2132,164 @@ std::string cmGlobalNixGenerator::GetBuildConfiguration(cmGeneratorTarget* targe
     config = "Release"; // Default to Release if no configuration specified
   }
   return config;
+}
+
+bool cmGlobalNixGenerator::ValidateSourceFile(const cmSourceFile* source,
+                                             cmGeneratorTarget* target,
+                                             std::string& sourceFile) const
+{
+  sourceFile = source->GetFullPath();
+  
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-DEBUG] ValidateSourceFile: " << sourceFile 
+              << " (generated: " << source->GetIsGenerated() << ")" << std::endl;
+  }
+  
+  // Validate source path
+  if (sourceFile.empty()) {
+    std::ostringstream msg;
+    msg << "Empty source file path for target " << target->GetName();
+    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    return false;
+  }
+  
+  // Check if file exists (unless it's a generated file)
+  if (!source->GetIsGenerated() && !cmSystemTools::FileExists(sourceFile)) {
+    std::ostringstream msg;
+    msg << "Source file does not exist: " << sourceFile << " for target " << target->GetName();
+    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    // Continue anyway as it might be generated later
+  }
+  
+  // Validate path doesn't contain dangerous characters that could break Nix expressions
+  if (sourceFile.find('"') != std::string::npos || 
+      sourceFile.find('$') != std::string::npos ||
+      sourceFile.find('`') != std::string::npos ||
+      sourceFile.find('\n') != std::string::npos ||
+      sourceFile.find('\r') != std::string::npos) {
+    std::ostringstream msg;
+    msg << "Source file path contains potentially dangerous characters: " << sourceFile;
+    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+  }
+  
+  // Additional security check for path traversal
+  // CRITICAL FIX: Resolve symlinks BEFORE validation to prevent bypasses
+  std::string normalizedPath = cmSystemTools::CollapseFullPath(sourceFile);
+  std::string resolvedPath = cmSystemTools::GetRealPath(normalizedPath);
+  std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
+  std::string resolvedProjectDir = cmSystemTools::GetRealPath(projectDir);
+  
+  // Check if resolved path is outside project directory (unless it's a system file)
+  if (!cmSystemTools::IsSubDirectory(resolvedPath, resolvedProjectDir) &&
+      !cmSystemTools::IsSubDirectory(resolvedPath, "/usr") &&
+      !cmSystemTools::IsSubDirectory(resolvedPath, "/nix/store")) {
+    // Check if it's in the CMake build directory
+    std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+    if (!cmSystemTools::IsSubDirectory(normalizedPath, buildDir)) {
+      std::ostringstream msg;
+      msg << "Source file path appears to be outside project directory: " << sourceFile;
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    }
+  }
+  
+  return true;
+}
+
+std::string cmGlobalNixGenerator::DetermineCompilerPackage(
+  cmGeneratorTarget* target, const cmSourceFile* source) const
+{
+  // Determine compiler package based on source file language
+  std::string lang = source->GetOrDetermineLanguage();
+  
+  // Special handling for assembly files
+  if (lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
+    // For assembly files, we generally use the C compiler
+    // unless there's a specific assembler configured
+    std::string asmCompiler = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_ASM_COMPILER");
+    if (!asmCompiler.empty() && asmCompiler.find("nasm") != std::string::npos) {
+      return "nasm";
+    } else if (!asmCompiler.empty() && asmCompiler.find("yasm") != std::string::npos) {
+      return "yasm";
+    }
+    // Default to gcc for assembly
+    lang = "C";
+  }
+  
+  return this->GetCompilerPackage(lang);
+}
+
+std::string cmGlobalNixGenerator::GetCompileFlags(
+  cmGeneratorTarget* target, const cmSourceFile* source, const std::string& config) const
+{
+  std::string lang = source->GetOrDetermineLanguage();
+  cmLocalGenerator* lg = target->GetLocalGenerator();
+  
+  // Get configuration-specific compile flags
+  // Use the vector version to properly capture all flags including those from target_compile_options
+  std::vector<BT<std::string>> compileFlagsVec = lg->GetTargetCompileFlags(target, config, lang, "");
+  std::ostringstream compileFlagsStream;
+  bool firstFlag = true;
+  
+  for (const auto& flag : compileFlagsVec) {
+    if (!flag.Value.empty()) {
+      std::string trimmedFlag = cmTrimWhitespace(flag.Value);
+      
+      // Check if the entire string is wrapped in quotes
+      if (trimmedFlag.length() >= 2 && 
+          trimmedFlag.front() == '"' && trimmedFlag.back() == '"') {
+        // Remove the outer quotes
+        trimmedFlag = trimmedFlag.substr(1, trimmedFlag.length() - 2);
+      }
+      
+      // Parse the flag string to handle multi-flag strings like "-fPIC -pthread"
+      std::vector<std::string> parsedFlags;
+      cmSystemTools::ParseUnixCommandLine(trimmedFlag.c_str(), parsedFlags);
+      
+      // If ParseUnixCommandLine returns a single flag that contains spaces,
+      // it might need to be split further (unless it's a quoted argument)
+      for (const auto& pFlag : parsedFlags) {
+        if (pFlag.find(' ') != std::string::npos && 
+            pFlag.front() != '"' && pFlag.front() != '\'') {
+          // Split on spaces for unquoted flags
+          std::istringstream iss(pFlag);
+          std::string token;
+          while (iss >> token) {
+            if (!firstFlag) compileFlagsStream << " ";
+            compileFlagsStream << token;
+            firstFlag = false;
+          }
+        } else {
+          if (!firstFlag) compileFlagsStream << " ";
+          compileFlagsStream << pFlag;
+          firstFlag = false;
+        }
+      }
+    }
+  }
+  
+  // Add compile definitions
+  std::vector<BT<std::string>> compileDefs = lg->GetTargetDefines(target, config, lang);
+  for (const auto& def : compileDefs) {
+    if (!def.Value.empty()) {
+      if (!firstFlag) compileFlagsStream << " ";
+      compileFlagsStream << "-D" << def.Value;
+      firstFlag = false;
+    }
+  }
+  
+  // Add include directories
+  std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, lang, config);
+  for (const auto& inc : includes) {
+    if (!inc.Value.empty()) {
+      if (!firstFlag) compileFlagsStream << " ";
+      // Escape the include path for shell
+      std::string escapedInc = cmOutputConverter::EscapeForShell(inc.Value, cmOutputConverter::Shell_Flag_IsUnix);
+      compileFlagsStream << "-I" << escapedInc;
+      firstFlag = false;
+    }
+  }
+  
+  return compileFlagsStream.str();
 }
 
 std::vector<std::string> cmGlobalNixGenerator::GetCachedLibraryDependencies(
