@@ -887,16 +887,18 @@ The following items are currently pending and need attention:
 
 ### Code Quality Issues:
 
-56. **Magic Numbers Without Named Constants**:
+56. DONE: **Magic Numbers Without Named Constants**:
     - Location: Throughout codebase
     - Examples: hash % 10000 (cmNixCustomCommandGenerator.cxx:220,231), MAX_DEPTH=100, MAX_CACHE_SIZE=10000
     - Impact: Hard to maintain and reason about limits
     - Action: Define named constants in header files
+    - Fixed: Added HASH_SUFFIX_DIGITS, MAX_HEADER_RECURSION_DEPTH, MAX_DEPENDENCY_CACHE_SIZE, MAX_CYCLE_DETECTION_DEPTH
 
-57. **Inconsistent Debug Output Prefixes**:
+57. DONE: **Inconsistent Debug Output Prefixes**:
     - Location: Mix of [DEBUG] in cmNixTargetGenerator and [NIX-TRACE] in cmGlobalNixGenerator
     - Impact: Confusing debug output
     - Action: Standardize on one prefix throughout
+    - Fixed: All debug output now uses [NIX-DEBUG] prefix
 
 58. **Exception Handling Without Context**:
     - Location: cmGlobalNixGenerator.cxx catches (...) in multiple places
