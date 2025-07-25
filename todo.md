@@ -46,15 +46,21 @@ Once Zephyr is building with host toolchain, add ARM toolchain to our shell.nix 
 DONE (2025-07-24): mkDerivations now use cmakeNixCC helper function for object compilation.
 
 UPDATE (2025-07-24): Investigation shows that cmakeNixCC helper function is defined in cmGlobalNixGenerator.cxx (lines 219-243) but not used. The following locations should be refactored:
-- cmGlobalNixMultiGenerator.cxx::WriteObjectDerivationForConfig (lines 182-309) - PENDING
+- cmGlobalNixMultiGenerator.cxx::WriteObjectDerivationForConfig (lines 182-309) - DONE: Now uses cmakeNixCC helper (2025-07-25)
 - cmGlobalNixGenerator.cxx::WriteObjectDerivation (lines 836-1264) - DONE: Now uses cmakeNixCC helper
-- Link operations should use cmakeNixLD helper (defined lines 247-294) - PENDING
+- Link operations should use cmakeNixLD helper (defined lines 247-294) - DONE: WriteLinkDerivation now uses cmakeNixLD helper (2025-07-25)
 
 UPDATE (2025-07-24): Successfully refactored WriteObjectDerivation to use cmakeNixCC:
 - Preserved all functionality including external sources with composite sources
 - Custom command outputs are properly handled
 - Source path resolution maintained for all cases (external vs internal, custom command generated)
 - The cmakeNixCC helper is used as-is without modification
+
+UPDATE (2025-07-25): Successfully completed cmakeNixLD refactoring:
+- cmGlobalNixMultiGenerator already uses cmakeNixCC helper for object derivations
+- cmGlobalNixGenerator's WriteLinkDerivation now uses cmakeNixLD helper
+- Added postBuildPhase parameter to cmakeNixLD helper for try_compile support
+- All tests pass successfully with the refactored code
 
 
 #############################

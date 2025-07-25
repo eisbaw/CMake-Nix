@@ -40,7 +40,8 @@ let
     libraries ? [],
     buildInputs ? [],
     version ? null,
-    soversion ? null
+    soversion ? null,
+    postBuildPhase ? ""
   }: stdenv.mkDerivation {
     inherit name objects buildInputs;
     dontUnpack = true;
@@ -82,6 +83,7 @@ let
         )
         ${compiler}/bin/$compilerBin ${flags} $objects ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
+    inherit postBuildPhase;
     installPhase = "true";
   };
 
@@ -148,47 +150,28 @@ let
 
 
   # Linking derivations
-  link_c_program = stdenv.mkDerivation {
+  link_c_program = cmakeNixLD {
     name = "c_program";
+    type = "executable";
     buildInputs = [gcc ];
-    dontUnpack = true;
-    objects = [
-      c_program_test_compiler_detection_main_c_o
-    ];
-    buildPhase = ''
-      gcc $objects -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [c_program_test_compiler_detection_main_c_o ];
+    compiler = gcc;
   };
 
-  link_cpp_program = stdenv.mkDerivation {
+  link_cpp_program = cmakeNixLD {
     name = "cpp_program";
+    type = "executable";
     buildInputs = [gcc ];
-    dontUnpack = true;
-    objects = [
-      cpp_program_test_compiler_detection_main_cpp_o
-    ];
-    buildPhase = ''
-      g++ $objects -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [cpp_program_test_compiler_detection_main_cpp_o ];
+    compiler = gcc;
   };
 
-  link_mixed_program = stdenv.mkDerivation {
+  link_mixed_program = cmakeNixLD {
     name = "mixed_program";
+    type = "executable";
     buildInputs = [gcc ];
-    dontUnpack = true;
-    objects = [
-      mixed_program_test_compiler_detection_main_c_o
-      mixed_program_test_compiler_detection_helper_cpp_o
-    ];
-    buildPhase = ''
-      g++ $objects -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [mixed_program_test_compiler_detection_main_c_o mixed_program_test_compiler_detection_helper_cpp_o ];
+    compiler = gcc;
   };
 
 in

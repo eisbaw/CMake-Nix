@@ -40,7 +40,8 @@ let
     libraries ? [],
     buildInputs ? [],
     version ? null,
-    soversion ? null
+    soversion ? null,
+    postBuildPhase ? ""
   }: stdenv.mkDerivation {
     inherit name objects buildInputs;
     dontUnpack = true;
@@ -82,6 +83,7 @@ let
         )
         ${compiler}/bin/$compilerBin ${flags} $objects ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
+    inherit postBuildPhase;
     installPhase = "true";
   };
 
@@ -142,46 +144,31 @@ let
 
 
   # Linking derivations
-  link_threaded_app = stdenv.mkDerivation {
+  link_threaded_app = cmakeNixLD {
     name = "threaded_app";
+    type = "executable";
     buildInputs = [gcc ];
-    dontUnpack = true;
-    objects = [
-      threaded_app_test_find_package_threaded_c_o
-    ];
-    buildPhase = ''
-      gcc $objects -lpthread -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [threaded_app_test_find_package_threaded_c_o ];
+    compiler = gcc;
+    flags = "-lpthread";
   };
 
-  link_compress_app = stdenv.mkDerivation {
+  link_compress_app = cmakeNixLD {
     name = "compress_app";
+    type = "executable";
     buildInputs = [gcc zlib ];
-    dontUnpack = true;
-    objects = [
-      compress_app_test_find_package_compress_c_o
-    ];
-    buildPhase = ''
-      gcc $objects -lz -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [compress_app_test_find_package_compress_c_o ];
+    compiler = gcc;
+    flags = "-lz";
   };
 
-  link_opengl_app = stdenv.mkDerivation {
+  link_opengl_app = cmakeNixLD {
     name = "opengl_app";
+    type = "executable";
     buildInputs = [gcc libGL ];
-    dontUnpack = true;
-    objects = [
-      opengl_app_test_find_package_opengl_c_o
-    ];
-    buildPhase = ''
-      gcc $objects -lGL -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [opengl_app_test_find_package_opengl_c_o ];
+    compiler = gcc;
+    flags = "-lGL";
   };
 
 in

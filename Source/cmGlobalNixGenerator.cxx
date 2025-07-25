@@ -254,7 +254,8 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("    libraries ? [],");
   writer.WriteLine("    buildInputs ? [],");
   writer.WriteLine("    version ? null,");
-  writer.WriteLine("    soversion ? null");
+  writer.WriteLine("    soversion ? null,");
+  writer.WriteLine("    postBuildPhase ? \"\"");
   writer.WriteLine("  }: stdenv.mkDerivation {");
   writer.WriteLine("    inherit name objects buildInputs;");
   writer.WriteLine("    dontUnpack = true;");
@@ -296,6 +297,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        )");
   writer.WriteLine("        ${compiler}/bin/$compilerBin ${flags} $objects ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out\"");
   writer.WriteLine("      '';");
+  writer.WriteLine("    inherit postBuildPhase;");
   writer.WriteLine("    installPhase = \"true\";");
   writer.WriteLine("  };");
   writer.WriteLine();
@@ -1550,9 +1552,21 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     outputName = targetName;
   }
   
-  // Start derivation
-  writer.StartDerivation(derivName, 1);
-  writer.WriteAttribute("name", outputName);
+  // Map target type to cmakeNixLD type parameter
+  std::string nixTargetType;
+  if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
+    nixTargetType = "static";
+  } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY || 
+             target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+    nixTargetType = "shared";
+  } else {
+    nixTargetType = "executable";
+  }
+  
+  // Start derivation using cmakeNixLD helper
+  nixFileStream << "  " << derivName << " = cmakeNixLD {\n";
+  nixFileStream << "    name = \"" << outputName << "\";\n";
+  nixFileStream << "    type = \"" << nixTargetType << "\";\n";
   
   // Get external library dependencies
   std::string config = this->GetBuildConfiguration(target);
@@ -1622,11 +1636,8 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   }
   nixFileStream << " ];\n";
   
-  nixFileStream << "    dontUnpack = true;\n";  // No source to unpack
-  
   // Collect object file dependencies (reuse sources from above)
-  
-  nixFileStream << "    objects = [\n";
+  nixFileStream << "    objects = [";
   
   // Get PCH sources to exclude from linking
   std::unordered_set<std::string> pchSources;
@@ -1642,6 +1653,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     }
   }
   
+  bool firstObject = true;
   for (cmSourceFile* source : sources) {
     // Skip Unity-generated batch files (unity_X_cxx.cxx) as we don't support Unity builds
     // But still process the original source files
@@ -1658,7 +1670,9 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
       if (pchSources.find(source->GetFullPath()) == pchSources.end()) {
         std::string objDerivName = this->GetDerivationName(
           target->GetName(), source->GetFullPath());
-        nixFileStream << "      " << objDerivName << "\n";
+        if (!firstObject) nixFileStream << " ";
+        nixFileStream << objDerivName;
+        firstObject = false;
       }
     }
   }
@@ -1690,7 +1704,9 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
               // Found the OBJECT library that contains this source
               std::string objDerivName = this->GetDerivationName(
                 objTarget->GetName(), sourceFile);
-              nixFileStream << "      " << objDerivName << "\n";
+              if (!firstObject) nixFileStream << " ";
+              nixFileStream << objDerivName;
+              firstObject = false;
               goto next_external_object;
             }
           }
@@ -1700,9 +1716,10 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     next_external_object:;
   }
   
-  nixFileStream << "    ];\n";
+  nixFileStream << " ];\n";
   
-  // Target dependencies will be referenced directly in link flags
+  // Get compiler package (reuse already declared compilerPkg)
+  nixFileStream << "    compiler = " << compilerPkg << ";\n";
   
   // Get library link flags for build phase - use vector for efficient concatenation
   std::vector<std::string> linkFlagsList;
@@ -1710,92 +1727,80 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   // Use helper method to process library dependencies
   this->ProcessLibraryDependenciesForLinking(target, config, linkFlagsList, transitiveDeps);
   
-  // Add transitive shared library dependencies to linkFlags (excluding direct ones)
+  // Get library list for cmakeNixLD helper
+  std::vector<std::string> libraries;
   for (const std::string& depTarget : transitiveDeps) {
     if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
       std::string depDerivName = this->GetDerivationName(depTarget);
-      linkFlagsList.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
-                             depTarget + this->GetSharedLibraryExtension());
+      libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                         depTarget + this->GetSharedLibraryExtension());
     }
   }
   
-  // Join all link flags with spaces
+  // Write flags parameter
   std::string linkFlags;
   if (!linkFlagsList.empty()) {
-    linkFlags = " " + cmJoin(linkFlagsList, " ");
+    linkFlags = cmJoin(linkFlagsList, " ");
+  }
+  if (!linkFlags.empty()) {
+    nixFileStream << "    flags = \"" << linkFlags << "\";\n";
   }
   
-  std::string linkCompilerCmd = this->GetCompilerCommand(primaryLang);
+  // Write libraries parameter
+  if (!libraries.empty()) {
+    nixFileStream << "    libraries = [";
+    bool firstLib = true;
+    for (const std::string& lib : libraries) {
+      if (!firstLib) nixFileStream << " ";
+      nixFileStream << lib;
+      firstLib = false;
+    }
+    nixFileStream << " ];\n";
+  }
   
-  // Build the buildPhase commands
-  writer.StartMultilineString("buildPhase");
-  
-  if (target->GetType() == cmStateEnums::EXECUTABLE) {
-    writer.WriteMultilineLine(linkCompilerCmd + " $objects" + linkFlags + " -o \"$out\"");
-  } else if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
-    writer.WriteMultilineLine("ar rcs \"$out\" $objects");
-  } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-    // Get library version properties
+  // Get library version properties for shared libraries
+  if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
     cmValue version = target->GetProperty("VERSION");
     cmValue soversion = target->GetProperty("SOVERSION");
     
-    writer.WriteMultilineLine("mkdir -p $out");
-    std::string libName = this->GetLibraryPrefix() + targetName + this->GetSharedLibraryExtension();
-    
-    if (version && soversion) {
-      // Create versioned library and symlinks
-      std::string versionedName = libName + "." + *version;
-      std::string soversionName = libName + "." + *soversion;
-      
-      writer.WriteMultilineLine(linkCompilerCmd + " -shared $objects" + linkFlags +
-                              " -Wl,-soname," + soversionName + " -Wl,-rpath,$out/lib -o $out/" + versionedName);
-      writer.WriteMultilineLine("ln -sf " + versionedName + " $out/" + soversionName);
-      writer.WriteMultilineLine("ln -sf " + versionedName + " $out/" + libName);
-    } else {
-      // Simple shared library without versioning
-      writer.WriteMultilineLine(linkCompilerCmd + " -shared $objects" + linkFlags +
-                              " -Wl,-rpath,$out/lib -o $out/" + libName);
+    if (version) {
+      nixFileStream << "    version = \"" << *version << "\";\n";
     }
-  } else if (target->GetType() == cmStateEnums::MODULE_LIBRARY) {
-    // Module libraries are like shared libraries but without versioning or lib prefix
-    writer.WriteMultilineLine("mkdir -p $out");
-    std::string modName = targetName + this->GetSharedLibraryExtension();
-    writer.WriteMultilineLine(linkCompilerCmd + " -shared $objects" + linkFlags +
-                            " -o $out/" + modName);
+    if (soversion) {
+      nixFileStream << "    soversion = \"" << *soversion << "\";\n";
+    }
   }
   
-  writer.EndMultilineString();
-  
-  // For try_compile, copy the output file where CMake expects it for COPY_FILE
+  // Add try_compile handling if needed
   if (isTryCompile) {
     if (this->GetCMakeInstance()->GetDebugOutput()) {
       std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
                 << " Adding try_compile output file handling for: " << targetName << std::endl;
     }
     
-    writer.WriteComment("Handle try_compile COPY_FILE requirement");
-    writer.StartMultilineString("postBuildPhase");
-    writer.WriteMultilineLine("# Create output location in build directory for CMake COPY_FILE");
+    // For try_compile, we need to add a postBuildPhase to cmakeNixLD helper
+    nixFileStream << "    # Handle try_compile COPY_FILE requirement\n";
+    nixFileStream << "    postBuildPhase = ''\n";
+    nixFileStream << "      # Create output location in build directory for CMake COPY_FILE\n";
     std::string escapedBuildDir = cmOutputConverter::EscapeForShell(buildDir, cmOutputConverter::Shell_Flag_IsUnix);
     std::string escapedTargetName = cmOutputConverter::EscapeForShell(targetName, cmOutputConverter::Shell_Flag_IsUnix);
-    writer.WriteMultilineLine("COPY_DEST=" + escapedBuildDir + "/" + escapedTargetName);
-    writer.WriteMultilineLine("cp \"$out\" \"$COPY_DEST\"");
+    nixFileStream << "      COPY_DEST=" << escapedBuildDir << "/" << escapedTargetName << "\n";
+    nixFileStream << "      cp \"$out\" \"$COPY_DEST\"\n";
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      writer.WriteMultilineLine("echo '[NIX-TRACE] Copied try_compile output to: '\"$COPY_DEST\"");
+      nixFileStream << "      echo '[NIX-TRACE] Copied try_compile output to: '\"$COPY_DEST\"\n";
     }
-    writer.WriteMultilineLine("# Write location file that CMake expects to find the executable path");
-    writer.WriteMultilineLine("echo \"$COPY_DEST\" > " + escapedBuildDir + "/" + escapedTargetName + "_loc");
+    nixFileStream << "      # Write location file that CMake expects to find the executable path\n";
+    nixFileStream << "      echo \"$COPY_DEST\" > " << escapedBuildDir << "/" << escapedTargetName << "_loc\n";
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      writer.WriteMultilineLine("echo '[NIX-TRACE] Wrote location file: '" + escapedBuildDir + "/" + escapedTargetName + "_loc");
-      writer.WriteMultilineLine("echo '[NIX-TRACE] Location file contains: '\"$COPY_DEST\"");
+      nixFileStream << "      echo '[NIX-TRACE] Wrote location file: '" << escapedBuildDir << "/" << escapedTargetName << "_loc\n";
+      nixFileStream << "      echo '[NIX-TRACE] Location file contains: '\"$COPY_DEST\"\n";
     }
-    writer.EndMultilineString();
+    nixFileStream << "    '';\n";
   }
   
-  writer.WriteAttribute("installPhase", "true");
-  writer.WriteComment("No install needed");
-  writer.EndDerivation();
-  writer.WriteLine();
+  // Close the cmakeNixLD helper call
+  nixFileStream << "  };\n";
+  nixFileStream << "\n";
 }
 
 std::vector<std::string> cmGlobalNixGenerator::GetSourceDependencies(

@@ -40,7 +40,8 @@ let
     libraries ? [],
     buildInputs ? [],
     version ? null,
-    soversion ? null
+    soversion ? null,
+    postBuildPhase ? ""
   }: stdenv.mkDerivation {
     inherit name objects buildInputs;
     dontUnpack = true;
@@ -82,6 +83,7 @@ let
         )
         ${compiler}/bin/$compilerBin ${flags} $objects ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
+    inherit postBuildPhase;
     installPhase = "true";
   };
 
@@ -163,78 +165,48 @@ let
 
 
   # Linking derivations
-  link_mylib = stdenv.mkDerivation {
+  link_mylib = cmakeNixLD {
     name = "libmylib.so";
+    type = "shared";
     buildInputs = [gcc ];
-    dontUnpack = true;
-    objects = [
-      mylib_test_shared_library_lib_c_o
-    ];
-    buildPhase = ''
-      mkdir -p $out
-      gcc -shared $objects -Wl,-rpath,$out/lib -o $out/libmylib.so
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [mylib_test_shared_library_lib_c_o ];
+    compiler = gcc;
   };
 
-  link_versioned_lib = stdenv.mkDerivation {
+  link_versioned_lib = cmakeNixLD {
     name = "libversioned_lib.so";
+    type = "shared";
     buildInputs = [gcc ];
-    dontUnpack = true;
-    objects = [
-      versioned_lib_test_shared_library_versioned_c_o
-    ];
-    buildPhase = ''
-      mkdir -p $out
-      gcc -shared $objects -Wl,-soname,libversioned_lib.so.1 -Wl,-rpath,$out/lib -o $out/libversioned_lib.so.1.2.3
-      ln -sf libversioned_lib.so.1.2.3 $out/libversioned_lib.so.1
-      ln -sf libversioned_lib.so.1.2.3 $out/libversioned_lib.so
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [versioned_lib_test_shared_library_versioned_c_o ];
+    compiler = gcc;
+    version = "1.2.3";
+    soversion = "1";
   };
 
-  link_app = stdenv.mkDerivation {
+  link_app = cmakeNixLD {
     name = "app";
+    type = "executable";
     buildInputs = [gcc link_mylib ];
-    dontUnpack = true;
-    objects = [
-      app_test_shared_library_main_c_o
-    ];
-    buildPhase = ''
-      gcc $objects ${link_mylib}/libmylib.so -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [app_test_shared_library_main_c_o ];
+    compiler = gcc;
+    flags = "${link_mylib}/libmylib.so";
   };
 
-  link_static_helper = stdenv.mkDerivation {
+  link_static_helper = cmakeNixLD {
     name = "static_helper";
+    type = "static";
     buildInputs = [gcc ];
-    dontUnpack = true;
-    objects = [
-      static_helper_test_shared_library_helper_c_o
-    ];
-    buildPhase = ''
-      ar rcs "$out" $objects
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [static_helper_test_shared_library_helper_c_o ];
+    compiler = gcc;
   };
 
-  link_mixed_app = stdenv.mkDerivation {
+  link_mixed_app = cmakeNixLD {
     name = "mixed_app";
+    type = "executable";
     buildInputs = [gcc link_mylib ];
-    dontUnpack = true;
-    objects = [
-      mixed_app_test_shared_library_mixed_c_o
-    ];
-    buildPhase = ''
-      gcc $objects ${link_mylib}/libmylib.so ${link_static_helper} -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [mixed_app_test_shared_library_mixed_c_o ];
+    compiler = gcc;
+    flags = "${link_mylib}/libmylib.so ${link_static_helper}";
   };
 
 in
