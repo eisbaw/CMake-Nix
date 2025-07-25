@@ -270,6 +270,9 @@ std::string cmNixWriter::EscapeNixString(const std::string& str)
       case '$':
         result += "\\$";
         break;
+      case '`':
+        result += "\\`";
+        break;
       default:
         result += c;
         break;
