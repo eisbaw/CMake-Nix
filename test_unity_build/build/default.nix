@@ -36,11 +36,13 @@ let
     type ? "executable",  # "executable", "static", "shared", "module"
     objects,
     compiler ? gcc,
+    compilerCommand ? null,  # Override compiler binary name (e.g., "g++" for C++)
     flags ? "",
     libraries ? [],
     buildInputs ? [],
     version ? null,
-    soversion ? null
+    soversion ? null,
+    postBuildPhase ? ""
   }: stdenv.mkDerivation {
     inherit name objects buildInputs;
     dontUnpack = true;
@@ -49,39 +51,40 @@ let
         ar rcs "$out" $objects
       '' else if type == "shared" || type == "module" then ''
         mkdir -p $out
-        compilerBin=$(
-          if [[ "${compiler}" == "${gcc}" ]]; then
-            echo "gcc"
-          elif [[ "${compiler}" == "${clang}" ]]; then
-            echo "clang"
-          else
-            echo "${compiler.pname or "cc"}"
-          fi
-        )
+        compilerBin=${if compilerCommand != null then
+          compilerCommand
+        else if compiler == gcc then
+          "gcc"
+        else if compiler == clang then
+          "clang"
+        else
+          compiler.pname or "cc"
+        }
         libname="lib${name}.so"
-        if [[ -n "${toString version}" ]]; then
+        ${if version != null then ''
           libname="lib${name}.so.${version}"
-        fi
-        ${compiler}/bin/$compilerBin -shared ${flags} $objects ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out/$libname"
+        '' else ""}
+        ${compiler}/bin/$compilerBin -shared $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out/$libname"
         # Create version symlinks if needed
-        if [[ -n "${toString version}" ]]; then
+        ${if version != null then ''
           ln -sf "$libname" "$out/lib${name}.so"
-          if [[ -n "${toString soversion}" ]]; then
+          ${if soversion != null then ''
             ln -sf "$libname" "$out/lib${name}.so.${soversion}"
-          fi
-        fi
+          '' else ""}
+        '' else ""}
       '' else ''
-        compilerBin=$(
-          if [[ "${compiler}" == "${gcc}" ]]; then
-            echo "gcc"
-          elif [[ "${compiler}" == "${clang}" ]]; then
-            echo "clang"
-          else
-            echo "${compiler.pname or "cc"}"
-          fi
-        )
-        ${compiler}/bin/$compilerBin ${flags} $objects ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
+        compilerBin=${if compilerCommand != null then
+          compilerCommand
+        else if compiler == gcc then
+          "gcc"
+        else if compiler == clang then
+          "clang"
+        else
+          compiler.pname or "cc"
+        }
+        ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
+    inherit postBuildPhase;
     installPhase = "true";
   };
 
@@ -208,38 +211,22 @@ let
 
 
   # Linking derivations
-  link_unity_app = stdenv.mkDerivation {
+  link_unity_app = cmakeNixLD {
     name = "unity_app";
+    type = "executable";
     buildInputs = [gcc ];
-    dontUnpack = true;
-    objects = [
-      unity_app_src_file1_cpp_o
-      unity_app_src_file2_cpp_o
-      unity_app_src_file3_cpp_o
-      unity_app_test_unity_build_main_cpp_o
-    ];
-    buildPhase = ''
-      g++ $objects -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [unity_app_src_file1_cpp_o unity_app_src_file2_cpp_o unity_app_src_file3_cpp_o unity_app_test_unity_build_main_cpp_o ];
+    compiler = gcc;
+    compilerCommand = "g++";
   };
 
-  link_normal_app = stdenv.mkDerivation {
+  link_normal_app = cmakeNixLD {
     name = "normal_app";
+    type = "executable";
     buildInputs = [gcc ];
-    dontUnpack = true;
-    objects = [
-      normal_app_src_file1_cpp_o
-      normal_app_src_file2_cpp_o
-      normal_app_src_file3_cpp_o
-      normal_app_test_unity_build_main_cpp_o
-    ];
-    buildPhase = ''
-      g++ $objects -o "$out"
-    '';
-    installPhase = "true";
-# No install needed
+    objects = [normal_app_src_file1_cpp_o normal_app_src_file2_cpp_o normal_app_src_file3_cpp_o normal_app_test_unity_build_main_cpp_o ];
+    compiler = gcc;
+    compilerCommand = "g++";
   };
 
 in

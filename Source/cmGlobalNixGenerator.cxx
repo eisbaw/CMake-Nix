@@ -1184,8 +1184,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         
         // Copy the header file if it exists
         if (cmSystemTools::FileExists(fullPath)) {
+          // Normalize the path to resolve .. segments before using in Nix expression
+          std::string normalizedHeaderPath = cmSystemTools::CollapseFullPath(fullPath);
           std::string destPath = relDir.empty() ? headerFile : relDir + "/" + headerFile;
-          writer.WriteIndented(3, "cp ${" + fullPath + "} $out/" + destPath + " 2>/dev/null || true");
+          writer.WriteIndented(3, "cp ${" + normalizedHeaderPath + "} $out/" + destPath + " 2>/dev/null || true");
         }
       }
     }
@@ -1425,27 +1427,33 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     projectHeaders.push_back(header);
   }
   
-  if (!projectHeaders.empty()) {
-    writer.WriteComment("Header dependencies");
-    std::vector<std::string> propagatedInputsList;
-    for (const std::string& header : projectHeaders) {
-      if (isExternalSource) {
-        // For external sources, headers are copied into the composite source root
-        propagatedInputsList.push_back("./" + header);
-      } else {
-        // For project sources, headers are relative to the source directory
-        if (projectSourceRelPath.empty()) {
-          // Source is current directory, headers are relative to it
-          propagatedInputsList.push_back("./" + header);
-        } else {
-          // Source is a subdirectory (e.g., ext/opencv), headers are relative to that source directory
-          // Use the same source path as the derivation
-          propagatedInputsList.push_back(projectSourceRelPath + "/" + header);
-        }
-      }
-    }
-    writer.WriteListAttribute("propagatedInputs", propagatedInputsList);
-  }
+  // Note: We don't use propagatedInputs for header dependencies because:
+  // 1. Headers are already included in the fileset union for the source
+  // 2. Relative paths with .. segments in propagatedInputs cause Nix evaluation errors
+  // 3. The actual dependency tracking is handled by the fileset, not propagatedInputs
+  //
+  // The following code is commented out but kept for reference:
+  // if (!projectHeaders.empty()) {
+  //   writer.WriteComment("Header dependencies");
+  //   std::vector<std::string> propagatedInputsList;
+  //   for (const std::string& header : projectHeaders) {
+  //     if (isExternalSource) {
+  //       // For external sources, headers are copied into the composite source root
+  //       propagatedInputsList.push_back("./" + header);
+  //     } else {
+  //       // For project sources, headers are relative to the source directory
+  //       if (projectSourceRelPath.empty()) {
+  //         // Source is current directory, headers are relative to it
+  //         propagatedInputsList.push_back("./" + header);
+  //       } else {
+  //         // Source is a subdirectory (e.g., ext/opencv), headers are relative to that source directory
+  //         // Use the same source path as the derivation
+  //         propagatedInputsList.push_back(projectSourceRelPath + "/" + header);
+  //       }
+  //     }
+  //   }
+  //   writer.WriteListAttribute("propagatedInputs", propagatedInputsList);
+  // }
   
   writer.WriteComment("Configuration: " + config);
   writer.StartMultilineString("buildPhase");
