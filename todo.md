@@ -235,9 +235,9 @@ DONE: Refactor Nix generator: Make functions that prints Nix lists, derivations,
 
 DONE: Make sure Nix derivations use src = fileset union, rather than all files, or at least globbing - e.g. "all .c files" or "all .py" files.
 
-Do codebase review, add issues to todo.md
+DONE: Do codebase review, add issues to todo.md - completed 2025-07-25, see issues 56-70 below
 
-Run all tests.
+DONE: Run all tests - all tests passing with `just dev`
 
 
 DONE: (cd test_zephyr_rtos/zephyr/ && nix-shell --run 'just build-via-nix') generates test_zephyr_rtos/zephyr/samples/philosophers/default.nix which has problems:
@@ -881,4 +881,95 @@ The following items are currently pending and need attention:
 - Zephyr RTOS build has minor issues with large generated files (item 52)
 - Additional edge case test coverage could be added (item 55)
 - Code refactoring opportunities for maintainability (items 35-51)
+- New issues from code review (items 56-70)
+
+## NEW ISSUES FROM CODE REVIEW (2025-07-25)
+
+### Code Quality Issues:
+
+56. **Magic Numbers Without Named Constants**:
+    - Location: Throughout codebase
+    - Examples: hash % 10000 (cmNixCustomCommandGenerator.cxx:220,231), MAX_DEPTH=100, MAX_CACHE_SIZE=10000
+    - Impact: Hard to maintain and reason about limits
+    - Action: Define named constants in header files
+
+57. **Inconsistent Debug Output Prefixes**:
+    - Location: Mix of [DEBUG] in cmNixTargetGenerator and [NIX-TRACE] in cmGlobalNixGenerator
+    - Impact: Confusing debug output
+    - Action: Standardize on one prefix throughout
+
+58. **Exception Handling Without Context**:
+    - Location: cmGlobalNixGenerator.cxx catches (...) in multiple places
+    - Issue: Generic catch blocks make debugging difficult
+    - Action: Add more specific exception types or at least log exception details
+
+### Performance Issues:
+
+59. **String Concatenation in Nested Loops**:
+    - Location: cmNixWriter.cxx file operations in loops
+    - Issue: Potential performance impact for large projects
+    - Action: Consider using string builders or reserve capacity
+
+60. **Missing const Qualifiers**:
+    - Location: Various getter methods don't return const references
+    - Impact: Unnecessary copies of strings and vectors
+    - Action: Add const qualifiers where appropriate
+
+### Security/Robustness Issues:
+
+61. **Path Normalization Inconsistency**:
+    - Location: Mix of relative path handling with "../" checks
+    - Issue: Different path normalization approaches could lead to edge cases
+    - Action: Centralize path normalization logic
+
+62. **Incomplete Input Validation**:
+    - Location: Target names with special characters not fully validated
+    - Impact: Could generate invalid Nix attribute names
+    - Action: Add comprehensive target name validation
+
+### Architectural Issues:
+
+63. **Tight Coupling Between Classes**:
+    - Issue: cmNixTargetGenerator directly accesses internal state of other classes
+    - Impact: Makes refactoring difficult
+    - Action: Use proper accessor methods and interfaces
+
+64. **Inconsistent Resource Management**:
+    - Location: Mix of raw new/delete with smart pointers
+    - Issue: Potential for resource leaks in error paths
+    - Action: Consistently use smart pointers (unique_ptr/shared_ptr)
+
+### Missing Features/Improvements:
+
+65. **No Support for Nix Flakes**:
+    - Issue: Generated default.nix could optionally support flakes
+    - Impact: Missing modern Nix features
+    - Action: Add CMAKE_NIX_USE_FLAKES option
+
+66. **Limited Nix Store Path Optimization**:
+    - Issue: Each derivation stores full source tree even with fileset unions
+    - Impact: Wasted disk space in Nix store
+    - Action: Investigate more aggressive source filtering
+
+67. **No Parallel Derivation Build Hints**:
+    - Issue: Nix doesn't know which derivations can be built in parallel
+    - Impact: Suboptimal build parallelism
+    - Action: Add metadata about independent derivations
+
+### Testing Gaps:
+
+68. **No Stress Tests**:
+    - Missing: Tests with 1000+ files, deep dependency trees
+    - Impact: Unknown behavior at scale
+    - Action: Add stress test cases
+
+69. **No Integration Tests with Nix Tools**:
+    - Missing: Tests with nix-build --dry-run, nix-instantiate
+    - Impact: Could miss Nix evaluation issues
+    - Action: Add Nix tool integration tests
+
+70. **No Benchmark Suite**:
+    - Missing: Performance benchmarks for generation and build times
+    - Impact: Can't track performance regressions
+    - Action: Create benchmark suite comparing with other generators
 
