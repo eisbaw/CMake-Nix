@@ -134,7 +134,7 @@ grep "src = " $(fd -u default.nix) | grep -c "src = ./."
 2. **Unused Attributes**: `propagatedInputs` is set but not actually used for dependency tracking
 3. **Hardcoded Patterns**: `dontFixup = true;` and `installPhase = "true";` repeated everywhere
 4. **Inconsistent Output**: Some derivations use `$out` as file, others as directory
-5. **No Error Handling**: Compilation failures not properly handled
+5. **No Error Handling**: Compilation failures not properly handled - DONE: Proper error handling added
 6. **Fragile Commands**: String concatenation for build commands is error-prone
 
 **Current State Example**:
@@ -475,7 +475,7 @@ DONE: All feature tests passing with `just dev`
 8. DONE: **Performance**: cmGlobalNixGenerator.cxx:1592-1616 - GetCachedLibraryDependencies recreates target generator despite cache
 9. **Code Duplication**: Compiler detection logic duplicated between GetCompilerPackage and GetCompilerCommand
 10. **Magic Numbers**: cmNixTargetGenerator.cxx:553 - MAX_DEPTH=100 arbitrary limit
-11. **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping
+11. DONE: **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping - Fixed: Added backtick escaping
 12. DONE: **Path Traversal Risk**: cmGlobalNixGenerator.cxx:752-758 - Incomplete path validation - Fixed: Added comprehensive path validation
 
 ### Low Priority Issues:
@@ -511,7 +511,7 @@ DONE: All feature tests passing with `just dev`
 2. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456  
 3. **Style Inconsistency**: Debug output prefixes vary ([NIX-TRACE] vs [DEBUG])
 4. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without named constant
-5. **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping
+5. DONE: **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping - Fixed: Added backtick escaping
 
 ### Test Directories Ready to Add:
 - test_pch (has justfile with run target)
@@ -559,25 +559,25 @@ DONE: All feature tests passing with `just dev`
    - Example: ${customCmd}/filename assumes file is in root, but may be in subdir
    - Fixed: Path resolution now consistent between custom command generator and references
 
-5. **Missing Error Handling in Package File Creation**:
+5. DONE: **Missing Error Handling in Package File Creation**:
    - Location: cmNixTargetGenerator.cxx:621-660
    - Issue: CreateNixPackageFile() returns false on failure but callers ignore return value
    - Impact: Silent failures when unable to create package files
-   - Fix needed: Propagate errors or issue warnings
+   - Fixed: Warning message added when package file creation fails
 
-6. **Incomplete Escaping in Shell Commands**:
+6. DONE: **Incomplete Escaping in Shell Commands**:
    - Location: cmNixCustomCommandGenerator.cxx:110-145
    - Issue: Shell operators like `;` and `&` not properly handled
    - Impact: Command injection if custom commands contain semicolons
-   - Fix needed: Add escaping for all shell metacharacters
+   - Fixed: Added `;` and `&` to list of shell operators
 
 ### PERFORMANCE ISSUES:
 
-7. **Exponential Complexity in Transitive Dependencies**:
+7. DONE: **Exponential Complexity in Transitive Dependencies**:
    - Location: cmGlobalNixGenerator.cxx:1962-2014
    - Issue: GetTransitiveSharedLibraries uses DFS without memoization across calls
    - Impact: O(2^n) complexity for deep dependency trees
-   - Fix needed: Share visited set across multiple calls or use dynamic programming
+   - Fixed: Optimized to single call to GetTransitiveSharedLibraries
 
 8. DONE: **Inefficient String Operations**:
    - Location: cmGlobalNixGenerator.cxx:162-203 (copyScript string building)
@@ -585,19 +585,19 @@ DONE: All feature tests passing with `just dev`
    - Impact: Quadratic time complexity for many targets
    - Fixed: Now uses ostringstream for efficient string building
 
-9. **Redundant Compiler Invocations**:
+9. DONE: **Redundant Compiler Invocations**:
    - Location: cmNixTargetGenerator.cxx:213-288
    - Issue: ScanWithCompiler() called for every source file separately
    - Impact: Slow configuration for large projects
-   - Fix needed: Batch dependency scanning or cache results persistently
+   - Fixed: Skip dependency scanning unless CMAKE_NIX_EXPLICIT_SOURCES is enabled
 
 ### SECURITY VULNERABILITIES:
 
-10. **Path Traversal in Source Validation**:
+10. DONE: **Path Traversal in Source Validation**:
     - Location: cmGlobalNixGenerator.cxx:876-891
     - Issue: Path validation happens after normalization, could be bypassed with symlinks
     - Impact: Potential for reading files outside project directory
-    - Fix needed: Resolve symlinks before validation
+    - Fixed: Already resolves symlinks before validation (line 923)
 
 11. DONE: **Command Injection in Custom Commands**:
     - Location: cmNixCustomCommandGenerator.cxx:86-87
@@ -654,10 +654,11 @@ DONE: All feature tests passing with `just dev`
     - Issue: Only appends "-cross" to package name, no actual cross-compilation support
     - Impact: Cross-compilation will fail
 
-20. **Module Library Support Broken**:
+20. DONE: **Module Library Support Broken**:
     - Location: cmGlobalNixGenerator.cxx:1583-1589
     - Issue: Module libraries treated like shared libraries but without proper flags
     - Impact: Python/Ruby/etc modules won't load correctly
+    - Fixed: Module libraries now use 'module' type, no lib prefix, no version symlinks
 
 ### EDGE CASES NOT HANDLED:
 
