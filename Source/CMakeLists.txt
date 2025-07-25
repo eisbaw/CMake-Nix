@@ -797,6 +797,8 @@ add_library(
   cmNixPackageMapper.h
   cmNixCustomCommandGenerator.cxx
   cmNixCustomCommandGenerator.h
+  cmNixPathUtils.cxx
+  cmNixPathUtils.h
   cmNixWriter.cxx
   cmNixWriter.h
 

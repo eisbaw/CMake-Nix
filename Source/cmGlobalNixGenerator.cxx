@@ -391,9 +391,14 @@ void cmGlobalNixGenerator::WriteNixFile()
               }
             }
           } catch (const std::exception& e) {
-            std::cerr << "Exception in custom command processing: " << e.what() << std::endl;
+            std::ostringstream msg;
+            msg << "Exception in custom command processing for " << cc->GetComment() 
+                << ": " << e.what();
+            this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
           } catch (...) {
-            std::cerr << "Unknown exception in custom command processing" << std::endl;
+            std::ostringstream msg;
+            msg << "Unknown exception in custom command processing for " << cc->GetComment();
+            this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
           }
         }
       }
@@ -688,9 +693,14 @@ void cmGlobalNixGenerator::WriteNixFile()
       cmNixCustomCommandGenerator ccg(info->Command, info->LocalGen, config);
       ccg.Generate(nixFileStream);
     } catch (const std::exception& e) {
-      std::cerr << "Exception writing custom command " << info->DerivationName << ": " << e.what() << std::endl;
+      std::ostringstream msg;
+      msg << "Exception writing custom command " << info->DerivationName << ": " << e.what();
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
     } catch (...) {
-      std::cerr << "Unknown exception writing custom command " << info->DerivationName << std::endl;
+      std::ostringstream msg;
+      msg << "Unknown exception writing custom command " << info->DerivationName 
+          << " (possible out of memory or filesystem error)";
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
     }
   }
 
@@ -862,18 +872,8 @@ std::string cmGlobalNixGenerator::GetDerivationName(
     result = targetName + "_" + uniqueName + "_o";
   }
   
-  // Sanitize the result to be a valid Nix identifier
-  // Replace invalid characters with underscores
-  for (char& c : result) {
-    if (!std::isalnum(c) && c != '_') {
-      c = '_';
-    }
-  }
-  
-  // Ensure it doesn't start with a number
-  if (!result.empty() && std::isdigit(result[0])) {
-    result = "t_" + result;
-  }
+  // Use the proper function to make a valid Nix identifier
+  result = cmNixWriter::MakeValidNixIdentifier(result);
   
   // Ensure uniqueness by checking UsedDerivationNames
   std::string finalResult = result;

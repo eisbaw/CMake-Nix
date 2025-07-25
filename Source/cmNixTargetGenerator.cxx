@@ -203,7 +203,19 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
       
       return uniqueDeps;
     }
+  } catch (const std::exception& e) {
+    // Log the specific exception before falling back
+    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Exception in ScanWithCompiler for " 
+                << source->GetFullPath() << ": " << e.what() << std::endl;
+    }
+    // Fall back to other methods if compiler scanning fails
   } catch (...) {
+    // Log unknown exception before falling back
+    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Unknown exception in ScanWithCompiler for " 
+                << source->GetFullPath() << std::endl;
+    }
     // Fall back to other methods if compiler scanning fails
   }
   
