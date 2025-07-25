@@ -193,6 +193,9 @@ mod test_fmt_library
 # Zephyr RTOS simulation test
 mod test_zephyr_rtos
 
+# Special characters in target names test
+mod test_special_characters
+
 # Fortran language support test
 mod test_fortran_language
 

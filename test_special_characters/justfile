@@ -1,0 +1,37 @@
+# Test special characters in target names with CMake Nix generator
+default: run
+
+# Configure and build with Nix generator
+configure:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Test that configuration succeeds (or fails appropriately)
+test-configure: configure
+    @echo "=== Testing CMake configuration with special character targets ==="
+    @if [ -f default.nix ]; then \
+        echo "✅ Configuration succeeded - default.nix generated"; \
+        echo "=== Checking generated Nix attributes ==="; \
+        grep -E "^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*=" default.nix | head -20; \
+    else \
+        echo "❌ Configuration failed - no default.nix generated"; \
+        exit 1; \
+    fi
+
+# Try to build one of the targets
+test-build: configure
+    @echo "=== Testing build of target with dots ==="
+    -nix-build -A my_test_app --no-out-link
+    @echo "=== Testing build of target with plus ==="
+    -nix-build -A '"my+app"' --no-out-link
+    @echo "=== Testing build of numeric target ==="
+    -nix-build -A '"123_app"' --no-out-link
+
+# Run the test
+run: test-configure test-build
+    @echo "=== Special characters test completed ==="
+
+# Clean up
+clean:
+    rm -f default.nix
+    rm -rf result

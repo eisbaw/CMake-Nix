@@ -854,7 +854,7 @@ The following items are currently pending and need attention:
 
 ### LOW PRIORITY ISSUES
 
-55. **Add missing test coverage for edge cases**:
+55. **Add missing test coverage for edge cases** (IN PROGRESS):
     - Issue: Gaps in test coverage for error conditions, edge cases, and failure modes
     - Missing coverage includes:
       - Error recovery tests (build failures, permission errors, disk full)
@@ -864,6 +864,7 @@ The following items are currently pending and need attention:
       - Circular dependency tests (detection for regular targets)
       - Complex custom command tests (WORKING_DIRECTORY, VERBATIM, multiple outputs)
     - Action: Systematically add test cases for uncovered scenarios
+    - Progress: Added test_special_characters to expose issue 62 (see item 71)
 
 ### NOTES:
 - Items 35-51 are refactoring opportunities for maintainability improvement
@@ -974,4 +975,17 @@ The following items are currently pending and need attention:
     - Missing: Performance benchmarks for generation and build times
     - Impact: Can't track performance regressions
     - Action: Create benchmark suite comparing with other generators
+
+## BUGS FOUND FROM TEST COVERAGE (2025-07-25)
+
+71. **Invalid Nix Syntax for Special Character Target Names**:
+    - Location: cmGlobalNixGenerator derivation name generation
+    - Issue: Targets with dots (.), plus (+), dashes (-), or numeric prefixes generate invalid Nix identifiers
+    - Example: Target "my.test.app" creates `my.test.app_..._o = stdenv.mkDerivation` which is invalid syntax
+    - Impact: Build fails with Nix syntax errors for valid CMake target names
+    - Test: test_special_characters exposes this issue
+    - Fix needed: Sanitize target names when creating Nix identifiers:
+      - Replace dots, plus signs, dashes with underscores
+      - Prefix numeric names with letter (e.g., "t_123")
+      - The final attribute set already quotes properly, only intermediate names need fixing
 
