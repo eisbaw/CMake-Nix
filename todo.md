@@ -248,6 +248,52 @@ DONE: Make a flag to generativations with specific explicit src attribute (using
 
 DONE: Update todo.md with actual Nix generator codebase state. Review codebase. Add problems, bugs and code smells to todo.md
 
+## CODE IMPROVEMENTS AND BUG FIXES (2025-07-25):
+
+### Completed Fixes:
+1. DONE: **Fixed configuration-time generated files handling**:
+   - Issue: builtins.path cannot access absolute paths outside source tree due to Nix security restrictions
+   - Solution: Embed file contents directly in Nix expressions using here-docs
+   - Impact: Zephyr's autoconf.h and devicetree_generated.h now properly included
+
+2. DONE: **Added missing error handling for package file creation**:
+   - Issue: CreateNixPackageFile failures were silently ignored
+   - Solution: Added warning message when package file creation fails
+   - Impact: Better diagnostics when dependencies cannot be resolved
+
+3. DONE: **Fixed Fortran language support**:
+   - Issue: GetCompilerPackage returned "gcc" for Fortran instead of "gfortran"
+   - Issue: Primary language detection for linking didn't include Fortran
+   - Solution: Updated GetCompilerPackage to return "gfortran" for Fortran language
+   - Solution: Added Fortran language detection in primary language selection
+   - Impact: Fortran projects now build successfully with proper compiler and linker
+
+### Additional Test Cases Needed:
+1. **Fortran Support Test**: test_fortran_project
+   - Test basic Fortran compilation and linking
+   - Test mixed C/Fortran projects
+   - Test Fortran module dependencies
+
+2. **CUDA Support Test**: test_cuda_project
+   - Test CUDA compilation with nvcc
+   - Test mixed C++/CUDA projects
+   - Test CUDA kernel linking
+
+3. **Thread Safety Test**: test_parallel_build
+   - Test parallel builds with many targets
+   - Test cache consistency under parallel access
+   - Test mutex protection for shared state
+
+4. **Large Scale Test**: test_large_project
+   - Test with 1000+ source files
+   - Test deep dependency hierarchies
+   - Test performance and memory usage
+
+5. **Security Test**: test_security_edge_cases
+   - Test paths with special characters (quotes, semicolons, etc.)
+   - Test command injection prevention
+   - Test path traversal prevention
+
 ## CODEBASE REVIEW FINDINGS (July 2025):
 
 ### Minor Issues Found:

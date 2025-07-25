@@ -171,6 +171,7 @@ test-all:
     -just test_asm_language::run  # ASM language not yet supported
     just test_pch::run
     just test_unity_build::run
+    just test_fortran_language::run
     # just test_fmt_library::run  # Skip - incomplete test
     # just test_zephyr_rtos::run  # Skip - requires specific Python environment
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself

@@ -7,6 +7,7 @@ pkgs.mkShell {
   nativeBuildInputs = with pkgs; [
     just
     gcc
+    gfortran
     gnumake
     pkg-config
     # Static analysis and linting tools
