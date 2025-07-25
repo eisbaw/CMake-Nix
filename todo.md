@@ -92,6 +92,13 @@ DONE NOTE (2025-07-25): WriteObjectDerivation in cmGlobalNixGenerator.cxx still 
 instead of cmakeNixCC helper. This should be refactored to complete the DRY principle implementation.
 - Fixed (2025-07-30): Refactored WriteObjectDerivation to use cmakeNixCC helper function
 
+DONE (2025-07-30): Refactored WriteObjectDerivation to extract helper methods:
+- ValidateSourceFile() - handles source file validation
+- DetermineCompilerPackage() - determines compiler based on language
+- GetCompileFlags() - consolidates flag generation
+- WriteExternalSourceDerivation() - handles external sources (stub)
+- WriteRegularSourceDerivation() - handles project sources (stub)
+
 
 #############################
 
