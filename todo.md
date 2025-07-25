@@ -62,6 +62,9 @@ UPDATE (2025-07-25): Successfully completed cmakeNixLD refactoring:
 - Added postBuildPhase parameter to cmakeNixLD helper for try_compile support
 - All tests pass successfully with the refactored code
 
+NOTE (2025-07-25): WriteObjectDerivation in cmGlobalNixGenerator.cxx still uses writer.StartDerivation (stdenv.mkDerivation) 
+instead of cmakeNixCC helper. This should be refactored to complete the DRY principle implementation.
+
 
 #############################
 

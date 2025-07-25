@@ -250,6 +250,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("    type ? \"executable\",  # \"executable\", \"static\", \"shared\", \"module\"");
   writer.WriteLine("    objects,");
   writer.WriteLine("    compiler ? gcc,");
+  writer.WriteLine("    compilerCommand ? null,  # Override compiler binary name (e.g., \"g++\" for C++)");
   writer.WriteLine("    flags ? \"\",");
   writer.WriteLine("    libraries ? [],");
   writer.WriteLine("    buildInputs ? [],");
@@ -264,38 +265,38 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        ar rcs \"$out\" $objects");
   writer.WriteLine("      '' else if type == \"shared\" || type == \"module\" then ''");
   writer.WriteLine("        mkdir -p $out");
-  writer.WriteLine("        compilerBin=$(");
-  writer.WriteLine("          if [[ \"${compiler}\" == \"${gcc}\" ]]; then");
-  writer.WriteLine("            echo \"gcc\"");
-  writer.WriteLine("          elif [[ \"${compiler}\" == \"${clang}\" ]]; then");
-  writer.WriteLine("            echo \"clang\"");
-  writer.WriteLine("          else");
-  writer.WriteLine("            echo \"${compiler.pname or \"cc\"}\"");
-  writer.WriteLine("          fi");
-  writer.WriteLine("        )");
+  writer.WriteLine("        compilerBin=${if compilerCommand != null then");
+  writer.WriteLine("          compilerCommand");
+  writer.WriteLine("        else if compiler == gcc then");
+  writer.WriteLine("          \"gcc\"");
+  writer.WriteLine("        else if compiler == clang then");
+  writer.WriteLine("          \"clang\"");
+  writer.WriteLine("        else");
+  writer.WriteLine("          compiler.pname or \"cc\"");
+  writer.WriteLine("        }");
   writer.WriteLine("        libname=\"lib${name}.so\"");
-  writer.WriteLine("        if [[ -n \"${toString version}\" ]]; then");
+  writer.WriteLine("        ${if version != null then ''");
   writer.WriteLine("          libname=\"lib${name}.so.${version}\"");
-  writer.WriteLine("        fi");
-  writer.WriteLine("        ${compiler}/bin/$compilerBin -shared ${flags} $objects ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out/$libname\"");
+  writer.WriteLine("        '' else \"\"}");
+  writer.WriteLine("        ${compiler}/bin/$compilerBin -shared $objects ${flags} ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out/$libname\"");
   writer.WriteLine("        # Create version symlinks if needed");
-  writer.WriteLine("        if [[ -n \"${toString version}\" ]]; then");
+  writer.WriteLine("        ${if version != null then ''");
   writer.WriteLine("          ln -sf \"$libname\" \"$out/lib${name}.so\"");
-  writer.WriteLine("          if [[ -n \"${toString soversion}\" ]]; then");
+  writer.WriteLine("          ${if soversion != null then ''");
   writer.WriteLine("            ln -sf \"$libname\" \"$out/lib${name}.so.${soversion}\"");
-  writer.WriteLine("          fi");
-  writer.WriteLine("        fi");
+  writer.WriteLine("          '' else \"\"}");
+  writer.WriteLine("        '' else \"\"}");
   writer.WriteLine("      '' else ''");
-  writer.WriteLine("        compilerBin=$(");
-  writer.WriteLine("          if [[ \"${compiler}\" == \"${gcc}\" ]]; then");
-  writer.WriteLine("            echo \"gcc\"");
-  writer.WriteLine("          elif [[ \"${compiler}\" == \"${clang}\" ]]; then");
-  writer.WriteLine("            echo \"clang\"");
-  writer.WriteLine("          else");
-  writer.WriteLine("            echo \"${compiler.pname or \"cc\"}\"");
-  writer.WriteLine("          fi");
-  writer.WriteLine("        )");
-  writer.WriteLine("        ${compiler}/bin/$compilerBin ${flags} $objects ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out\"");
+  writer.WriteLine("        compilerBin=${if compilerCommand != null then");
+  writer.WriteLine("          compilerCommand");
+  writer.WriteLine("        else if compiler == gcc then");
+  writer.WriteLine("          \"gcc\"");
+  writer.WriteLine("        else if compiler == clang then");
+  writer.WriteLine("          \"clang\"");
+  writer.WriteLine("        else");
+  writer.WriteLine("          compiler.pname or \"cc\"");
+  writer.WriteLine("        }");
+  writer.WriteLine("        ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out\"");
   writer.WriteLine("      '';");
   writer.WriteLine("    inherit postBuildPhase;");
   writer.WriteLine("    installPhase = \"true\";");
@@ -1565,7 +1566,9 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   // Start derivation using cmakeNixLD helper
   nixFileStream << "  " << derivName << " = cmakeNixLD {\n";
-  nixFileStream << "    name = \"" << outputName << "\";\n";
+  // For cmakeNixLD, always use the base target name without prefix/extension
+  // The helper will add the appropriate prefix and extension based on the type
+  nixFileStream << "    name = \"" << targetName << "\";\n";
   nixFileStream << "    type = \"" << nixTargetType << "\";\n";
   
   // Get external library dependencies
@@ -1718,8 +1721,20 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   nixFileStream << " ];\n";
   
-  // Get compiler package (reuse already declared compilerPkg)
+  // Get compiler package and command based on primary language
   nixFileStream << "    compiler = " << compilerPkg << ";\n";
+  
+  // Pass the primary language to help select the right compiler binary
+  std::string compilerCommand = this->GetCompilerCommand(primaryLang);
+  if (primaryLang == "CXX" && compilerPkg == "gcc") {
+    // For C++ with gcc package, we need to explicitly use g++
+    nixFileStream << "    compilerCommand = \"g++\";\n";
+  } else if (primaryLang == "Fortran" && compilerPkg == "gfortran") {
+    nixFileStream << "    compilerCommand = \"gfortran\";\n";
+  } else if (primaryLang == "CUDA") {
+    nixFileStream << "    compilerCommand = \"nvcc\";\n";
+  }
+  // For C and other languages, the default logic in cmakeNixLD will work
   
   // Get library link flags for build phase - use vector for efficient concatenation
   std::vector<std::string> linkFlagsList;
@@ -1752,7 +1767,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     bool firstLib = true;
     for (const std::string& lib : libraries) {
       if (!firstLib) nixFileStream << " ";
-      nixFileStream << lib;
+      nixFileStream << "\"" << lib << "\"";
       firstLib = false;
     }
     nixFileStream << " ];\n";

@@ -36,6 +36,7 @@ let
     type ? "executable",  # "executable", "static", "shared", "module"
     objects,
     compiler ? gcc,
+    compilerCommand ? null,  # Override compiler binary name (e.g., "g++" for C++)
     flags ? "",
     libraries ? [],
     buildInputs ? [],
@@ -50,38 +51,38 @@ let
         ar rcs "$out" $objects
       '' else if type == "shared" || type == "module" then ''
         mkdir -p $out
-        compilerBin=$(
-          if [[ "${compiler}" == "${gcc}" ]]; then
-            echo "gcc"
-          elif [[ "${compiler}" == "${clang}" ]]; then
-            echo "clang"
-          else
-            echo "${compiler.pname or "cc"}"
-          fi
-        )
+        compilerBin=${if compilerCommand != null then
+          compilerCommand
+        else if compiler == gcc then
+          "gcc"
+        else if compiler == clang then
+          "clang"
+        else
+          compiler.pname or "cc"
+        }
         libname="lib${name}.so"
-        if [[ -n "${toString version}" ]]; then
+        ${if version != null then ''
           libname="lib${name}.so.${version}"
-        fi
-        ${compiler}/bin/$compilerBin -shared ${flags} $objects ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out/$libname"
+        '' else ""}
+        ${compiler}/bin/$compilerBin -shared $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out/$libname"
         # Create version symlinks if needed
-        if [[ -n "${toString version}" ]]; then
+        ${if version != null then ''
           ln -sf "$libname" "$out/lib${name}.so"
-          if [[ -n "${toString soversion}" ]]; then
+          ${if soversion != null then ''
             ln -sf "$libname" "$out/lib${name}.so.${soversion}"
-          fi
-        fi
+          '' else ""}
+        '' else ""}
       '' else ''
-        compilerBin=$(
-          if [[ "${compiler}" == "${gcc}" ]]; then
-            echo "gcc"
-          elif [[ "${compiler}" == "${clang}" ]]; then
-            echo "clang"
-          else
-            echo "${compiler.pname or "cc"}"
-          fi
-        )
-        ${compiler}/bin/$compilerBin ${flags} $objects ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
+        compilerBin=${if compilerCommand != null then
+          compilerCommand
+        else if compiler == gcc then
+          "gcc"
+        else if compiler == clang then
+          "clang"
+        else
+          compiler.pname or "cc"
+        }
+        ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
     inherit postBuildPhase;
     installPhase = "true";
@@ -166,7 +167,7 @@ let
 
   # Linking derivations
   link_mylib = cmakeNixLD {
-    name = "libmylib.so";
+    name = "mylib";
     type = "shared";
     buildInputs = [gcc ];
     objects = [mylib_test_shared_library_lib_c_o ];
@@ -174,7 +175,7 @@ let
   };
 
   link_versioned_lib = cmakeNixLD {
-    name = "libversioned_lib.so";
+    name = "versioned_lib";
     type = "shared";
     buildInputs = [gcc ];
     objects = [versioned_lib_test_shared_library_versioned_c_o ];
