@@ -978,15 +978,16 @@ The following items are currently pending and need attention:
 
 ## BUGS FOUND FROM TEST COVERAGE (2025-07-25)
 
-71. **Invalid Nix Syntax for Special Character Target Names**:
+DONE 71. **Invalid Nix Syntax for Special Character Target Names**:
     - Location: cmGlobalNixGenerator derivation name generation
     - Issue: Targets with dots (.), plus (+), dashes (-), or numeric prefixes generate invalid Nix identifiers
     - Example: Target "my.test.app" creates `my.test.app_..._o = stdenv.mkDerivation` which is invalid syntax
     - Impact: Build fails with Nix syntax errors for valid CMake target names
     - Test: test_special_characters exposes this issue
-    - Fix needed: Sanitize target names when creating Nix identifiers:
-      - Replace dots, plus signs, dashes with underscores
-      - Prefix numeric names with letter (e.g., "t_123")
+    - Fix implemented: Sanitize target names when creating Nix identifiers:
+      - Replace all non-alphanumeric characters with underscores
+      - Prefix numeric names with "t_" (e.g., "t_123")
+      - Handle collision by appending _2, _3, etc. when names collide after sanitization
       - The final attribute set already quotes properly, only intermediate names need fixing
 
 ## NEW FINDINGS FROM CODE REVIEW (2025-07-29)

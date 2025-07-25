@@ -60,13 +60,13 @@ let
         else
           compiler.pname or "cc"
         }
-        libname="lib${name}.so"
-        ${if version != null then ''
+        libname="${if type == "module" then name else "lib" + name}.so"
+        ${if version != null && type != "module" then ''
           libname="lib${name}.so.${version}"
         '' else ""}
         ${compiler}/bin/$compilerBin -shared $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out/$libname"
-        # Create version symlinks if needed
-        ${if version != null then ''
+        # Create version symlinks if needed (only for shared libraries, not modules)
+        ${if version != null && type != "module" then ''
           ln -sf "$libname" "$out/lib${name}.so"
           ${if soversion != null then ''
             ln -sf "$libname" "$out/lib${name}.so.${soversion}"
@@ -91,10 +91,7 @@ let
 # Per-translation-unit derivations
   threaded_app_test_find_package_threaded_c_o = stdenv.mkDerivation {
     name = "threaded.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../threaded.c;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -106,13 +103,7 @@ let
 
   compress_app_test_find_package_compress_c_o = stdenv.mkDerivation {
     name = "compress.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = lib.fileset.unions [
-        ./../compress.c
-        ./../../../../../../../nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev/include/zlib.h
-      ];
-    };
+    src = ./..;
     buildInputs = [
       gcc
       zlib
@@ -127,10 +118,7 @@ let
 
   opengl_app_test_find_package_opengl_c_o = stdenv.mkDerivation {
     name = "opengl.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../opengl.c;
-    };
+    src = ./..;
     buildInputs = [
       gcc
       libGL

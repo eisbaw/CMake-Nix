@@ -64,6 +64,12 @@ void cmGlobalNixGenerator::Generate()
     std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() started" << std::endl;
   }
   
+  // Clear the used derivation names set for fresh generation
+  {
+    std::lock_guard<std::mutex> lock(this->UsedNamesMutex);
+    this->UsedDerivationNames.clear();
+  }
+  
   // Check for unsupported CMAKE_EXPORT_COMPILE_COMMANDS
   if (this->GetCMakeInstance()->GetState()->GetGlobalPropertyAsBool(
         "CMAKE_EXPORT_COMPILE_COMMANDS")) {
@@ -856,12 +862,37 @@ std::string cmGlobalNixGenerator::GetDerivationName(
     result = targetName + "_" + uniqueName + "_o";
   }
   
+  // Sanitize the result to be a valid Nix identifier
+  // Replace invalid characters with underscores
+  for (char& c : result) {
+    if (!std::isalnum(c) && c != '_') {
+      c = '_';
+    }
+  }
+  
+  // Ensure it doesn't start with a number
+  if (!result.empty() && std::isdigit(result[0])) {
+    result = "t_" + result;
+  }
+  
+  // Ensure uniqueness by checking UsedDerivationNames
+  std::string finalResult = result;
+  {
+    std::lock_guard<std::mutex> lock(this->UsedNamesMutex);
+    int suffix = 2;
+    while (this->UsedDerivationNames.find(finalResult) != this->UsedDerivationNames.end()) {
+      finalResult = result + "_" + std::to_string(suffix);
+      suffix++;
+    }
+    this->UsedDerivationNames.insert(finalResult);
+  }
+  
   // Cache the result
   {
     std::lock_guard<std::mutex> lock(this->CacheMutex);
-    this->DerivationNameCache[cacheKey] = result;
+    this->DerivationNameCache[cacheKey] = finalResult;
   }
-  return result;
+  return finalResult;
 }
 
 void cmGlobalNixGenerator::AddObjectDerivation(std::string const& targetName, std::string const& derivationName, std::string const& sourceFile, std::string const& objectFileName, std::string const& language, std::vector<std::string> const& dependencies)

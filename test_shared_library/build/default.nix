@@ -60,13 +60,13 @@ let
         else
           compiler.pname or "cc"
         }
-        libname="lib${name}.so"
-        ${if version != null then ''
+        libname="${if type == "module" then name else "lib" + name}.so"
+        ${if version != null && type != "module" then ''
           libname="lib${name}.so.${version}"
         '' else ""}
         ${compiler}/bin/$compilerBin -shared $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out/$libname"
-        # Create version symlinks if needed
-        ${if version != null then ''
+        # Create version symlinks if needed (only for shared libraries, not modules)
+        ${if version != null && type != "module" then ''
           ln -sf "$libname" "$out/lib${name}.so"
           ${if soversion != null then ''
             ln -sf "$libname" "$out/lib${name}.so.${soversion}"
@@ -91,10 +91,7 @@ let
 # Per-translation-unit derivations
   mylib_test_shared_library_lib_c_o = stdenv.mkDerivation {
     name = "lib.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../lib.c;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -106,10 +103,7 @@ let
 
   versioned_lib_test_shared_library_versioned_c_o = stdenv.mkDerivation {
     name = "versioned.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../versioned.c;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -121,10 +115,7 @@ let
 
   app_test_shared_library_main_c_o = stdenv.mkDerivation {
     name = "main.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../main.c;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -136,10 +127,7 @@ let
 
   static_helper_test_shared_library_helper_c_o = stdenv.mkDerivation {
     name = "helper.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../helper.c;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -151,10 +139,7 @@ let
 
   mixed_app_test_shared_library_mixed_c_o = stdenv.mkDerivation {
     name = "mixed.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../mixed.c;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release

@@ -60,13 +60,13 @@ let
         else
           compiler.pname or "cc"
         }
-        libname="lib${name}.so"
-        ${if version != null then ''
+        libname="${if type == "module" then name else "lib" + name}.so"
+        ${if version != null && type != "module" then ''
           libname="lib${name}.so.${version}"
         '' else ""}
         ${compiler}/bin/$compilerBin -shared $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out/$libname"
-        # Create version symlinks if needed
-        ${if version != null then ''
+        # Create version symlinks if needed (only for shared libraries, not modules)
+        ${if version != null && type != "module" then ''
           ln -sf "$libname" "$out/lib${name}.so"
           ${if soversion != null then ''
             ln -sf "$libname" "$out/lib${name}.so.${soversion}"
@@ -91,10 +91,7 @@ let
 # Per-translation-unit derivations
   unity_app_src_file1_cpp_o = stdenv.mkDerivation {
     name = "file1.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../src/file1.cpp;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -106,10 +103,7 @@ let
 
   unity_app_src_file2_cpp_o = stdenv.mkDerivation {
     name = "file2.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../src/file2.cpp;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -121,10 +115,7 @@ let
 
   unity_app_src_file3_cpp_o = stdenv.mkDerivation {
     name = "file3.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../src/file3.cpp;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -136,10 +127,7 @@ let
 
   unity_app_test_unity_build_main_cpp_o = stdenv.mkDerivation {
     name = "main.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../main.cpp;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -151,10 +139,7 @@ let
 
   normal_app_src_file1_cpp_o = stdenv.mkDerivation {
     name = "file1.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../src/file1.cpp;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -166,10 +151,7 @@ let
 
   normal_app_src_file2_cpp_o = stdenv.mkDerivation {
     name = "file2.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../src/file2.cpp;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -181,10 +163,7 @@ let
 
   normal_app_src_file3_cpp_o = stdenv.mkDerivation {
     name = "file3.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../src/file3.cpp;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
@@ -196,10 +175,7 @@ let
 
   normal_app_test_unity_build_main_cpp_o = stdenv.mkDerivation {
     name = "main.o";
-    src = lib.fileset.toSource {
-      root = ./..;
-      fileset = ./../main.cpp;
-    };
+    src = ./..;
     buildInputs = [ gcc ];
     dontFixup = true;
 # Configuration: Release
