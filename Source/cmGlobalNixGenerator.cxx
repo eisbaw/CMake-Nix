@@ -240,6 +240,8 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("          echo \"gcc\"");
   writer.WriteLine("        elif [[ \"${compiler}\" == \"${clang}\" ]]; then");  
   writer.WriteLine("          echo \"clang\"");
+  writer.WriteLine("        elif [[ \"${compiler}\" == \"${gfortran}\" ]]; then");
+  writer.WriteLine("          echo \"gfortran\"");
   writer.WriteLine("        else");
   writer.WriteLine("          echo \"${compiler.pname or \"cc\"}\"");
   writer.WriteLine("        fi");
