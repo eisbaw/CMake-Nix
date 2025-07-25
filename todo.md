@@ -1,5 +1,10 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
+DONE - Fixed out-of-source build issue where src attribute pointed to build dir instead of source dir
+     - Calculate relative path from build directory to source directory for out-of-source builds
+     - Update both regular source paths and composite source paths
+     - Fixed variable shadowing warnings
+
 
 DONE - Fixed linker argument order for static libraries (objects must come before libraries)
 DONE - Fixed shared library naming in cmakeNixLD to use base target name without prefix/extension
