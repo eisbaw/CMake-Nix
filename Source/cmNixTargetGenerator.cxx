@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <set>
 #include <unordered_set>
+#include <system_error>
+#include <exception>
 
 #include "cmGeneratorTarget.h"
 #include "cmGlobalNixGenerator.h"
@@ -214,7 +216,19 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
     // Log unknown exception before falling back
     if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
       std::cerr << "[NIX-DEBUG] Unknown exception in ScanWithCompiler for " 
-                << source->GetFullPath() << std::endl;
+                << source->GetFullPath();
+      
+      // Try to get current exception info if available
+      try {
+        std::rethrow_exception(std::current_exception());
+      } catch (const std::bad_alloc&) {
+        std::cerr << " - detected: out of memory";
+      } catch (const std::system_error& se) {
+        std::cerr << " - detected: system error (" << se.code() << ")";
+      } catch (...) {
+        std::cerr << " - type: unknown";
+      }
+      std::cerr << std::endl;
     }
     // Fall back to other methods if compiler scanning fails
   }

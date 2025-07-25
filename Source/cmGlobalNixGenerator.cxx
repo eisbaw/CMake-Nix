@@ -10,6 +10,8 @@
 #include <functional>
 #include <queue>
 #include <cctype>
+#include <system_error>
+#include <exception>
 
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
@@ -400,7 +402,20 @@ void cmGlobalNixGenerator::WriteNixFile()
             this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
           } catch (...) {
             std::ostringstream msg;
-            msg << "Unknown exception in custom command processing for " << cc->GetComment();
+            msg << "Unknown exception in custom command processing for " << cc->GetComment()
+                << " (possible causes: out of memory, filesystem error, or system exception)";
+            
+            // Try to get current exception info if available
+            try {
+              std::rethrow_exception(std::current_exception());
+            } catch (const std::bad_alloc&) {
+              msg << " - detected: out of memory";
+            } catch (const std::system_error& se) {
+              msg << " - detected: system error (" << se.code() << ")";
+            } catch (...) {
+              // Can't determine exact type
+            }
+            
             this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
           }
         }
@@ -702,7 +717,19 @@ void cmGlobalNixGenerator::WriteNixFile()
     } catch (...) {
       std::ostringstream msg;
       msg << "Unknown exception writing custom command " << info->DerivationName 
-          << " (possible out of memory or filesystem error)";
+          << " (possible causes: out of memory, filesystem error, or system exception)";
+      
+      // Try to get current exception info if available
+      try {
+        std::rethrow_exception(std::current_exception());
+      } catch (const std::bad_alloc&) {
+        msg << " - detected: out of memory";
+      } catch (const std::system_error& se) {
+        msg << " - detected: system error (" << se.code() << ")";
+      } catch (...) {
+        // Can't determine exact type
+      }
+      
       this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
     }
   }
