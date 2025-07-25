@@ -22,6 +22,15 @@ Fix review comments again as git notes, see git log -10 .
 
 Review todo.md if what is DONE really is DONE.
 
+Ensure code is production ready.
+
+Check if zephyr rtos'es dining philosphers are truly building and executing as native sim.
+
+Search web for large CMake based project, add it as a test case.
+
+Check off PRD.md Phases 
+
+
 Fixed critical issues (2025-07-24):
 - Fixed regression where internal CMake targets were ignored in library dependencies
 - Added thread safety to TransitiveDependencyCache with mutex protection
