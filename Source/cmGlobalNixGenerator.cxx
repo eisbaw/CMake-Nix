@@ -274,13 +274,13 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        else");
   writer.WriteLine("          compiler.pname or \"cc\"");
   writer.WriteLine("        }");
-  writer.WriteLine("        libname=\"lib${name}.so\"");
-  writer.WriteLine("        ${if version != null then ''");
+  writer.WriteLine("        libname=\"${if type == \"module\" then name else \"lib\" + name}.so\"");
+  writer.WriteLine("        ${if version != null && type != \"module\" then ''");
   writer.WriteLine("          libname=\"lib${name}.so.${version}\"");
   writer.WriteLine("        '' else \"\"}");
   writer.WriteLine("        ${compiler}/bin/$compilerBin -shared $objects ${flags} ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out/$libname\"");
-  writer.WriteLine("        # Create version symlinks if needed");
-  writer.WriteLine("        ${if version != null then ''");
+  writer.WriteLine("        # Create version symlinks if needed (only for shared libraries, not modules)");
+  writer.WriteLine("        ${if version != null && type != \"module\" then ''");
   writer.WriteLine("          ln -sf \"$libname\" \"$out/lib${name}.so\"");
   writer.WriteLine("          ${if soversion != null then ''");
   writer.WriteLine("            ln -sf \"$libname\" \"$out/lib${name}.so.${soversion}\"");
@@ -1568,9 +1568,10 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   std::string nixTargetType;
   if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
     nixTargetType = "static";
-  } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY || 
-             target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+  } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
     nixTargetType = "shared";
+  } else if (target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+    nixTargetType = "module";
   } else {
     nixTargetType = "executable";
   }
