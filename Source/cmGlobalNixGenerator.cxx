@@ -1424,11 +1424,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     } else if (existingFiles.empty() && generatedFiles.empty()) {
       // No files detected, use whole directory
       // Calculate relative path from build directory to source directory for out-of-source builds
-      std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+      std::string srcDirLocal2 = this->GetCMakeInstance()->GetHomeDirectory();
       std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
       std::string rootPath = "./.";
-      if (srcDir != bldDir) {
-        rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
+      if (srcDirLocal2 != bldDir) {
+        rootPath = cmSystemTools::RelativePath(bldDir, srcDirLocal2);
         if (!rootPath.empty()) {
           rootPath = "./" + rootPath;
           // Remove any trailing slash to avoid Nix errors
@@ -1446,11 +1446,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         // When not using explicit sources, we don't have header dependencies
         // so we should use the whole directory to include headers
         // Calculate relative path from build directory to source directory for out-of-source builds
-        std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+        std::string srcDirLocal3 = this->GetCMakeInstance()->GetHomeDirectory();
         std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
         std::string rootPath = "./.";
-        if (srcDir != bldDir) {
-          rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
+        if (srcDirLocal3 != bldDir) {
+          rootPath = cmSystemTools::RelativePath(bldDir, srcDirLocal3);
           if (!rootPath.empty()) {
             rootPath = "./" + rootPath;
             // Remove any trailing slash to avoid Nix errors
@@ -1465,11 +1465,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       } else {
         // Use fileset union for minimal source sets with maybeMissing for generated files
         // Calculate relative path from build directory to source directory for out-of-source builds
-        std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+        std::string srcDirLocal4 = this->GetCMakeInstance()->GetHomeDirectory();
         std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
         std::string rootPath = "./.";
-        if (srcDir != bldDir) {
-          rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
+        if (srcDirLocal4 != bldDir) {
+          rootPath = cmSystemTools::RelativePath(bldDir, srcDirLocal4);
           if (!rootPath.empty()) {
             rootPath = "./" + rootPath;
             // Remove any trailing slash to avoid Nix errors
