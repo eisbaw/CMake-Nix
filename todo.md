@@ -24,13 +24,67 @@ Review todo.md if what is DONE really is DONE.
 
 Ensure code is production ready. Break up large functions into intentions - and compose back functionality. This also allows for better re-use.
 
-Check if zephyr rtos'es dining philosphers are truly building and executing as native sim.
+DONE (partially) - Check if zephyr rtos'es dining philosphers are truly building and executing as native sim.
+- Status (2025-07-30): Build configuration completes but Nix file generation hangs/times out
+- Issue: Generates a massive incomplete default.nix.tmp file (10k+ lines) with excessive header copying
+- The file generation appears to get stuck while copying all Zephyr headers
+- Need to investigate why so many headers are being copied and optimize the process
 
 Search web for large CMake based project, add it as a test case.
 
 Check off PRD.md Phases - what we have. Add missing tasks to todo.md.
 
+UPDATE (2025-07-30): Phase 2 Status from PRD.md:
+- Phase 1: Complete (100%)
+- Phase 2: Core Features Complete (75%)
+  - ✅ Header dependency tracking (basic, but GetSourceDependencies() needs fixing)
+  - ✅ Include path support (working for multi-directory projects)
+  - ✅ Build configuration support (Debug/Release with proper flags)
+  - ✅ Compiler auto-detection (partial - needs enhancement)
+  - ❌ Advanced dependencies (external libraries, find_package() not implemented)
+
+Missing Phase 2 Tasks (from plan.md):
+- Fix header dependency tracking using compiler-based approach (-MM/-MD flags)
+- Implement external library support (map CMake imported targets to Nix packages)
+- Complete compiler auto-detection (detect from CMAKE_C_COMPILER, CMAKE_CXX_COMPILER)
+- Add shared library support (versioning, RPATH)
+- Test with medium-complexity open source projects
+
 Look for assumptions in our Nix generator backend. We want to be extremely correct and general.
+
+UPDATE (2025-07-30): Found assumptions in Nix generator backend:
+1. Compiler Package Detection:
+   - Assumes GNU compiler ID maps to "gcc" package, Clang to "clang" package
+   - Default fallback is always "gcc" (lines 2055, 2058, 2077 in cmGlobalNixGenerator.cxx)
+   - Should use CMAKE_C_COMPILER/CMAKE_CXX_COMPILER variables instead
+
+2. Compiler Binary Names:
+   - Hardcoded mapping: gcc→gcc/g++, clang→clang/clang++ (lines 2129-2132)
+   - Assembly assumed to use same compiler as C (line 2123)
+   - Should allow user override via CMAKE variables
+
+3. Library Naming:
+   - Assumes Unix-style naming: lib*.so for shared, lib*.a for static (line 287)
+   - Version symlinks assume Unix conventions (lines 294-297)
+   - No support for Windows DLLs or macOS dylibs
+
+4. Path Assumptions:
+   - Filters /usr/include/ and /nix/store/ as system headers (lines 1238-1240)
+   - May miss other system header locations (/opt, /usr/local, etc.)
+
+5. Package Mapping (cmNixPackageMapper.cxx):
+   - Limited hardcoded mappings (OpenGL, ZLIB, etc.)
+   - Assumes glibc for system libraries (m, pthread, dl, rt)
+   - No support for musl, BSD libc, or other alternatives
+   - Link flags assume Unix-style -l syntax
+
+6. Build Environment:
+   - No cross-compilation support detected
+   - No architecture-specific handling
+   - Assumes standard Unix build environment
+
+Write documentation nix_generator_docs.md of our Nix generator backend: What kind of default.nix it writes, supported features, how it works ie the main code flow and data-structures.
+
 
 Fixed critical issues (2025-07-24):
 - Fixed regression where internal CMake targets were ignored in library dependencies
