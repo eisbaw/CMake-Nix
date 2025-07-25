@@ -2089,15 +2089,9 @@ void cmGlobalNixGenerator::ProcessLibraryDependenciesForLinking(
     }
   }
   
-  // Process transitive dependencies for shared libraries
-  for (const cmLinkItem& item : linkImpl->Libraries) {
-    if (item.Target && !item.Target->IsImported() && 
-        item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-      transitiveDeps.insert(item.Target->GetName());
-      std::set<std::string> childDeps = this->DependencyGraph.GetTransitiveSharedLibraries(item.Target->GetName());
-      transitiveDeps.insert(childDeps.begin(), childDeps.end());
-    }
-  }
+  // Get all transitive shared library dependencies in one call
+  // This is more efficient than calling GetTransitiveSharedLibraries for each direct dependency
+  transitiveDeps = this->DependencyGraph.GetTransitiveSharedLibraries(target->GetName());
 }
 
 void cmGlobalNixGenerator::ProcessLibraryDependenciesForBuildInputs(
