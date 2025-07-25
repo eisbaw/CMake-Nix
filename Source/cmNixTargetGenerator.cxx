@@ -144,6 +144,13 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
 {
   std::vector<std::string> dependencies;
   
+  // Skip dependency scanning unless CMAKE_NIX_EXPLICIT_SOURCES is enabled
+  // This avoids redundant compiler invocations during configuration
+  cmValue explicitSources = this->GetMakefile()->GetDefinition("CMAKE_NIX_EXPLICIT_SOURCES");
+  if (!explicitSources || !cmIsOn(*explicitSources)) {
+    return dependencies; // Skip scanning to improve performance
+  }
+  
   // Get the source language
   std::string const& lang = source->GetLanguage();
   if (lang != "C" && lang != "CXX" && lang != "OBJC" && lang != "OBJCXX" && 
