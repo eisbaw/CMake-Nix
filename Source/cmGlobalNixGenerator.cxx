@@ -1118,8 +1118,23 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   // Determine source path - check if this source file is external
   std::string currentSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
   std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-  // Since Nix file is now in source directory, use current directory as base
-  std::string projectSourceRelPath = ".";
+  std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+  
+  // Calculate relative path from build directory to source directory for out-of-source builds
+  std::string projectSourceRelPath = "./.";
+  if (srcDir != buildDir) {
+    projectSourceRelPath = cmSystemTools::RelativePath(buildDir, srcDir);
+    if (!projectSourceRelPath.empty()) {
+      projectSourceRelPath = "./" + projectSourceRelPath;
+      // Remove any trailing slash to avoid Nix errors
+      if (projectSourceRelPath.back() == '/') {
+        projectSourceRelPath.pop_back();
+      }
+    } else {
+      projectSourceRelPath = "./.";
+    }
+  }
+  
   std::string initialRelativePath = cmSystemTools::RelativePath(this->GetCMakeInstance()->GetHomeDirectory(), sourceFile);
   
   // Check if source file is external (outside project tree)
@@ -1130,11 +1145,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     writer.WriteIndented(2, "src = pkgs.runCommand \"composite-src\" {} ''");
     writer.WriteIndented(3, "mkdir -p $out");
     // Copy project source tree
-    if (projectSourceRelPath.empty()) {
-      writer.WriteIndented(3, "cp -r ${./.}/* $out/ 2>/dev/null || true");
-    } else {
-      writer.WriteIndented(3, "cp -r ${./" + projectSourceRelPath + "}/* $out/ 2>/dev/null || true");
-    }
+    writer.WriteIndented(3, "cp -r ${" + projectSourceRelPath + "}/* $out/ 2>/dev/null || true");
     // Copy external source file to build dir root
     std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
     // Use builtins.path for absolute paths
@@ -1235,23 +1246,23 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
       
       // Check if file is in build directory
-      std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+      std::string srcDirLocal = this->GetCMakeInstance()->GetHomeDirectory();
       bool isInBuildDir = (fullPath.find(buildDir) == 0);
-      bool isInSourceDir = (fullPath.find(srcDir) == 0);
+      bool isInSourceDir = (fullPath.find(srcDirLocal) == 0);
       
       // Only consider it a config-time generated file if:
       // 1. It's in the build directory
       // 2. It's NOT also in the source directory (in-source builds)
       // 3. OR the build dir and source dir are different and file is only in build dir
       bool isConfigTimeGenerated = isInBuildDir && 
-        (buildDir != srcDir || !isInSourceDir);
+        (buildDir != srcDirLocal || !isInSourceDir);
       
       // Convert to appropriate relative path
       std::string relDep;
-      if (isInBuildDir && buildDir != srcDir) {
+      if (isInBuildDir && buildDir != srcDirLocal) {
         // For build directory files, make path relative to source directory
         // since the fileset will be rooted at the source directory
-        relDep = cmSystemTools::RelativePath(srcDir, fullPath);
+        relDep = cmSystemTools::RelativePath(srcDirLocal, fullPath);
       } else if (cmSystemTools::FileIsFullPath(dep)) {
         // For source directory files, make path relative to source dir
         relDep = cmSystemTools::RelativePath(
@@ -1320,7 +1331,23 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       
       // Copy the source directory structure
       writer.WriteIndented(3, "# Copy source files");
-      writer.WriteIndented(3, "cp -r ${./.}/* $out/ 2>/dev/null || true");
+      // For out-of-source builds, compute relative path to source directory
+      std::string srcDirLocal = this->GetCMakeInstance()->GetHomeDirectory();
+      std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+      std::string rootPath = "./.";
+      if (srcDir != bldDir) {
+        rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
+        if (!rootPath.empty()) {
+          rootPath = "./" + rootPath;
+          // Remove any trailing slash to avoid Nix errors
+          if (rootPath.back() == '/') {
+            rootPath.pop_back();
+          }
+        } else {
+          rootPath = "./.";
+        }
+      }
+      writer.WriteIndented(3, "cp -r ${" + rootPath + "}/* $out/ 2>/dev/null || true");
       
       // Copy configuration-time generated files to their correct locations
       writer.WriteIndented(3, "# Copy configuration-time generated files");
@@ -1364,13 +1391,45 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       writer.WriteIndented(2, "'';");
     } else if (existingFiles.empty() && generatedFiles.empty()) {
       // No files detected, use whole directory
-      writer.WriteSourceAttribute("./.");
+      // Calculate relative path from build directory to source directory for out-of-source builds
+      std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+      std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+      std::string rootPath = "./.";
+      if (srcDir != bldDir) {
+        rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
+        if (!rootPath.empty()) {
+          rootPath = "./" + rootPath;
+          // Remove any trailing slash to avoid Nix errors
+          if (rootPath.back() == '/') {
+            rootPath.pop_back();
+          }
+        } else {
+          rootPath = "./.";
+        }
+      }
+      writer.WriteSourceAttribute(rootPath);
     } else {
       // Check if we're using explicit sources
       if (!this->UseExplicitSources()) {
         // When not using explicit sources, we don't have header dependencies
         // so we should use the whole directory to include headers
-        writer.WriteSourceAttribute("./.");
+        // Calculate relative path from build directory to source directory for out-of-source builds
+        std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+        std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+        std::string rootPath = "./.";
+        if (srcDir != bldDir) {
+          rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
+          if (!rootPath.empty()) {
+            rootPath = "./" + rootPath;
+            // Remove any trailing slash to avoid Nix errors
+            if (rootPath.back() == '/') {
+              rootPath.pop_back();
+            }
+          } else {
+            rootPath = "./.";
+          }
+        }
+        writer.WriteSourceAttribute(rootPath);
       } else {
         // Use fileset union for minimal source sets with maybeMissing for generated files
         // Calculate relative path from build directory to source directory for out-of-source builds

@@ -250,6 +250,8 @@ DONE: Ensure we have have good tests of CMAKE_NIX_EXPLICIT_SOURCES=ON .
 
 DONE: Grep justfiles for for nix-build commands that allow failure. Fix the failures. 
 
+DONE: Fix test_headers failure when CMAKE_NIX_EXPLICIT_SOURCES=OFF - headers were not included in filesets
+
 DONE: Search the web and add a opensource large-sized popular cmake-based project as a new test case.
 
 DONE: Search the web for open-source project that uses cmake, and is not in cmake.
