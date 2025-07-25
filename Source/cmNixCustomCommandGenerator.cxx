@@ -129,7 +129,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         first = false;
         
         // Handle shell operators properly
-        if (arg == ">" || arg == ">>" || arg == "<" || arg == "|" || arg == "&&" || arg == "||") {
+        if (arg == ">" || arg == ">>" || arg == "<" || arg == "|" || arg == "&&" || arg == "||" || arg == ";" || arg == "&") {
           nixFileStream << arg;
         } else if (arg.find("/cmake") != std::string::npos && arg.find("/bin/cmake") != std::string::npos) {
           // Replace absolute cmake paths with echo for -E echo commands
