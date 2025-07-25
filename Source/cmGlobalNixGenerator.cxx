@@ -1228,6 +1228,12 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         fullPath += dep;
       }
       
+      if (this->GetCMakeInstance()->GetDebugOutput()) {
+        std::cerr << "[NIX-DEBUG] Processing header dependency: " << dep 
+                  << " (full: " << fullPath << ")" << std::endl;
+        std::cerr << "[NIX-DEBUG] File exists: " << cmSystemTools::FileExists(fullPath) << std::endl;
+      }
+      
       // Check if file is in build directory
       std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
       bool isInBuildDir = (fullPath.find(buildDir) == 0);
@@ -1254,6 +1260,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         relDep = dep;
       }
       
+      if (this->GetCMakeInstance()->GetDebugOutput()) {
+        std::cerr << "[NIX-DEBUG] Relative dependency path: " << relDep << std::endl;
+      }
+      
       // Add if it's a valid relative path
       if (!relDep.empty()) {
         if (cmSystemTools::FileExists(fullPath)) {
@@ -1266,6 +1276,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
             }
           } else {
             existingFiles.push_back(relDep);
+            if (this->GetCMakeInstance()->GetDebugOutput()) {
+              std::cerr << "[NIX-DEBUG] Added existing header to fileset: " << relDep << std::endl;
+            }
           }
         } else {
           // Header might be generated during build (custom commands)
@@ -1353,24 +1366,31 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       // No files detected, use whole directory
       writer.WriteSourceAttribute("./.");
     } else {
-      // Use fileset union for minimal source sets with maybeMissing for generated files
-      // Calculate relative path from build directory to source directory for out-of-source builds
-      std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
-      std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-      std::string rootPath = "./.";
-      if (srcDir != bldDir) {
-        rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
-        if (!rootPath.empty()) {
-          rootPath = "./" + rootPath;
-          // Remove any trailing slash to avoid Nix errors
-          if (rootPath.back() == '/') {
-            rootPath.pop_back();
+      // Check if we're using explicit sources
+      if (!this->UseExplicitSources()) {
+        // When not using explicit sources, we don't have header dependencies
+        // so we should use the whole directory to include headers
+        writer.WriteSourceAttribute("./.");
+      } else {
+        // Use fileset union for minimal source sets with maybeMissing for generated files
+        // Calculate relative path from build directory to source directory for out-of-source builds
+        std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+        std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+        std::string rootPath = "./.";
+        if (srcDir != bldDir) {
+          rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
+          if (!rootPath.empty()) {
+            rootPath = "./" + rootPath;
+            // Remove any trailing slash to avoid Nix errors
+            if (rootPath.back() == '/') {
+              rootPath.pop_back();
+            }
+          } else {
+            rootPath = "./.";
           }
-        } else {
-          rootPath = "./.";
         }
+        writer.WriteFilesetUnionWithMaybeMissing(existingFiles, generatedFiles, 2, rootPath);
       }
-      writer.WriteFilesetUnionWithMaybeMissing(existingFiles, generatedFiles, 2, rootPath);
     }
   }
   
