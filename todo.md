@@ -989,3 +989,40 @@ The following items are currently pending and need attention:
       - Prefix numeric names with letter (e.g., "t_123")
       - The final attribute set already quotes properly, only intermediate names need fixing
 
+## NEW FINDINGS FROM CODE REVIEW (2025-07-29)
+
+### Performance Issues:
+72. **String Concatenation in Loops**: cmGlobalNixGenerator.cxx:157-198 - Using operator+ in loops without reserve()
+    - Impact: Quadratic time complexity for many targets
+    - Fix: Use ostringstream or reserve string capacity
+
+73. **Code Duplication in Compiler Detection**: GetCompilerPackage and GetCompilerCommand have duplicated logic
+    - Impact: Maintenance burden, inconsistent behavior  
+    - Fix: Extract common compiler detection logic
+
+### Missing Test Coverage:
+74. **No Unit Tests**: No unit tests for cmGlobalNixGenerator, cmLocalNixGenerator, cmNixTargetGenerator
+    - Impact: Hard to verify correctness of individual components
+    - Fix: Add comprehensive unit test suite
+
+75. **Missing Edge Case Tests**:
+    - Thread safety tests for parallel builds
+    - Error recovery tests (build failures, permission errors, disk full)
+    - Scale tests (1000+ files, deep directory hierarchies)
+    - Cross-compilation tests
+    - Complex custom command tests (WORKING_DIRECTORY, VERBATIM, multiple outputs)
+
+### Code Quality Issues:
+76. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456
+77. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without named constant
+78. **Style Inconsistency**: Debug output prefixes vary ([NIX-TRACE] vs [DEBUG])
+79. **Exception Handling Without Context**: Generic catch(...) blocks make debugging difficult
+
+### Architectural Improvements Needed:
+80. **Extract Utility Classes for Better Maintainability**:
+    - NixShellCommandBuilder for command construction
+    - NixIdentifierUtils for name sanitization  
+    - NixPathResolver for path handling
+    - NixBuildConfiguration for config management
+    - NixCompilerResolver for compiler detection
+
