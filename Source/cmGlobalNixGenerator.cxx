@@ -12,6 +12,7 @@
 #include <cctype>
 #include <system_error>
 #include <exception>
+#include <fstream>
 
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
@@ -85,6 +86,9 @@ void cmGlobalNixGenerator::Generate()
       "executed inside isolated Nix environments. Consider using Nix-aware "
       "development tools or direnv for IDE integration.");
   }
+  
+  // Check for ExternalProject_Add or FetchContent usage
+  this->CheckForExternalProjectUsage();
   
   // First call the parent Generate to set up targets
   this->cmGlobalGenerator::Generate();
@@ -2731,4 +2735,133 @@ bool cmGlobalNixGenerator::IsSystemPath(const std::string& path) const
   }
   
   return false;
+}
+
+void cmGlobalNixGenerator::CheckForExternalProjectUsage()
+{
+  // Check all makefiles in the project for ExternalProject or FetchContent usage
+  bool hasExternalProject = false;
+  bool hasFetchContent = false;
+  std::set<std::string> externalProjectTargets;
+  std::set<std::string> fetchContentDependencies;
+  
+  for (const auto& lg : this->LocalGenerators) {
+    cmMakefile* mf = lg->GetMakefile();
+    
+    // Check for commands that indicate module usage
+    // We'll check the list files for include() statements instead
+    
+    // Also check for include() commands in listfiles
+    const auto& listFiles = mf->GetListFiles();
+    for (const auto& file : listFiles) {
+      std::ifstream infile(file);
+      std::string line;
+      while (std::getline(infile, line)) {
+        // Simple pattern matching for include() commands
+        if (line.find("include(ExternalProject)") != std::string::npos ||
+            line.find("include( ExternalProject )") != std::string::npos) {
+          hasExternalProject = true;
+        }
+        if (line.find("include(FetchContent)") != std::string::npos ||
+            line.find("include( FetchContent )") != std::string::npos) {
+          hasFetchContent = true;
+        }
+      }
+    }
+  }
+  
+  // Issue warnings if these modules are used
+  if (hasExternalProject) {
+    this->GetCMakeInstance()->IssueMessage(
+      MessageType::WARNING,
+      "ExternalProject_Add is incompatible with the Nix generator.\n"
+      "ExternalProject downloads dependencies at build time, which conflicts "
+      "with Nix's pure build philosophy.\n\n"
+      "Recommended alternatives:\n"
+      "  1. Pre-fetch dependencies and add to Nix store\n"
+      "  2. Use find_package() with Nix-provided packages\n"
+      "  3. Include dependencies as Git submodules\n"
+      "  4. Create pkg_<Package>.nix files for external dependencies\n\n"
+      "The Nix generator will create a default.nix file, but builds may fail "
+      "when ExternalProject tries to download content.");
+  }
+  
+  if (hasFetchContent) {
+    this->GetCMakeInstance()->IssueMessage(
+      MessageType::WARNING,
+      "FetchContent is incompatible with the Nix generator.\n"
+      "FetchContent downloads dependencies at configure time, which conflicts "
+      "with Nix's pure build philosophy.\n\n"
+      "Recommended alternatives:\n"
+      "  1. Pre-fetch dependencies and add to Nix store\n"
+      "  2. Use find_package() with Nix-provided packages\n"
+      "  3. Include dependencies as Git submodules\n"
+      "  4. Create pkg_<Package>.nix files for external dependencies\n\n"
+      "Example: For FetchContent_Declare(fmt ...), create pkg_fmt.nix:\n"
+      "  { fmt }:\n"
+      "  {\n"
+      "    buildInputs = [ fmt ];\n"
+      "    cmakeFlags = [];\n"
+      "  }");
+  }
+  
+  // Additionally, we could generate skeleton pkg_*.nix files for known dependencies
+  if (hasExternalProject || hasFetchContent) {
+    this->GenerateSkeletonPackageFiles();
+  }
+}
+
+void cmGlobalNixGenerator::GenerateSkeletonPackageFiles()
+{
+  // This method will scan for common external dependencies and generate
+  // skeleton pkg_*.nix files that users can fill in
+  
+  // For now, let's check for some common packages
+  std::map<std::string, std::string> commonPackages = {
+    {"fmt", "{ fmt }:\n{\n  buildInputs = [ fmt ];\n  cmakeFlags = [];\n}"},
+    {"json", "{ nlohmann_json }:\n{\n  buildInputs = [ nlohmann_json ];\n  cmakeFlags = [];\n}"},
+    {"googletest", "{ gtest }:\n{\n  buildInputs = [ gtest ];\n  cmakeFlags = [];\n}"},
+    {"boost", "{ boost }:\n{\n  buildInputs = [ boost ];\n  cmakeFlags = [];\n}"}
+  };
+  
+  // Check if any of these packages are referenced in the project
+  for (const auto& lg : this->LocalGenerators) {
+    cmMakefile* mf = lg->GetMakefile();
+    const auto& listFiles = mf->GetListFiles();
+    
+    for (const auto& file : listFiles) {
+      std::ifstream infile(file);
+      std::string line;
+      while (std::getline(infile, line)) {
+        // Look for FetchContent_Declare or ExternalProject_Add
+        for (const auto& pkg : commonPackages) {
+          if (line.find(pkg.first) != std::string::npos &&
+              (line.find("FetchContent_Declare") != std::string::npos ||
+               line.find("ExternalProject_Add") != std::string::npos)) {
+            // Generate skeleton file if it doesn't exist
+            std::string pkgFileName = this->GetCMakeInstance()->GetHomeOutputDirectory() + 
+                                    "/pkg_" + pkg.first + ".nix";
+            
+            if (this->GetCMakeInstance()->GetDebugOutput()) {
+              std::cerr << "[NIX-DEBUG] Found " << pkg.first << " in line: " << line << std::endl;
+              std::cerr << "[NIX-DEBUG] Would create: " << pkgFileName << std::endl;
+            }
+            
+            if (!cmSystemTools::FileExists(pkgFileName)) {
+              std::ofstream pkgFile(pkgFileName);
+              pkgFile << "# Skeleton Nix package file for " << pkg.first << "\n";
+              pkgFile << "# Edit this file to specify the correct Nix package\n";
+              pkgFile << pkg.second << "\n";
+              pkgFile.close();
+              
+              this->GetCMakeInstance()->IssueMessage(
+                MessageType::AUTHOR_WARNING,
+                "Generated skeleton pkg_" + pkg.first + ".nix file. "
+                "Please edit it to specify the correct Nix package.");
+            }
+          }
+        }
+      }
+    }
+  }
 } 

@@ -179,6 +179,10 @@ protected:
   void WriteInstallRules(cmGeneratedFileStream& nixFileStream);
   void WriteInstallOutputs(cmGeneratedFileStream& nixFileStream);
   void CollectInstallTargets();
+  
+  // Check for incompatible features
+  void CheckForExternalProjectUsage();
+  void GenerateSkeletonPackageFiles();
 
 protected:
   std::string GetDerivationName(std::string const& targetName, 

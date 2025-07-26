@@ -344,4 +344,93 @@ For detailed implementation status, current gaps, and next steps, see [plan.md](
 
 **Critical gaps**: Header dependency tracking incomplete, external library support missing, compiler detection hardcoded.
 
-**Next priority**: Fix header dependency tracking for correctness, then add external library support for real-world project compatibility. 
+**Next priority**: Fix header dependency tracking for correctness, then add external library support for real-world project compatibility.
+
+## Best Practices and Guidelines for Nix Generator
+
+### Design Principles
+
+1. **Fine-Grained Derivations**: Generate one Nix derivation per translation unit to maximize parallelism and caching
+2. **Minimal Source Sets**: Use Nix fileset unions to include only necessary files in each derivation
+3. **Reproducibility**: Ensure all builds are hermetic and reproducible across machines
+4. **Error Handling**: Provide clear error messages for Nix-specific limitations
+
+### Implementation Guidelines
+
+#### Path Handling
+- Always normalize paths using `cmNixPathUtils::NormalizePathForNix()`
+- Use relative paths within Nix expressions to maintain portability
+- Handle spaces in paths by proper quoting in shell commands
+- Validate paths to prevent traversal attacks
+
+#### Compiler Detection
+- Use `cmNixCompilerResolver` for consistent compiler package resolution
+- Support user overrides via `CMAKE_NIX_<LANG>_COMPILER_PACKAGE` variables
+- Auto-detect GCC, Clang, and other common compilers
+
+#### External Dependencies
+- Map CMake package names to Nix packages using `cmNixPackageMapper`
+- Generate `pkg_<PackageName>.nix` files for custom package configurations
+- Support find_package() through Nix-provided packages
+
+#### Debug Support
+- Guard all debug output with `GetDebugOutput()` checks
+- Use consistent `[NIX-DEBUG]` prefix for debug messages
+- Enable debug mode via `CMAKE_NIX_DEBUG` environment variable
+
+#### Thread Safety
+- Protect all shared caches with mutex locks
+- Use double-checked locking pattern for lazy initialization
+- Limit cache sizes to prevent unbounded memory growth
+
+#### Security Considerations
+- Escape all shell commands using `cmOutputConverter::EscapeForShell()`
+- Validate external paths with `cmNixPathUtils::IsExternalPath()`
+- Check for dangerous characters in paths
+- Embed configuration-time generated files using here-docs
+
+### Usage Recommendations
+
+#### For Simple Projects
+```cmake
+cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
+nix-build -A my_target
+```
+
+#### For Projects with External Dependencies
+1. Let CMake generate pkg_*.nix files automatically
+2. Review and adjust package mappings as needed
+3. Use find_package() normally - it will map to Nix packages
+
+#### For Large Projects (e.g., Zephyr RTOS)
+- Set `CMAKE_NIX_EXTERNAL_HEADER_LIMIT` to control header copying
+- Use `CMAKE_NIX_EXPLICIT_SOURCES=ON` for precise source tracking
+- Consider breaking large targets into smaller libraries
+
+#### Debugging Build Issues
+```bash
+export CMAKE_NIX_DEBUG=1
+cmake -G Nix .
+nix-build --show-trace -A my_target
+```
+
+### Known Limitations
+
+1. **No Incremental Builds**: Nix derivations always rebuild from scratch for reproducibility
+2. **ExternalProject/FetchContent Incompatibility**: Use find_package() or Git submodules instead
+3. **Unix/Linux Only**: The generator assumes Unix-style paths and tools
+4. **No Response Files**: Not needed as build commands are in derivation scripts
+
+### Testing Guidelines
+
+- Run `just dev` to execute the comprehensive test suite
+- Add tests for new features in appropriate test_* directories
+- Ensure all tests pass before committing changes
+- Use `just test_<name>::run` to test individual components
+
+### Performance Optimization
+
+1. **Enable Parallel Builds**: Nix automatically builds independent derivations in parallel
+2. **Use Remote Builders**: Configure Nix distributed builds for large projects
+3. **Optimize Header Dependencies**: Limit external header copying with CMAKE_NIX_EXTERNAL_HEADER_LIMIT
+4. **Cache Nix Store**: Use binary caches to share built derivations across machines 

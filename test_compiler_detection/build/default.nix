@@ -19,22 +19,26 @@ let
     dontFixup = true;
     buildPhase = ''
       mkdir -p "$(dirname "$out")"
-      compilerBin=$(
-        if [[ "${compiler}" == "${gcc}" ]]; then
-          echo "gcc"
-        elif [[ "${compiler}" == "${clang}" ]]; then
-          echo "clang"
-        elif [[ "${compiler}" == "${gfortran}" ]]; then
-          echo "gfortran"
+      # Determine compiler binary name based on the compiler derivation
+      compilerBin="${
+        if compiler == gcc then
+          "gcc"
+        else if compiler == clang then
+          "clang"
+        else if compiler == gfortran then
+          "gfortran"
         else
-          echo "${compiler.pname or "cc"}"
-        fi
-      )
+          compiler.pname or "cc"
+      }"
       # When src is a directory, Nix unpacks it into a subdirectory
       # We need to find the actual source file
       # Store source in a variable to handle paths with spaces
       sourceFile="${source}"
-      if [[ -f "$sourceFile" ]]; then
+      # Check if source is an absolute path or Nix expression (e.g., $\{derivation}/file)
+      if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"$"* ]]; then
+        # Absolute path or Nix expression - use as-is
+        srcFile="$sourceFile"
+      elif [[ -f "$sourceFile" ]]; then
         srcFile="$sourceFile"
       elif [[ -f "$(basename "$src")/$sourceFile" ]]; then
         srcFile="$(basename "$src")/$sourceFile"
@@ -72,7 +76,7 @@ let
         ar rcs "$out" $objects
       '' else if type == "shared" || type == "module" then ''
         mkdir -p $out
-        compilerBin=${if compilerCommand != null then
+        compilerBin="${if compilerCommand != null then
           compilerCommand
         else if compiler == gcc then
           "gcc"
@@ -82,7 +86,7 @@ let
           "gfortran"
         else
           compiler.pname or "cc"
-        }
+        }";
         # Unix library naming: static=lib*.a, shared=lib*.so, module=*.so
         libname="${if type == "module" then name else "lib" + name}.so"
         ${if version != null && type != "module" then ''
@@ -98,7 +102,7 @@ let
         '' else ""}
       '' else ''
         mkdir -p "$(dirname "$out")"
-        compilerBin=${if compilerCommand != null then
+        compilerBin="${if compilerCommand != null then
           compilerCommand
         else if compiler == gcc then
           "gcc"
@@ -108,7 +112,7 @@ let
           "gfortran"
         else
           compiler.pname or "cc"
-        }
+        }";
         ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
     inherit postBuildPhase;
@@ -157,16 +161,16 @@ let
   link_c_program = cmakeNixLD {
     name = "c_program";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [c_program_test_compiler_detection_main_c_o ];
+    buildInputs = [ gcc ];
+    objects = [ c_program_test_compiler_detection_main_c_o ];
     compiler = gcc;
   };
 
   link_cpp_program = cmakeNixLD {
     name = "cpp_program";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [cpp_program_test_compiler_detection_main_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ cpp_program_test_compiler_detection_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -174,8 +178,8 @@ let
   link_mixed_program = cmakeNixLD {
     name = "mixed_program";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [mixed_program_test_compiler_detection_main_c_o mixed_program_test_compiler_detection_helper_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ mixed_program_test_compiler_detection_main_c_o mixed_program_test_compiler_detection_helper_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };

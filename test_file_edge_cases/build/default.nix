@@ -19,22 +19,26 @@ let
     dontFixup = true;
     buildPhase = ''
       mkdir -p "$(dirname "$out")"
-      compilerBin=$(
-        if [[ "${compiler}" == "${gcc}" ]]; then
-          echo "gcc"
-        elif [[ "${compiler}" == "${clang}" ]]; then
-          echo "clang"
-        elif [[ "${compiler}" == "${gfortran}" ]]; then
-          echo "gfortran"
+      # Determine compiler binary name based on the compiler derivation
+      compilerBin="${
+        if compiler == gcc then
+          "gcc"
+        else if compiler == clang then
+          "clang"
+        else if compiler == gfortran then
+          "gfortran"
         else
-          echo "${compiler.pname or "cc"}"
-        fi
-      )
+          compiler.pname or "cc"
+      }"
       # When src is a directory, Nix unpacks it into a subdirectory
       # We need to find the actual source file
       # Store source in a variable to handle paths with spaces
       sourceFile="${source}"
-      if [[ -f "$sourceFile" ]]; then
+      # Check if source is an absolute path or Nix expression (e.g., $\{derivation}/file)
+      if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"$"* ]]; then
+        # Absolute path or Nix expression - use as-is
+        srcFile="$sourceFile"
+      elif [[ -f "$sourceFile" ]]; then
         srcFile="$sourceFile"
       elif [[ -f "$(basename "$src")/$sourceFile" ]]; then
         srcFile="$(basename "$src")/$sourceFile"
@@ -72,7 +76,7 @@ let
         ar rcs "$out" $objects
       '' else if type == "shared" || type == "module" then ''
         mkdir -p $out
-        compilerBin=${if compilerCommand != null then
+        compilerBin="${if compilerCommand != null then
           compilerCommand
         else if compiler == gcc then
           "gcc"
@@ -82,7 +86,7 @@ let
           "gfortran"
         else
           compiler.pname or "cc"
-        }
+        }";
         # Unix library naming: static=lib*.a, shared=lib*.so, module=*.so
         libname="${if type == "module" then name else "lib" + name}.so"
         ${if version != null && type != "module" then ''
@@ -98,7 +102,7 @@ let
         '' else ""}
       '' else ''
         mkdir -p "$(dirname "$out")"
-        compilerBin=${if compilerCommand != null then
+        compilerBin="${if compilerCommand != null then
           compilerCommand
         else if compiler == gcc then
           "gcc"
@@ -108,7 +112,7 @@ let
           "gfortran"
         else
           compiler.pname or "cc"
-        }
+        }";
         ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
     inherit postBuildPhase;
@@ -211,8 +215,8 @@ let
   link_test_spaces = cmakeNixLD {
     name = "test_spaces";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [test_spaces_test_file_edge_cases_source_with_spaces_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ test_spaces_test_file_edge_cases_source_with_spaces_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -220,8 +224,8 @@ let
   link_test-with-dashes = cmakeNixLD {
     name = "test-with-dashes";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [test-with-dashes_test_file_edge_cases_special_chars_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ test-with-dashes_test_file_edge_cases_special_chars_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -229,8 +233,8 @@ let
   link_test_with_underscores = cmakeNixLD {
     name = "test_with_underscores";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [test_with_underscores_test_file_edge_cases_special_chars_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ test_with_underscores_test_file_edge_cases_special_chars_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -238,8 +242,8 @@ let
   link_test_with_dots = cmakeNixLD {
     name = "test.with.dots";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [test_with_dots_test_file_edge_cases_special_chars_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ test_with_dots_test_file_edge_cases_special_chars_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -247,8 +251,8 @@ let
   link_test_unicode = cmakeNixLD {
     name = "test_unicode";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [test_unicode_test_file_edge_cases_unicode________cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ test_unicode_test_file_edge_cases_unicode________cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -256,8 +260,8 @@ let
   link_test_long_names = cmakeNixLD {
     name = "test_long_names";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [test_long_names_test_file_edge_cases_this_is_a_very_long_filename_that_might_cause_issues_with_some_build_systems_but_should_work_fine_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ test_long_names_test_file_edge_cases_this_is_a_very_long_filename_that_might_cause_issues_with_some_build_systems_but_should_work_fine_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -265,8 +269,8 @@ let
   link_test_symlinks = cmakeNixLD {
     name = "test_symlinks";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [test_symlinks_test_file_edge_cases_symlinked_source_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ test_symlinks_test_file_edge_cases_symlinked_source_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -274,8 +278,8 @@ let
   link_TestMixedCase = cmakeNixLD {
     name = "TestMixedCase";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [TestMixedCase_test_file_edge_cases_MixedCase_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ TestMixedCase_test_file_edge_cases_MixedCase_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -283,8 +287,8 @@ let
   link_test_nested = cmakeNixLD {
     name = "test_nested";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [test_nested_structure_nested_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ test_nested_structure_nested_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -292,8 +296,8 @@ let
   link_test_dir_spaces = cmakeNixLD {
     name = "test_dir_spaces";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [test_dir_spaces_dir_with_spaces_file_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ test_dir_spaces_dir_with_spaces_file_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };

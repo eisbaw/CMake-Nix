@@ -19,25 +19,31 @@ let
     dontFixup = true;
     buildPhase = ''
       mkdir -p "$(dirname "$out")"
-      compilerBin=$(
-        if [[ "${compiler}" == "${gcc}" ]]; then
-          echo "gcc"
-        elif [[ "${compiler}" == "${clang}" ]]; then
-          echo "clang"
-        elif [[ "${compiler}" == "${gfortran}" ]]; then
-          echo "gfortran"
+      # Determine compiler binary name based on the compiler derivation
+      compilerBin="${
+        if compiler == gcc then
+          "gcc"
+        else if compiler == clang then
+          "clang"
+        else if compiler == gfortran then
+          "gfortran"
         else
-          echo "${compiler.pname or "cc"}"
-        fi
-      )
+          compiler.pname or "cc"
+      }"
       # When src is a directory, Nix unpacks it into a subdirectory
       # We need to find the actual source file
-      if [[ -f "${source}" ]]; then
-        srcFile="${source}"
-      elif [[ -f "$(basename "$src")/${source}" ]]; then
-        srcFile="$(basename "$src")/${source}"
+      # Store source in a variable to handle paths with spaces
+      sourceFile="${source}"
+      # Check if source is an absolute path or Nix expression (e.g., $\{derivation}/file)
+      if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"$"* ]]; then
+        # Absolute path or Nix expression - use as-is
+        srcFile="$sourceFile"
+      elif [[ -f "$sourceFile" ]]; then
+        srcFile="$sourceFile"
+      elif [[ -f "$(basename "$src")/$sourceFile" ]]; then
+        srcFile="$(basename "$src")/$sourceFile"
       else
-        echo "Error: Cannot find source file ${source}"
+        echo "Error: Cannot find source file $sourceFile"
         exit 1
       fi
       ${compiler}/bin/$compilerBin -c ${flags} "$srcFile" -o "$out"
@@ -70,7 +76,7 @@ let
         ar rcs "$out" $objects
       '' else if type == "shared" || type == "module" then ''
         mkdir -p $out
-        compilerBin=${if compilerCommand != null then
+        compilerBin="${if compilerCommand != null then
           compilerCommand
         else if compiler == gcc then
           "gcc"
@@ -80,7 +86,7 @@ let
           "gfortran"
         else
           compiler.pname or "cc"
-        }
+        }";
         # Unix library naming: static=lib*.a, shared=lib*.so, module=*.so
         libname="${if type == "module" then name else "lib" + name}.so"
         ${if version != null && type != "module" then ''
@@ -96,7 +102,7 @@ let
         '' else ""}
       '' else ''
         mkdir -p "$(dirname "$out")"
-        compilerBin=${if compilerCommand != null then
+        compilerBin="${if compilerCommand != null then
           compilerCommand
         else if compiler == gcc then
           "gcc"
@@ -106,7 +112,7 @@ let
           "gfortran"
         else
           compiler.pname or "cc"
-        }
+        }";
         ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
     inherit postBuildPhase;
@@ -175,8 +181,8 @@ let
   link_simple_lib = cmakeNixLD {
     name = "simple_lib";
     type = "static";
-    buildInputs = [gcc ];
-    objects = [simple_lib_test_nix_tools_lib_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ simple_lib_test_nix_tools_lib_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };
@@ -184,8 +190,8 @@ let
   link_simple_app = cmakeNixLD {
     name = "simple_app";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [simple_app_test_nix_tools_main_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ simple_app_test_nix_tools_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
     flags = "${link_simple_lib}";
@@ -194,8 +200,8 @@ let
   link_shared_lib = cmakeNixLD {
     name = "shared_lib";
     type = "shared";
-    buildInputs = [gcc ];
-    objects = [shared_lib_test_nix_tools_shared_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ shared_lib_test_nix_tools_shared_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
     version = "1.0.0";
@@ -205,8 +211,8 @@ let
   link_shared_app = cmakeNixLD {
     name = "shared_app";
     type = "executable";
-    buildInputs = [gcc link_shared_lib ];
-    objects = [shared_app_test_nix_tools_shared_main_cpp_o ];
+    buildInputs = [ gcc link_shared_lib ];
+    objects = [ shared_app_test_nix_tools_shared_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
     flags = "${link_shared_lib}/libshared_lib.so";
@@ -215,8 +221,8 @@ let
   link_custom_app = cmakeNixLD {
     name = "custom_app";
     type = "executable";
-    buildInputs = [gcc ];
-    objects = [custom_app_test_nix_tools_custom_main_cpp_o ];
+    buildInputs = [ gcc ];
+    objects = [ custom_app_test_nix_tools_custom_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };

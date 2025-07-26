@@ -19,22 +19,26 @@ let
     dontFixup = true;
     buildPhase = ''
       mkdir -p "$(dirname "$out")"
-      compilerBin=$(
-        if [[ "${compiler}" == "${gcc}" ]]; then
-          echo "gcc"
-        elif [[ "${compiler}" == "${clang}" ]]; then
-          echo "clang"
-        elif [[ "${compiler}" == "${gfortran}" ]]; then
-          echo "gfortran"
+      # Determine compiler binary name based on the compiler derivation
+      compilerBin="${
+        if compiler == gcc then
+          "gcc"
+        else if compiler == clang then
+          "clang"
+        else if compiler == gfortran then
+          "gfortran"
         else
-          echo "${compiler.pname or "cc"}"
-        fi
-      )
+          compiler.pname or "cc"
+      }"
       # When src is a directory, Nix unpacks it into a subdirectory
       # We need to find the actual source file
       # Store source in a variable to handle paths with spaces
       sourceFile="${source}"
-      if [[ -f "$sourceFile" ]]; then
+      # Check if source is an absolute path or Nix expression (e.g., $\{derivation}/file)
+      if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"$"* ]]; then
+        # Absolute path or Nix expression - use as-is
+        srcFile="$sourceFile"
+      elif [[ -f "$sourceFile" ]]; then
         srcFile="$sourceFile"
       elif [[ -f "$(basename "$src")/$sourceFile" ]]; then
         srcFile="$(basename "$src")/$sourceFile"
@@ -72,7 +76,7 @@ let
         ar rcs "$out" $objects
       '' else if type == "shared" || type == "module" then ''
         mkdir -p $out
-        compilerBin=${if compilerCommand != null then
+        compilerBin="${if compilerCommand != null then
           compilerCommand
         else if compiler == gcc then
           "gcc"
@@ -82,7 +86,7 @@ let
           "gfortran"
         else
           compiler.pname or "cc"
-        }
+        }";
         # Unix library naming: static=lib*.a, shared=lib*.so, module=*.so
         libname="${if type == "module" then name else "lib" + name}.so"
         ${if version != null && type != "module" then ''
@@ -98,7 +102,7 @@ let
         '' else ""}
       '' else ''
         mkdir -p "$(dirname "$out")"
-        compilerBin=${if compilerCommand != null then
+        compilerBin="${if compilerCommand != null then
           compilerCommand
         else if compiler == gcc then
           "gcc"
@@ -108,7 +112,7 @@ let
           "gfortran"
         else
           compiler.pname or "cc"
-        }
+        }";
         ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
     inherit postBuildPhase;
@@ -166,16 +170,16 @@ let
   link_mylib = cmakeNixLD {
     name = "mylib";
     type = "shared";
-    buildInputs = [gcc ];
-    objects = [mylib_test_shared_library_lib_c_o ];
+    buildInputs = [ gcc ];
+    objects = [ mylib_test_shared_library_lib_c_o ];
     compiler = gcc;
   };
 
   link_versioned_lib = cmakeNixLD {
     name = "versioned_lib";
     type = "shared";
-    buildInputs = [gcc ];
-    objects = [versioned_lib_test_shared_library_versioned_c_o ];
+    buildInputs = [ gcc ];
+    objects = [ versioned_lib_test_shared_library_versioned_c_o ];
     compiler = gcc;
     version = "1.2.3";
     soversion = "1";
@@ -184,8 +188,8 @@ let
   link_app = cmakeNixLD {
     name = "app";
     type = "executable";
-    buildInputs = [gcc link_mylib ];
-    objects = [app_test_shared_library_main_c_o ];
+    buildInputs = [ gcc link_mylib ];
+    objects = [ app_test_shared_library_main_c_o ];
     compiler = gcc;
     flags = "${link_mylib}/libmylib.so";
   };
@@ -193,16 +197,16 @@ let
   link_static_helper = cmakeNixLD {
     name = "static_helper";
     type = "static";
-    buildInputs = [gcc ];
-    objects = [static_helper_test_shared_library_helper_c_o ];
+    buildInputs = [ gcc ];
+    objects = [ static_helper_test_shared_library_helper_c_o ];
     compiler = gcc;
   };
 
   link_mixed_app = cmakeNixLD {
     name = "mixed_app";
     type = "executable";
-    buildInputs = [gcc link_mylib ];
-    objects = [mixed_app_test_shared_library_mixed_c_o ];
+    buildInputs = [ gcc link_mylib ];
+    objects = [ mixed_app_test_shared_library_mixed_c_o ];
     compiler = gcc;
     flags = "${link_mylib}/libmylib.so ${link_static_helper}";
   };
