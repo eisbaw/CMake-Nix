@@ -220,6 +220,8 @@ private:
     std::set<std::string>& transitiveDeps) const;
 protected:
   // Platform abstraction helpers
+  // Note: These methods return Unix-specific conventions since Nix only supports Unix/Linux platforms
+  // Windows DLLs and macOS dylibs are not supported by the Nix package manager
   std::string GetObjectFileExtension() const { return ".o"; }
   std::string GetStaticLibraryExtension() const { return ".a"; }
   std::string GetSharedLibraryExtension() const { return ".so"; }

@@ -1047,7 +1047,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       
       // Skip if it's a system header or in Nix store
       if (fullPath.find("/nix/store/") != std::string::npos ||
-          fullPath.find("/usr/include/") != std::string::npos) {
+          fullPath.find("/usr/include/") != std::string::npos ||
+          fullPath.find("/usr/local/include/") != std::string::npos ||
+          fullPath.find("/opt/") != std::string::npos ||
+          fullPath.find("/System/Library/") != std::string::npos ||  // macOS system headers
+          fullPath.find("/Library/Developer/") != std::string::npos) { // macOS developer headers
         continue;
       }
       
