@@ -18,11 +18,13 @@ DONE - Fixed PCH (Precompiled Header) support (test_pch now passes)
 DONE - Fixed Unity build support (test_unity_build now passes)
 DONE - Fixed out-of-source builds with correct fileset roots
 
-Fix review comments again as git notes, see git log -10 .
+DONE - Fix review comments again as git notes, see git log -10 .
 
-Review todo.md if what is DONE really is DONE.
+DONE - Review todo.md if what is DONE really is DONE.
 
-Ensure code is production ready. Break up large functions into intentions - and compose back functionality. This also allows for better re-use.
+DONE - Ensure code is production ready. Break up large functions into intentions - and compose back functionality. This also allows for better re-use.
+     - WriteObjectDerivation decomposed into 8 helper methods (36% reduction in size)
+     - Helper methods: ValidateSourceFile, DetermineCompilerPackage, GetCompileFlags, ProcessHeaderDependencies, WriteCompositeSource, WriteFilesetUnion, BuildBuildInputsList, FilterProjectHeaders
 
 DONE (partially) - Check if zephyr rtos'es dining philosphers are truly building and executing as native sim.
 - Status (2025-07-30): Build configuration completes but Nix file generation hangs/times out
@@ -33,6 +35,8 @@ DONE (partially) - Check if zephyr rtos'es dining philosphers are truly building
 Search web for large CMake based project, add it as a test case.
 
 Check off PRD.md Phases - what we have. Add missing tasks to todo.md.
+
+DONE - Check PRD.md Phases - what we have. Add missing tasks to todo.md.
 
 UPDATE (2025-07-30): Phase 2 Status from PRD.md:
 - Phase 1: Complete (100%)
@@ -50,7 +54,7 @@ Missing Phase 2 Tasks (from plan.md):
 - Add shared library support (versioning, RPATH)
 - Test with medium-complexity open source projects
 
-Look for assumptions in our Nix generator backend. We want to be extremely correct and general.
+DONE - Look for assumptions in our Nix generator backend. We want to be extremely correct and general.
 
 UPDATE (2025-07-30): Found assumptions in Nix generator backend:
 1. Compiler Package Detection:
@@ -83,7 +87,7 @@ UPDATE (2025-07-30): Found assumptions in Nix generator backend:
    - No architecture-specific handling
    - Assumes standard Unix build environment
 
-Write documentation nix_generator_docs.md of our Nix generator backend: What kind of default.nix it writes, supported features, how it works ie the main code flow and data-structures.
+DONE - Write documentation nix_generator_docs.md of our Nix generator backend: What kind of default.nix it writes, supported features, how it works ie the main code flow and data-structures.
 
 
 Fixed critical issues (2025-07-24):
