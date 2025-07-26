@@ -1457,3 +1457,8 @@ The CMake Nix backend code is of high quality with good error handling, consiste
 
 All tests are passing with `just dev`. The CMake Nix backend continues to be production-ready.
 
+DONE - Fixed generic catch(...) block in cmGlobalNixGenerator.cxx:
+     - Replaced catch(...) with specific exception types (std::invalid_argument, std::out_of_range)
+     - Improves error handling clarity when parsing CMAKE_NIX_EXTERNAL_HEADER_LIMIT
+     - Follows C++ best practices for exception handling
+
