@@ -34,6 +34,9 @@ let
     installPhase = "true";
   };
 
+  # Linking helper function
+  # NOTE: This uses Unix-style library naming conventions (lib*.a, lib*.so)
+  # This is appropriate since Nix only runs on Unix-like systems (Linux, macOS)
   cmakeNixLD = {
     name,
     type ? "executable",  # "executable", "static", "shared", "module"
@@ -51,6 +54,7 @@ let
     dontUnpack = true;
     buildPhase =
       if type == "static" then ''
+        # Unix static library: uses 'ar' to create lib*.a files
         ar rcs "$out" $objects
       '' else if type == "shared" || type == "module" then ''
         mkdir -p $out
@@ -65,6 +69,7 @@ let
         else
           compiler.pname or "cc"
         }
+        # Unix library naming: static=lib*.a, shared=lib*.so, module=*.so
         libname="${if type == "module" then name else "lib" + name}.so"
         ${if version != null && type != "module" then ''
           libname="lib${name}.so.${version}"

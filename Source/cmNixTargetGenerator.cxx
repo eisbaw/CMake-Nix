@@ -802,7 +802,9 @@ bool cmNixTargetGenerator::CreateNixPackageFile(
   
   // Check if the file was closed successfully
   if (file.fail()) {
-    std::cerr << "Warning: Failed to close file: " << filePath << std::endl;
+    std::ostringstream msg;
+    msg << "Failed to close file: " << filePath;
+    this->Makefile->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
     return false;
   }
   
