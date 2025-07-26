@@ -1291,23 +1291,31 @@ None found - the code appears to be well-tested and stable. The `just dev` comma
 
 ### Missing Tests:
 
-1. **test_external_tools**: Not integrated into justfile
+DONE 1. **test_external_tools**: Not integrated into justfile
    - Purpose: Tests ExternalProject_Add and FetchContent compatibility
    - Status: Directory exists but not in test suite
+   - Fixed: Added to justfile test suite (2025-07-26)
 
-2. **test_file_edge_cases**: Not integrated into justfile
+DONE 2. **test_file_edge_cases**: Not integrated into justfile
    - Purpose: Tests file names with special characters, spaces, unicode
    - Status: Directory exists but not in test suite
+   - Fixed: Added to justfile test suite (2025-07-26)
 
-3. **test_nix_tools**: Not integrated into justfile
+DONE 3. **test_nix_tools**: Not integrated into justfile
    - Purpose: Tests integration with nix-instantiate, nix-build --dry-run
    - Status: Directory exists but not in test suite
+   - Fixed: Added to justfile test suite (2025-07-26)
 
 ### Recommendations:
 
-1. Fix the duplicate debug checks in cmGlobalNixGenerator.cxx
-2. Standardize debug output prefixes to [NIX-DEBUG]
-3. Add the three missing test directories to the justfile test suite
-4. Consider extracting the "../" path traversal pattern to a utility function
-5. Document the Unix-only nature of the library naming convention
+DONE 1. Fix the duplicate debug checks in cmGlobalNixGenerator.cxx
+   - Fixed: Removed duplicate if statements (2025-07-26)
+DONE 2. Standardize debug output prefixes to [NIX-DEBUG]
+   - Fixed: Replaced all [NIX-TRACE] and [DEBUG] with [NIX-DEBUG] (2025-07-26)
+DONE 3. Add the three missing test directories to the justfile test suite
+   - Fixed: Added test_external_tools, test_file_edge_cases, and test_nix_tools (2025-07-26)
+DONE 4. Consider extracting the "../" path traversal pattern to a utility function
+   - Fixed: Created cmNixPathUtils::IsPathOutsideTree() utility function (2025-07-26)
+DONE 5. Document the Unix-only nature of the library naming convention
+   - Fixed: Added documentation comments in cmakeNixLD helper (2025-07-26)
 
