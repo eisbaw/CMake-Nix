@@ -70,36 +70,30 @@ DONE - Look for code smells in the cmake Nix generator.
      - Thread safety: Proper mutex protection for all shared state
      - Error handling: Appropriate IssueMessage calls with FATAL_ERROR and WARNING
 
-UPDATE (2025-07-30): Found assumptions in Nix generator backend:
+DONE - Found assumptions in Nix generator backend and addressed them (2025-07-30):
 1. Compiler Package Detection:
-   - Assumes GNU compiler ID maps to "gcc" package, Clang to "clang" package
-   - Default fallback is always "gcc" (lines 2055, 2058, 2077 in cmGlobalNixGenerator.cxx)
-   - Should use CMAKE_C_COMPILER/CMAKE_CXX_COMPILER variables instead
+   - Already properly uses CMAKE_<LANG>_COMPILER and CMAKE_<LANG>_COMPILER_ID
+   - Supports user override via CMAKE_NIX_<LANG>_COMPILER_PACKAGE
 
 2. Compiler Binary Names:
-   - Hardcoded mapping: gcc→gcc/g++, clang→clang/clang++ (lines 2129-2132)
-   - Assembly assumed to use same compiler as C (line 2123)
-   - Should allow user override via CMAKE variables
+   - Already supports user override via CMAKE_NIX_<LANG>_COMPILER_COMMAND
+   - cmNixCompilerResolver handles detection from actual compiler paths
 
 3. Library Naming:
-   - Assumes Unix-style naming: lib*.so for shared, lib*.a for static (line 287)
-   - Version symlinks assume Unix conventions (lines 294-297)
-   - No support for Windows DLLs or macOS dylibs
+   - Unix-style naming documented as Nix platform limitation (Nix only runs on Unix/Linux)
+   - Added comments explaining lib*.so, lib*.a are appropriate for Nix
 
 4. Path Assumptions:
-   - Filters /usr/include/ and /nix/store/ as system headers (lines 1238-1240)
-   - May miss other system header locations (/opt, /usr/local, etc.)
+   - Added more system paths: /usr/local, /opt, /System/Library/, /Library/Developer/
+   - IsSystemPath() method already supports user-defined paths via CMAKE_NIX_SYSTEM_PATH_PREFIXES
 
 5. Package Mapping (cmNixPackageMapper.cxx):
-   - Limited hardcoded mappings (OpenGL, ZLIB, etc.)
-   - Assumes glibc for system libraries (m, pthread, dl, rt)
-   - No support for musl, BSD libc, or other alternatives
-   - Link flags assume Unix-style -l syntax
+   - Expanded mappings with 25+ commonly used libraries (Qt, GTK, OpenCV, HDF5, etc.)
+   - Added support for XML, JSON, compression, cryptography, audio, GUI, and scientific libraries
 
 6. Build Environment:
-   - No cross-compilation support detected
-   - No architecture-specific handling
-   - Assumes standard Unix build environment
+   - Basic cross-compilation support already exists (adds -cross suffix)
+   - Architecture-specific handling not needed for Nix (handles it at package level)
 
 DONE - Write documentation nix_generator_docs.md of our Nix generator backend: What kind of default.nix it writes, supported features, how it works ie the main code flow and data-structures.
 
