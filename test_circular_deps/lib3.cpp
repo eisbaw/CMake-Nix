@@ -1,0 +1,1 @@
+int func3() { return 300; }

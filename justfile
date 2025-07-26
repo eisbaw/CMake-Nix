@@ -250,3 +250,6 @@ mod test_file_edge_cases
 
 # Nix tools integration test
 mod test_nix_tools
+
+# Circular dependency test
+mod test_circular_deps
