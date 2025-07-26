@@ -1366,7 +1366,8 @@ bool cmGlobalNixGenerator::ValidateSourceFile(const cmSourceFile* source,
                                                cmGeneratorTarget* target,
                                                std::string& errorMessage)
 {
-  std::string sourceFile = source->GetFullPath();
+  // Get source file path without modifying any parameters
+  const std::string sourceFile = source->GetFullPath();
   
   // Validate source path
   if (sourceFile.empty()) {
@@ -1376,8 +1377,10 @@ bool cmGlobalNixGenerator::ValidateSourceFile(const cmSourceFile* source,
   
   // Check if file exists (unless it's a generated file)
   if (!source->GetIsGenerated() && !cmSystemTools::FileExists(sourceFile)) {
-    errorMessage = "Source file does not exist: " + sourceFile + " for target " + target->GetName();
-    // Return true anyway as it might be generated later
+    // For generated files, this is expected - warn but continue
+    errorMessage = "Source file does not exist: " + sourceFile + " for target " + target->GetName() + 
+                   " (might be generated later)";
+    // This is a warning, not an error for generated files
     return true;
   }
   
@@ -1387,30 +1390,32 @@ bool cmGlobalNixGenerator::ValidateSourceFile(const cmSourceFile* source,
       sourceFile.find('`') != std::string::npos ||
       sourceFile.find('\n') != std::string::npos ||
       sourceFile.find('\r') != std::string::npos) {
-    errorMessage = "Source file path contains potentially dangerous characters: " + sourceFile;
-    // Continue anyway but warn
-    return true;
+    errorMessage = "Source file path contains characters that may break Nix expressions: " + sourceFile;
+    // This is a hard error - these characters cannot be safely escaped in all contexts
+    return false;
   }
   
   // Additional security check for path traversal
   // CRITICAL FIX: Resolve symlinks BEFORE validation to prevent bypasses
-  std::string normalizedPath = cmSystemTools::CollapseFullPath(sourceFile);
-  std::string resolvedPath = cmSystemTools::GetRealPath(normalizedPath);
-  std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
-  std::string resolvedProjectDir = cmSystemTools::GetRealPath(projectDir);
+  const std::string normalizedPath = cmSystemTools::CollapseFullPath(sourceFile);
+  const std::string resolvedPath = cmSystemTools::GetRealPath(normalizedPath);
+  const std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
+  const std::string resolvedProjectDir = cmSystemTools::GetRealPath(projectDir);
   
   // Check if resolved path is outside project directory (unless it's a system file)
   if (!cmSystemTools::IsSubDirectory(resolvedPath, resolvedProjectDir) &&
       !this->IsSystemPath(resolvedPath)) {
     // Check if it's in the CMake build directory
-    std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+    const std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
     if (!cmSystemTools::IsSubDirectory(normalizedPath, buildDir)) {
-      errorMessage = "Source file path appears to be outside project directory: " + sourceFile;
-      // Continue anyway but warn
+      errorMessage = "Source file path is outside project directory: " + sourceFile;
+      // This is a warning for CMake internal files (like ABI tests), not an error
       return true;
     }
   }
   
+  // All validations passed
+  errorMessage.clear();
   return true;
 }
 
@@ -1458,28 +1463,14 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
       std::vector<std::string> parsedFlags;
       cmSystemTools::ParseUnixCommandLine(trimmedFlag.c_str(), parsedFlags);
       
-      // If ParseUnixCommandLine returns a single flag that contains spaces,
-      // it might need to be split further (unless it's a quoted argument)
+      // ParseUnixCommandLine should handle all parsing correctly
+      // Trust its output and don't second-guess by splitting further
       for (const auto& pFlag : parsedFlags) {
-        if (pFlag.find(' ') != std::string::npos && 
-            pFlag.front() != '"' && pFlag.front() != '\'') {
-          // This flag contains spaces and isn't quoted, split it
-          std::istringstream iss(pFlag);
-          std::string subFlag;
-          while (iss >> subFlag) {
-            if (!firstFlag) {
-              compileFlagsStream << " ";
-            }
-            compileFlagsStream << subFlag;
-            firstFlag = false;
-          }
-        } else {
-          if (!firstFlag) {
-            compileFlagsStream << " ";
-          }
-          compileFlagsStream << pFlag;
-          firstFlag = false;
+        if (!firstFlag) {
+          compileFlagsStream << " ";
         }
+        compileFlagsStream << pFlag;
+        firstFlag = false;
       }
     }
   }
