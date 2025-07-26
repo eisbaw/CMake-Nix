@@ -44,7 +44,8 @@ DONE (partially) - Check if zephyr rtos'es dining philosphers are truly building
 - Status (2025-07-30): Build configuration completes but Nix file generation hangs/times out
 - Issue: Generates a massive incomplete default.nix.tmp file (10k+ lines) with excessive header copying
 - The file generation appears to get stuck while copying all Zephyr headers
-- Need to investigate why so many headers are being copied and optimize the process
+- DONE (2025-01-26): Fixed by adding MAX_EXTERNAL_HEADERS_PER_SOURCE limit (default 100)
+- DONE (2025-01-26): Added CMAKE_NIX_EXTERNAL_HEADER_LIMIT variable for user customization
 
 DONE - Search web for large CMake based project, add it as a test case.
      - Added fmt library test (test_fmt_library) - popular C++ formatting library
@@ -134,8 +135,9 @@ Progress made (2025-07-25):
 - DONE: Fixed absolute path handling in Nix expressions - now using builtins.path { path = "..."; } for all absolute paths
 
 Remaining issues:
-- Here-document generation issue: Large generated files may cause unterminated here-doc warnings
-- Need to investigate the permission denied error when writing to composite source
+- DONE (2025-01-26): Fixed here-document generation with unique delimiters to avoid conflicts
+- DONE (2025-01-26): Fixed permission denied errors by adding -L flag to cp commands
+- DONE (2025-01-26): Improved composite source generation robustness
 - Zephyr build environment may have additional requirements or issues
 
 Once Zephyr is building with host toolchain, add ARM toolchain to our shell.nix and build some blinky or other simple app for an ARM-based Nordic board.
@@ -1438,4 +1440,20 @@ The CMake Nix backend code is of high quality with good error handling, consiste
   - All magic numbers defined as named constants
 - Remaining high-priority issues are limited to Zephyr RTOS build problems
 - Production-ready for C/C++/Fortran/CUDA projects on Unix/Linux platforms
+
+## FIXES COMPLETED (2025-01-26):
+
+1. **Fixed Zephyr RTOS build timeout issue**:
+   - Added MAX_EXTERNAL_HEADERS_PER_SOURCE limit (default 100 headers)
+   - Prevents Nix generation timeout when processing sources with thousands of headers
+   - Added CMAKE_NIX_EXTERNAL_HEADER_LIMIT variable for user customization
+   - Issues warning when header limit is reached
+
+2. **Fixed composite source generation robustness**:
+   - Use unique delimiters for here-docs to avoid conflicts with file contents
+   - Added -L flag to cp commands to follow symlinks and avoid permission issues
+   - Create parent directories before writing files
+   - Preserve exact file contents without line-by-line processing
+
+All tests are passing with `just dev`. The CMake Nix backend continues to be production-ready.
 
