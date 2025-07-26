@@ -1055,8 +1055,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         if (userLimit > 0) {
           headerLimit = userLimit;
         }
-      } catch (...) {
-        // Ignore invalid values, use default
+      } catch (const std::invalid_argument& e) {
+        // Ignore non-numeric values, use default
+      } catch (const std::out_of_range& e) {
+        // Ignore values too large for size_t, use default
       }
     }
     
