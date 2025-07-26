@@ -1199,16 +1199,24 @@ The CMake Nix backend is in excellent condition with only minor refactoring oppo
 
 ## CODE SMELLS FOUND (2025-07-26)
 
+### Major Issue Found:
+1. **Inconsistent Debug Output Control**: Debug statements use different methods
+   - Some use GetDebugOutput()
+   - Some use CMAKE_NIX_DEBUG environment variable 
+   - Some have no check at all (lines 508-509, 530-533, 672-674, 690-691)
+   - Should standardize on GetDebugOutput() for all debug output
+   - Impact: Verbose output in production builds
+
 ### Minor Issues:
-1. **Repeated Debug Output Pattern**: GetCMakeInstance()->GetDebugOutput() check is repeated many times
+2. **Repeated Debug Output Pattern**: GetCMakeInstance()->GetDebugOutput() check is repeated many times
    - Could be refactored into a helper method or macro
    - Low priority as it doesn't affect functionality
 
-2. **Hardcoded System Paths**: /usr/include/, /nix/store/, /opt/ are hardcoded
+3. **Hardcoded System Paths**: /usr/include/, /nix/store/, /opt/ are hardcoded
    - Could be made configurable but reasonable defaults for Unix systems
    - Low priority as Nix backend is Unix-only
 
-3. **Unused Parameters**: Several methods have commented out parameters
+4. **Unused Parameters**: Several methods have commented out parameters
    - This is acceptable for interface compatibility
    - Parameters are properly marked with /* */
 
@@ -1217,4 +1225,36 @@ The CMake Nix backend is in excellent condition with only minor refactoring oppo
 - DONE: Compiler detection duplication resolved with cmNixCompilerResolver
 - DONE: All TODO/FIXME/XXX/HACK comments removed
 - DONE: Thread safety implemented with proper mutex protection
+
+## MISSING TESTS TO ADD (2025-07-26)
+
+Based on review of todo.md and existing tests, the following tests need to be created:
+
+1. **test_external_tools**: ExternalProject_Add and FetchContent support
+   - Test downloading external dependencies
+   - Test integration with CMake's ExternalProject module
+   - Priority: Medium (item 553 in todo.md)
+
+2. **test_file_edge_cases**: File names with special characters
+   - Test spaces in file/target names
+   - Test unicode characters in paths
+   - Test symlinks handling
+   - Priority: Medium (item 556 in todo.md)
+
+3. **test_nix_tools**: Integration with Nix evaluation tools
+   - Test nix-build --dry-run output
+   - Test nix-instantiate evaluation
+   - Verify Nix expression syntax correctness
+   - Priority: Medium (item 1101 in todo.md)
+
+4. **test_large_scale**: Enhance existing test_scale for 1000+ files
+   - Current test_scale may need enhancement for truly large projects
+   - Test deep directory hierarchies
+   - Priority: Low (item 1096 in todo.md)
+
+### Tests that exist but are commented out in test-all:
+- test_thread_safety: Exists and functional, just excluded from test-all
+- test_error_recovery: Exists and functional, just excluded from test-all  
+- test_cross_compile: Exists and functional, just excluded from test-all
+- test_scale: Exists and functional, just excluded from test-all
 
