@@ -43,7 +43,13 @@ DONE - Update PRD.md with best-practices and guidelines we have used for Nix gen
      - Updated implementation status with recent enhancements
      - Added header management recommendations for large projects
 
-Move tasks from this todo.md to use https://github.com/MrLesk/Backlog.md . Move both tasks that are done and new tasks. Install the backlog tool, and when it works update this todo.md to be a shallow file that instructs Claude to add and pickup tasks from backlog tool using the backlog CLI. Be sure to read the readme of backlog project first. Place a git tag "backlog-init" when committed.
+DONE (UNABLE TO COMPLETE DUE TO NIXOS INCOMPATIBILITY) - Move tasks from this todo.md to use https://github.com/MrLesk/Backlog.md
+     - Attempted to install and use Backlog.md tool
+     - Read the project README - it's a task management tool that stores tasks as markdown files
+     - Installation attempted via: nix run, npm install
+     - Issue: Backlog.md distributes pre-built binaries that are incompatible with NixOS
+     - Error: "NixOS cannot run dynamically linked executables intended for generic linux environments"
+     - Conclusion: Cannot use Backlog.md on this NixOS system
 
 DONE - Look at git log with git notes again. The git notes contain review comments. Fix the review comments.
      - Fixed ValidateSourceFile to use const parameters and not modify inputs
@@ -66,7 +72,13 @@ DONE - Always emit "mkdir -p $out" in the Nix file - we can't test for the dir a
      - Custom commands: already have mkdir -p $out
      - Install derivations: have mkdir -p for destinations
 
-Move tasks from this todo.md to use https://github.com/MrLesk/Backlog.md . Move both tasks that are done and new tasks. Install the backlog tool, and when it works update this todo.md to be a shallow file that instructs Claude to add and pickup tasks from backlog tool using the backlog CLI. Be sure to read the readme of backlog project first. Place a git tag "backlog-init" when committed.
+DONE (UNABLE TO COMPLETE DUE TO NIXOS INCOMPATIBILITY) - Move tasks from this todo.md to use https://github.com/MrLesk/Backlog.md
+     - Attempted to install and use Backlog.md tool
+     - Read the project README - it's a task management tool that stores tasks as markdown files
+     - Installation attempted via: nix run, npm install
+     - Issue: Backlog.md distributes pre-built binaries that are incompatible with NixOS
+     - Error: "NixOS cannot run dynamically linked executables intended for generic linux environments"
+     - Conclusion: Cannot use Backlog.md on this NixOS system
 
 DONE - Look at git log with git notes again. The git notes contain review comments. Fix the review comments.
      - Fixed ValidateSourceFile to use const parameters and not modify inputs
