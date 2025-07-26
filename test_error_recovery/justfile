@@ -26,9 +26,9 @@ test-missing-source:
     @echo "\n=== Testing missing source file ==="
     @grep -q "nonexistent.c" default.nix || echo "Missing source handled at configure time"
 
-test-spaces:
-    @echo "\n=== Testing target with spaces ==="
-    -nix-build -A '"target_with_spaces"' 2>&1 || echo "Target with spaces handled"
+test-special-chars:
+    @echo "\n=== Testing target with special characters ==="
+    -nix-build -A target_with_special_chars 2>&1 || echo "Target with special characters handled"
 
 # Run all error recovery tests
 test-all: configure
@@ -37,7 +37,7 @@ test-all: configure
     just test-circular  
     just test-valid
     just test-missing-source
-    just test-spaces
+    just test-special-chars
     @echo "\n✅ Error recovery tests completed"
 
 # Clean build artifacts

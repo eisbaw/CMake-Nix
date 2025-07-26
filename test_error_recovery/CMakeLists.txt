@@ -19,6 +19,6 @@ add_executable(valid_program src/valid.c)
 # Test 5: Source file that doesn't exist
 add_executable(missing_source src/nonexistent.c)
 
-# Test 6: Invalid target name characters (spaces)
-# This should be handled gracefully
-add_executable("target with spaces" src/valid2.c)
+# Test 6: Target with special characters (dots, dashes)
+# This should be handled gracefully by the Nix generator
+add_executable(target.with-special_chars src/valid2.c)
