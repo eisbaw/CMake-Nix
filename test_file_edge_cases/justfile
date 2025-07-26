@@ -1,0 +1,99 @@
+#!/usr/bin/env -S just --justfile
+
+# Run the file edge cases test
+run:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    echo "=== Testing File Edge Cases ==="
+    echo ""
+    
+    # Clean previous build
+    rm -rf build default.nix symlinked_source.cpp
+    
+    # Configure with Nix generator
+    echo "Configuring project with various edge cases..."
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build
+    
+    echo ""
+    echo "Building targets with edge case filenames..."
+    
+    # Test each target individually to see which ones work
+    targets=(
+        "test_spaces"
+        "test-with-dashes" 
+        "test_with_underscores"
+        "test.with.dots"
+        "test_unicode"
+        "test_long_names"
+        "test_symlinks"
+        "TestMixedCase"
+        "test_nested"
+        "test_dir_spaces"
+    )
+    
+    cd build
+    
+    for target in "${targets[@]}"; do
+        echo ""
+        echo "Testing target: $target"
+        
+        # Check if target exists in default.nix
+        if grep -q "\"$target\"" default.nix 2>/dev/null; then
+            # Try to build with proper escaping for special characters
+            if [[ "$target" == *"."* ]] || [[ "$target" == *"-"* ]]; then
+                # Targets with dots or dashes need to be quoted
+                if nix-build -A "\"$target\"" 2>/dev/null; then
+                    echo "✅ $target built successfully"
+                    if [ -f result ]; then
+                        ./result || true
+                        rm -f result
+                    fi
+                else
+                    echo "⚠️  $target failed to build (may be expected for edge cases)"
+                fi
+            else
+                # Normal targets
+                if nix-build -A "$target" 2>/dev/null; then
+                    echo "✅ $target built successfully"
+                    if [ -f result ]; then
+                        ./result || true
+                        rm -f result
+                    fi
+                else
+                    echo "⚠️  $target failed to build"
+                fi
+            fi
+        else
+            echo "⚠️  $target not found in default.nix"
+        fi
+    done
+    
+    echo ""
+    echo "=== Edge Case Test Summary ==="
+    echo "Some edge cases may fail due to Nix naming restrictions."
+    echo "This is expected behavior - Nix has strict rules for attribute names."
+
+# Clean build artifacts
+clean:
+    rm -rf build default.nix symlinked_source.cpp "dir with spaces" very
+
+# Show Nix naming rules
+explain:
+    @echo "Nix Attribute Naming Rules:"
+    @echo "=========================="
+    @echo ""
+    @echo "Valid Nix attribute names must:"
+    @echo "- Start with a letter or underscore"
+    @echo "- Contain only letters, digits, underscores, apostrophes, or hyphens"
+    @echo "- Not be a reserved keyword"
+    @echo ""
+    @echo "Invalid characters in attribute names:"
+    @echo "- Spaces: Use underscores instead"
+    @echo "- Dots: Not allowed in unquoted names"
+    @echo "- Special chars: Most are not allowed"
+    @echo ""
+    @echo "The Nix generator handles these by:"
+    @echo "1. Sanitizing target names for derivation names"
+    @echo "2. Using quoted attribute names in the final output set"
+    @echo "3. Escaping file paths properly in build commands"

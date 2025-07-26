@@ -1,0 +1,60 @@
+#!/usr/bin/env -S just --justfile
+
+# Run the external tools test
+run:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    echo "=== Testing ExternalProject_Add and FetchContent ==="
+    echo "NOTE: This test requires network access to download dependencies"
+    echo ""
+    
+    # Clean previous build
+    rm -rf build default.nix
+    
+    # Configure with Nix generator
+    echo "Configuring project..."
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build
+    
+    echo ""
+    echo "Note: ExternalProject_Add and FetchContent are not directly supported by Nix"
+    echo "These tools download code at configure/build time, which violates Nix's"
+    echo "pure build principles. Users should pre-fetch dependencies and use"
+    echo "find_package() or direct source inclusion instead."
+    echo ""
+    echo "The Nix generator will generate a default.nix, but external downloads"
+    echo "will fail in the Nix sandbox environment."
+    
+    # Check if default.nix was generated
+    if [ -f build/default.nix ]; then
+        echo "✅ default.nix was generated successfully"
+        echo ""
+        echo "Preview of generated file:"
+        head -20 build/default.nix
+    else
+        echo "❌ Failed to generate default.nix"
+        exit 1
+    fi
+
+# Clean build artifacts
+clean:
+    rm -rf build default.nix
+
+# Show what ExternalProject/FetchContent would do
+explain:
+    @echo "ExternalProject_Add and FetchContent in Nix context:"
+    @echo "===================================================="
+    @echo ""
+    @echo "These CMake modules download code during configure/build time,"
+    @echo "which conflicts with Nix's reproducible build philosophy."
+    @echo ""
+    @echo "Recommended alternatives for Nix:"
+    @echo "1. Pre-fetch dependencies and add to Nix store"
+    @echo "2. Use find_package() with Nix-provided packages"
+    @echo "3. Include dependencies as Git submodules"
+    @echo "4. Use Nix flakes for dependency management"
+    @echo ""
+    @echo "Example Nix approach:"
+    @echo "  - Create pkg_json.nix for nlohmann/json"
+    @echo "  - Create pkg_fmt.nix for fmt library"
+    @echo "  - Use find_package(nlohmann_json) and find_package(fmt)"

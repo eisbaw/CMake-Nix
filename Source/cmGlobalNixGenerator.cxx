@@ -65,7 +65,7 @@ cmDocumentationEntry cmGlobalNixGenerator::GetDocumentation()
 void cmGlobalNixGenerator::Generate()
 {
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() started" << std::endl;
+    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Generate() started" << std::endl;
   }
   
   // Clear the used derivation names set for fresh generation
@@ -89,7 +89,9 @@ void cmGlobalNixGenerator::Generate()
   this->cmGlobalGenerator::Generate();
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
+    }
   }
   
   // Build dependency graph for transitive dependency resolution
@@ -99,7 +101,9 @@ void cmGlobalNixGenerator::Generate()
   this->WriteNixFile();
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ << " Generate() completed" << std::endl;
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Generate() completed" << std::endl;
+    }
   }
 }
 
@@ -160,7 +164,7 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   // For try-compile, add post-build copy commands to move binaries from Nix store
   if (isTryCompile && !targetNames.empty()) {
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+      std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
                 << " Generating try-compile copy commands" << std::endl;
     }
     
@@ -175,7 +179,7 @@ cmGlobalNixGenerator::GenerateBuildCommand(
     for (auto const& tname : targetNames) {
       if (!tname.empty()) {
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+          std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
                     << " Adding copy command for target: " << tname << std::endl;
         }
         
@@ -505,10 +509,10 @@ void cmGlobalNixGenerator::WriteNixFile()
     
     // Debug output
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[DEBUG] Total custom commands: " << localCustomCommands.size() << std::endl;
-      std::cerr << "[DEBUG] Ordered commands: " << orderedCommands.size() << std::endl;
+      std::cerr << "[NIX-DEBUG] Total custom commands: " << localCustomCommands.size() << std::endl;
+      std::cerr << "[NIX-DEBUG] Ordered commands: " << orderedCommands.size() << std::endl;
       for (size_t i = 0; i < localCustomCommands.size(); ++i) {
-        std::cerr << "[DEBUG] Command " << i << ": " << localCustomCommands[i].DerivationName << std::endl;
+        std::cerr << "[NIX-DEBUG] Command " << i << ": " << localCustomCommands[i].DerivationName << std::endl;
       }
     }
     
@@ -527,10 +531,10 @@ void cmGlobalNixGenerator::WriteNixFile()
     
     // More debug output  
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[DEBUG] Unprocessed commands: " << cyclicCommands.size() << std::endl;
+      std::cerr << "[NIX-DEBUG] Unprocessed commands: " << cyclicCommands.size() << std::endl;
       for (size_t idx : cyclicCommands) {
         const auto& cmd = localCustomCommands[idx];
-        std::cerr << "[DEBUG] Unprocessed: " << cmd.DerivationName << " (indegree=" << inDegree[cmd.DerivationName] << ")" << std::endl;
+        std::cerr << "[NIX-DEBUG] Unprocessed: " << cmd.DerivationName << " (indegree=" << inDegree[cmd.DerivationName] << ")" << std::endl;
       }
     }
     
@@ -596,7 +600,7 @@ void cmGlobalNixGenerator::WriteNixFile()
     findCycle = [&](const std::string& current, std::set<std::string>& visited, std::vector<std::string>& path, int depth) -> bool {
       // Prevent stack overflow with depth limit
       if (depth > MAX_CYCLE_DETECTION_DEPTH) {
-        std::cerr << "[WARNING] Cycle detection depth limit exceeded at: " << current << std::endl;
+        this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, "Cycle detection depth limit exceeded at: " + current);
         return false;
       }
       if (visited.count(current)) {
@@ -669,9 +673,11 @@ void cmGlobalNixGenerator::WriteNixFile()
     // Check if user wants to bypass this check
     cmValue ignoreCircular = this->GetCMakeInstance()->GetCacheDefinition("CMAKE_NIX_IGNORE_CIRCULAR_DEPS");
     if (ignoreCircular && (*ignoreCircular == "ON" || *ignoreCircular == "1" || *ignoreCircular == "YES" || *ignoreCircular == "TRUE")) {
-      std::cerr << "WARNING: Circular dependencies detected, but proceeding due to CMAKE_NIX_IGNORE_CIRCULAR_DEPS=ON" << std::endl;
-      std::cerr << "WARNING: This may result in incorrect build order and build failures." << std::endl;
-      std::cerr << "WARNING: " << (this->CustomCommands.size() - orderedCommands.size()) << " commands have circular dependencies but will be processed anyway." << std::endl;
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, 
+        "Circular dependencies detected, but proceeding due to CMAKE_NIX_IGNORE_CIRCULAR_DEPS=ON\n"
+        "This may result in incorrect build order and build failures.\n"
+        + std::to_string(this->CustomCommands.size() - orderedCommands.size()) + 
+        " commands have circular dependencies but will be processed anyway.");
       
       // Process all commands regardless of dependencies - append the unprocessed ones to orderedCommands
       for (size_t i = 0; i < this->CustomCommands.size(); ++i) {
@@ -799,7 +805,7 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         std::vector<cmSourceFile*> sources;
         target->GetSourceFiles(sources, "");
         
-        if (cmSystemTools::GetEnv("CMAKE_NIX_DEBUG")) {
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
           std::cerr << "[NIX-DEBUG] Target " << target->GetName() << " has " << sources.size() << " source files" << std::endl;
           for (const cmSourceFile* source : sources) {
             std::cerr << "[NIX-DEBUG]   Source: " << source->GetFullPath() 
@@ -826,7 +832,7 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
           std::string sourcePath = source->GetFullPath();
           if (sourcePath.find("/Unity/unity_") != std::string::npos && 
               sourcePath.find("_cxx.cxx") != std::string::npos) {
-            if (cmSystemTools::GetEnv("CMAKE_NIX_DEBUG")) {
+            if (this->GetCMakeInstance()->GetDebugOutput()) {
               std::cerr << "[NIX-DEBUG] Skipping Unity batch file: " << sourcePath << std::endl;
             }
             continue;
@@ -1839,7 +1845,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   // Add try_compile handling if needed
   if (isTryCompile) {
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+      std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
                 << " Adding try_compile output file handling for: " << targetName << std::endl;
     }
     

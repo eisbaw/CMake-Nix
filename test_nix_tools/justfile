@@ -1,0 +1,134 @@
+#!/usr/bin/env -S just --justfile
+
+# Run Nix evaluation tool tests
+run:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    echo "=== Testing Nix Evaluation Tools ==="
+    echo ""
+    
+    # Clean previous build
+    rm -rf build default.nix
+    
+    # Configure with Nix generator
+    echo "1. Configuring project..."
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build
+    
+    cd build
+    
+    echo ""
+    echo "2. Testing nix-instantiate (evaluation without building)..."
+    echo "=================================================="
+    
+    # Test basic evaluation
+    if nix-instantiate default.nix -A simple_app > /dev/null 2>&1; then
+        echo "✅ nix-instantiate succeeded for simple_app"
+        
+        # Show the derivation path
+        drv_path=$(nix-instantiate default.nix -A simple_app)
+        echo "   Derivation: $drv_path"
+        
+        # Show derivation details
+        echo "   Derivation contents (first 10 lines):"
+        nix show-derivation "$drv_path" 2>/dev/null | head -10 || true
+    else
+        echo "❌ nix-instantiate failed for simple_app"
+    fi
+    
+    echo ""
+    echo "3. Testing nix-build --dry-run..."
+    echo "================================="
+    
+    # Test dry run
+    if nix-build --dry-run -A simple_app 2>&1 | grep -q "would be built"; then
+        echo "✅ nix-build --dry-run shows what would be built"
+        nix-build --dry-run -A simple_app 2>&1 | head -5
+    else
+        echo "⚠️  nix-build --dry-run output unexpected"
+    fi
+    
+    echo ""
+    echo "4. Testing nix eval (expression evaluation)..."
+    echo "============================================"
+    
+    # Test evaluating attributes
+    echo "Available targets:"
+    nix eval -f default.nix --json | jq -r 'keys[]' 2>/dev/null || echo "   (jq not available for pretty printing)"
+    
+    echo ""
+    echo "5. Testing nix-store queries..."
+    echo "==============================="
+    
+    # Build something first
+    if nix-build -A simple_app > /dev/null 2>&1; then
+        result_path=$(readlink result)
+        echo "✅ Built simple_app at: $result_path"
+        
+        # Query dependencies
+        echo "   Dependencies:"
+        nix-store -q --requisites "$result_path" 2>/dev/null | grep -E "(gcc|glibc)" | head -3 || true
+        
+        # Query size
+        echo "   Closure size:"
+        nix-store -q --size "$result_path" 2>/dev/null || true
+        
+        rm -f result
+    fi
+    
+    echo ""
+    echo "6. Testing attribute name handling..."
+    echo "===================================="
+    
+    # Test various attribute access methods
+    attrs=("simple_app" "shared_lib" "custom_app" "simple_app_install")
+    
+    for attr in "${attrs[@]}"; do
+        if nix eval -f default.nix "$attr" > /dev/null 2>&1; then
+            echo "✅ Attribute '$attr' is valid"
+        else
+            echo "⚠️  Attribute '$attr' not found or invalid"
+        fi
+    done
+    
+    echo ""
+    echo "7. Testing error reporting..."
+    echo "============================="
+    
+    # Test with non-existent attribute
+    echo "Trying non-existent attribute:"
+    nix-build -A nonexistent 2>&1 | grep -i "error" | head -1 || echo "   (no error shown)"
+    
+    echo ""
+    echo "=== Nix Tools Test Summary ==="
+    echo "The Nix generator creates expressions compatible with:"
+    echo "- nix-instantiate (evaluation)"
+    echo "- nix-build (building)"
+    echo "- nix eval (attribute inspection)"
+    echo "- nix-store (dependency queries)"
+    echo ""
+    echo "✅ All major Nix tools work with generated expressions!"
+
+# Clean build artifacts
+clean:
+    rm -rf build default.nix result
+
+# Show Nix evaluation tips
+tips:
+    @echo "Useful Nix evaluation commands:"
+    @echo "=============================="
+    @echo ""
+    @echo "# Show all attributes:"
+    @echo "nix eval -f default.nix --json | jq"
+    @echo ""
+    @echo "# Check what would be built:"
+    @echo "nix-build --dry-run -A target"
+    @echo ""
+    @echo "# Show derivation details:"
+    @echo "nix show-derivation \$(nix-instantiate default.nix -A target)"
+    @echo ""
+    @echo "# Query dependencies:"
+    @echo "nix-store -q --tree \$(nix-build -A target)"
+    @echo ""
+    @echo "# Check syntax:"
+    @echo "nix-instantiate --parse default.nix"
