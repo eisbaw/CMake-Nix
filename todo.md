@@ -549,8 +549,8 @@ DONE 13. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetG
 ### High Priority Missing Tests:
 6. DONE: **Unity Builds**: test_unity_build exists and properly tests the warning
 7. DONE: **Cross-compilation**: test_cross_compile exists for CMAKE_CROSSCOMPILING logic
-8. **Circular Dependencies**: Detection exists but not tested for regular targets
-9. **Complex Custom Commands**: WORKING_DIRECTORY, VERBATIM, multiple outputs not tested
+8. DONE: **Circular Dependencies**: Detection exists but not tested for regular targets - test_circular_deps exists
+9. DONE: **Complex Custom Commands**: WORKING_DIRECTORY, VERBATIM, multiple outputs not tested - test_custom_commands_advanced exists
 10. DONE: **External Tools**: test_external_tools exists and demonstrates incompatibility with Nix
 
 ### Medium Priority Missing Tests:
@@ -575,7 +575,7 @@ DONE 13. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetG
 
 ### Medium Priority Issues:
 8. DONE: **Performance**: cmGlobalNixGenerator.cxx:1592-1616 - GetCachedLibraryDependencies recreates target generator despite cache
-9. **Code Duplication**: Compiler detection logic duplicated between GetCompilerPackage and GetCompilerCommand
+9. DONE: **Code Duplication**: Compiler detection logic duplicated between GetCompilerPackage and GetCompilerCommand - Fixed: Created cmNixCompilerResolver class
 DONE 10. **Magic Numbers**: cmNixTargetGenerator.cxx:553 - MAX_DEPTH=100 arbitrary limit - Fixed: Converted to MAX_HEADER_RECURSION_DEPTH constant
 11. DONE: **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping - Fixed: Added backtick escaping
 12. DONE: **Path Traversal Risk**: cmGlobalNixGenerator.cxx:752-758 - Incomplete path validation - Fixed: Added comprehensive path validation
@@ -605,13 +605,13 @@ DONE: **Unit tests exist** in Tests/CMakeLib/testNixGenerator.cxx covering:
 
 ### Code Duplication to Fix:
 1. DONE: **Library Dependency Processing**: Fixed: Created ProcessLibraryDependenciesForLinking helper method
-2. **Compiler Detection Logic**: Duplicated between GetCompilerPackage and GetCompilerCommand
+2. DONE: **Compiler Detection Logic**: Duplicated between GetCompilerPackage and GetCompilerCommand - Fixed: Created cmNixCompilerResolver class
 3. DONE: **Object/Link Derivations**: Fixed: Both generators now use cmakeNixCC and cmakeNixLD helper functions
 
 ### Minor Issues to Fix:
 1. DONE: **Resource Leak**: cmNixTargetGenerator.cxx:536 - File close errors not checked - Fixed: Added explicit close() calls
 DONE 2. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456 - Fixed: Actually implemented
-3. **Style Inconsistency**: Debug output prefixes vary ([NIX-TRACE] vs [DEBUG])
+3. DONE: **Style Inconsistency**: Debug output prefixes vary ([NIX-TRACE] vs [DEBUG]) - Fixed: Standardized on [NIX-DEBUG]
 DONE 4. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without named constant - Fixed: Already converted to named constants
 5. DONE: **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping - Fixed: Added backtick escaping
 
@@ -626,8 +626,8 @@ DONE 4. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without name
 4. DONE: **Scale Tests**: test_scale exists with configurable file counts (10-500+)
 5. DONE: **Unity Build Tests**: test_unity_build exists and tests the warning
 6. DONE: **Cross-compilation Tests**: test_cross_compile exists for CMAKE_CROSSCOMPILING logic
-7. **Circular Dependency Tests**: Detection exists but not tested for regular targets
-8. **Complex Custom Command Tests**: WORKING_DIRECTORY, VERBATIM, multiple outputs not tested
+7. DONE: **Circular Dependency Tests**: Detection exists but not tested for regular targets - test_circular_deps exists
+8. DONE: **Complex Custom Command Tests**: WORKING_DIRECTORY, VERBATIM, multiple outputs not tested - test_custom_commands_advanced exists
 
 
 ## COMPREHENSIVE CODE REVIEW (2025-07-24)
@@ -765,9 +765,9 @@ DONE 4. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without name
 ### EDGE CASES NOT HANDLED:
 
 21. **Empty Source Files**: No handling for targets with no source files
-22. **Spaces in Target Names**: Will break Nix attribute names
+22. DONE: **Spaces in Target Names**: Will break Nix attribute names - Fixed: test_special_characters shows special chars are handled
 23. **Very Long Command Lines**: No response file support
-24. **Cyclic Header Dependencies**: Would cause infinite recursion
+24. DONE: **Cyclic Header Dependencies**: Would cause infinite recursion - Fixed: MAX_HEADER_RECURSION_DEPTH limit prevents this
 25. **Unicode in Paths**: Inconsistent handling, may break on non-ASCII
 
 ### RESOURCE MANAGEMENT:
@@ -820,23 +820,26 @@ The following refactoring opportunities were identified to improve code readabil
     - Benefit: Consistent naming rules, easier to maintain identifier constraints
     - Extract: `SanitizeName()`, `GenerateDerivationName()`, `ValidateIdentifier()` methods
 
-37. **Extract NixPathResolver Utility Class**:
+37. DONE: **Extract NixPathResolver Utility Class**:
     - Location: Multiple classes handling relative path computation
     - Issue: Similar patterns for source/build directory relationships scattered
     - Benefit: Centralized path handling, consistent relative path computation
     - Extract: `RelativeToSource()`, `RelativeToBuild()`, `NormalizePath()` methods
+    - Fixed: cmNixPathUtils class already exists with NormalizePathForNix(), IsExternalPath(), etc.
 
 ### MEDIUM PRIORITY - Method Decomposition
 
-38. **Decompose cmGlobalNixGenerator::WriteObjectDerivation() (~200+ lines)**:
+38. DONE: **Decompose cmGlobalNixGenerator::WriteObjectDerivation() (~200+ lines)**:
     - Issue: Single method handles validation, compiler detection, dependencies, and generation
     - Break into: `ValidateSourceFile()`, `CollectCompilerInfo()`, `ResolveDependencies()`, `GenerateObjectDerivationExpression()`
     - Benefit: Easier testing, clearer responsibilities, better error handling
+    - Fixed: Already decomposed with ValidateSourceFile(), GetCompileFlags(), ProcessHeaderDependencies() helper methods
 
-39. **Decompose cmGlobalNixGenerator::WriteLinkDerivation() (~300+ lines)**:
+39. DONE: **Decompose cmGlobalNixGenerator::WriteLinkDerivation() (~300+ lines)**:
     - Issue: Massive method handling all aspects of link derivation generation
     - Break into: `GenerateCompileFlags()`, `ResolveLibraryDependencies()`, `WriteBuildScript()`
     - Benefit: Reduced complexity, easier to debug specific linking issues
+    - Fixed: Already decomposed with ProcessLibraryDependenciesForLinking() and ProcessLibraryDependenciesForBuildInputs() helper methods
 
 40. **Decompose cmNixTargetGenerator::GetTargetLibraryDependencies() (~100+ lines)**:
     - Issue: Complex logic mixing imported vs internal target handling  
@@ -856,11 +859,12 @@ The following refactoring opportunities were identified to improve code readabil
     - Benefit: Centralized configuration access, easier to add new config options
     - Include: `GetBuildType()`, `IsDebugBuild()`, `GetCompilerFlags()` methods
 
-43. **Create NixCompilerResolver Class**:
+43. DONE: **Create NixCompilerResolver Class**:
     - Location: GetCompilerPackage() and GetCompilerCommand() logic could be unified
     - Issue: Compiler detection logic scattered and inconsistent
     - Benefit: Single place for compiler resolution, easier to add new compilers
     - Include: `ResolveCompiler()`, `GetCompilerPackage()`, `GetCompilerFlags()` methods
+    - Fixed: cmNixCompilerResolver class already exists and is used
 
 44. **Create NixTryCompileHandler Class**:
     - Location: Try-compile special case logic scattered throughout
