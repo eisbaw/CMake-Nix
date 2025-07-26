@@ -1256,3 +1256,64 @@ Based on review of todo.md and existing tests, the following tests need to be cr
 - test_cross_compile: Exists and functional, just excluded from test-all
 - test_scale: Exists and functional, just excluded from test-all
 
+## CODE SMELLS AND BUGS FOUND (2025-07-26):
+
+### Code Smells Found:
+
+1. **Duplicate Debug Output Checks**: 
+   - Location: cmGlobalNixGenerator.cxx lines 91-95 and 103-107
+   - Issue: Double-nested `if (this->GetCMakeInstance()->GetDebugOutput())` checks
+   - Impact: Redundant code, potential performance overhead
+   - Fix: Remove the inner duplicate check
+
+2. **Inconsistent Debug Prefixes**:
+   - Location: Throughout cmGlobalNixGenerator.cxx
+   - Issue: Mix of [NIX-TRACE], [NIX-DEBUG], and [DEBUG] prefixes
+   - Examples: Line 122 uses [NIX-TRACE], line 1588 uses [DEBUG]
+   - Impact: Confusing debug output, hard to filter logs
+   - Fix: Standardize on [NIX-DEBUG] throughout
+
+3. **Hardcoded Unix Library Naming**:
+   - Location: cmGlobalNixGenerator.cxx lines 295-298 in cmakeNixLD helper
+   - Issue: Assumes Unix-style lib*.so naming convention
+   - Impact: Won't work correctly for other platforms (though Nix is Unix-only)
+   - Note: This is acceptable given Nix's Unix-only nature
+
+4. **Path Traversal Detection Pattern**:
+   - Location: Multiple files using `relPath.find("../") == 0` pattern
+   - Issue: Same pattern repeated throughout without abstraction
+   - Impact: Code duplication, harder to maintain
+   - Fix: Could be extracted to a utility function
+
+5. **Compiler Detection Assumptions**:
+   - Location: cmNixCompilerResolver.cxx
+   - Issue: Hardcoded compiler mappings (e.g., GNU→gcc, Clang→clang)
+   - Impact: May not handle custom or new compilers well
+   - Note: Has override mechanism via CMAKE_NIX_<LANG>_COMPILER_PACKAGE
+
+### Bugs Found:
+
+None found - the code appears to be well-tested and stable. The `just dev` command shows all tests passing.
+
+### Missing Tests:
+
+1. **test_external_tools**: Not integrated into justfile
+   - Purpose: Tests ExternalProject_Add and FetchContent compatibility
+   - Status: Directory exists but not in test suite
+
+2. **test_file_edge_cases**: Not integrated into justfile
+   - Purpose: Tests file names with special characters, spaces, unicode
+   - Status: Directory exists but not in test suite
+
+3. **test_nix_tools**: Not integrated into justfile
+   - Purpose: Tests integration with nix-instantiate, nix-build --dry-run
+   - Status: Directory exists but not in test suite
+
+### Recommendations:
+
+1. Fix the duplicate debug checks in cmGlobalNixGenerator.cxx
+2. Standardize debug output prefixes to [NIX-DEBUG]
+3. Add the three missing test directories to the justfile test suite
+4. Consider extracting the "../" path traversal pattern to a utility function
+5. Document the Unix-only nature of the library naming convention
+
