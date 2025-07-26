@@ -1,0 +1,44 @@
+#!/usr/bin/env just --justfile
+
+# Generate source files
+generate:
+    python3 generate_sources.py
+
+# Configure with Nix generator
+configure:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build with parallel jobs to test thread safety
+build-parallel: configure
+    @echo "Building with maximum parallelism to test thread safety..."
+    time nix-build -A final_app -j auto
+
+# Run the applications
+run-apps: build-parallel
+    @echo "Running app1..."
+    nix-build -A app1 && ./result && rm ./result
+    @echo "\nRunning app2..."
+    nix-build -A app2 && ./result && rm ./result
+    @echo "\nRunning app3..."
+    nix-build -A app3 && ./result && rm ./result
+    @echo "\nRunning final app..."
+    nix-build -A final_app && ./result && rm ./result
+
+# Stress test with repeated parallel builds
+stress-test:
+    @echo "Running stress test with 5 repeated builds..."
+    @for i in 1 2 3 4 5; do \
+        echo "\n=== Build iteration $$i ==="; \
+        rm -rf result; \
+        nix-build -A final_app -j auto || exit 1; \
+    done
+    @echo "\n✅ Thread safety stress test passed!"
+
+# Clean build artifacts
+clean:
+    rm -rf default.nix result CMakeCache.txt CMakeFiles cmake_install.cmake src
+
+# Full test cycle
+test: clean generate run-apps
+    @echo "\n✅ Thread safety test completed"

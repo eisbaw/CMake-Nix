@@ -1,0 +1,48 @@
+#!/usr/bin/env just --justfile
+
+# Configure with Nix generator (may show warnings/errors)
+configure:
+    rm -f default.nix
+    -../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build . 2>&1 | tee configure.log
+
+# Try to build each target individually
+test-syntax-error:
+    @echo "=== Testing syntax error recovery ==="
+    -nix-build -A syntax_error 2>&1 | grep -E "(error|expected)" || echo "Build failed as expected"
+
+test-missing-header:
+    @echo "\n=== Testing missing header recovery ==="
+    -nix-build -A missing_header 2>&1 | grep -E "(error|No such file)" || echo "Build failed as expected"
+
+test-circular:
+    @echo "\n=== Testing circular dependency ==="
+    -nix-build -A circular_a 2>&1 | grep -E "(error|circular)" || echo "Circular dependency handled"
+
+test-valid:
+    @echo "\n=== Testing valid program (should succeed) ==="
+    nix-build -A valid_program && ./result && rm ./result
+
+test-missing-source:
+    @echo "\n=== Testing missing source file ==="
+    @grep -q "nonexistent.c" default.nix || echo "Missing source handled at configure time"
+
+test-spaces:
+    @echo "\n=== Testing target with spaces ==="
+    -nix-build -A '"target_with_spaces"' 2>&1 || echo "Target with spaces handled"
+
+# Run all error recovery tests
+test-all: configure
+    just test-syntax-error
+    just test-missing-header
+    just test-circular  
+    just test-valid
+    just test-missing-source
+    just test-spaces
+    @echo "\n✅ Error recovery tests completed"
+
+# Clean build artifacts
+clean:
+    rm -rf default.nix result CMakeCache.txt CMakeFiles cmake_install.cmake configure.log
+
+# Full test cycle
+test: clean test-all

@@ -97,6 +97,15 @@ mod test_pch
 # Unity build test
 mod test_unity_build
 
+# Module library test
+mod test_module_library
+
+# Fortran language support test
+mod test_fortran_language
+
+# fmt library test (medium-sized C++ formatting library)
+mod test_fmt_library
+
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
     ./bootstrap --parallel=$(nproc) --no-system-curl -- -DCMAKE_USE_OPENSSL=OFF -DCMAKE_USE_SYSTEM_ZLIB=OFF
@@ -172,7 +181,12 @@ test-all:
     just test_pch::run
     just test_unity_build::run
     just test_fortran_language::run
-    # just test_fmt_library::run  # Skip - incomplete test
+    just test_fmt_library::run
+    # Scale and error recovery tests (run separately due to special nature)
+    # just test_scale::test
+    # just test_error_recovery::test
+    # just test_cross_compile::test
+    # just test_thread_safety::test
     # just test_zephyr_rtos::run  # Skip - requires specific Python environment
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself
     # just test_opencv::configure-core
@@ -184,23 +198,26 @@ test-all:
 dev: build test-all
     @echo "🚀 Development cycle complete"
 
-# Module library test
-mod test_module_library
-
-# fmt library test (popular C++ formatting library)
-mod test_fmt_library
-
 # Zephyr RTOS simulation test
 mod test_zephyr_rtos
 
 # Special characters in target names test
 mod test_special_characters
 
-# Fortran language support test
-mod test_fortran_language
-
 # CUDA language support test
 mod test_cuda_language
 
 # Security test for paths with special characters
 mod test_security_paths
+
+# Scale test (many files)
+mod test_scale
+
+# Error recovery test
+mod test_error_recovery
+
+# Cross-compilation test
+mod test_cross_compile
+
+# Thread safety test
+mod test_thread_safety

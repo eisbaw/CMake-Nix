@@ -1,28 +1,22 @@
-# Justfile for fmt library test
+#!/usr/bin/env just --justfile
 
-# Clean build artifacts
-clean:
-    rm -rf build default.nix
-
-# Configure with CMake Nix generator
+# Configure and build with Nix generator
 configure:
     rm -f default.nix
     ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
 
-# Build the test
+# Build the fmt example
 build: configure
-    nix-build --no-out-link -A fmt_test
+    nix-build -A fmt_example
 
-# Run the test
-run: clean
-    @echo "=== Building fmt library example with CMake Nix backend ==="
-    just configure
-    @echo "\n=== Building and running fmt test application ==="
-    nix-build -A fmt_test && ./result && rm ./result
-    @echo "\n✅ fmt library built and tested successfully with CMake Nix backend!"
+# Run the fmt example
+run: build
+    ./result && rm ./result
 
-# Check generated Nix file
-check-nix: configure
-    @echo "=== Generated default.nix ==="
-    cat default.nix | head -50
-    @echo "\n... (truncated) ..."
+# Clean build artifacts
+clean:
+    rm -rf default.nix result _deps CMakeCache.txt CMakeFiles cmake_install.cmake
+
+# Full test cycle
+test: clean run
+    @echo "✅ fmt library test completed"

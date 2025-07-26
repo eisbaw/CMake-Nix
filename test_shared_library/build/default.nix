@@ -98,7 +98,7 @@ let
     buildInputs = [ gcc ];
     source = "lib.c";
     compiler = gcc;
-    flags = "-O3 -DNDEBUG -fPIC -Dmylib_EXPORTS -fPIC";
+    flags = "-O3 -DNDEBUG -fPIC -Dmylib_EXPORTS";
   };
 
   versioned_lib_test_shared_library_versioned_c_o = cmakeNixCC {
@@ -107,7 +107,7 @@ let
     buildInputs = [ gcc ];
     source = "versioned.c";
     compiler = gcc;
-    flags = "-O3 -DNDEBUG -fPIC -Dversioned_lib_EXPORTS -fPIC";
+    flags = "-O3 -DNDEBUG -fPIC -Dversioned_lib_EXPORTS";
   };
 
   app_test_shared_library_main_c_o = cmakeNixCC {

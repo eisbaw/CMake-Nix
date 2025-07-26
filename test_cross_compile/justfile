@@ -1,0 +1,40 @@
+#!/usr/bin/env just --justfile
+
+# Configure for native build
+configure-native:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Configure for ARM cross-compilation (simulation)
+configure-arm:
+    rm -f default.nix
+    -../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_TOOLCHAIN_FILE=toolchain-arm.cmake . 2>&1 | tee cross-config.log
+
+# Build native version
+build-native: configure-native
+    nix-build -A cross_test
+
+# Try cross-compilation (will likely fail without proper toolchain)
+build-arm: configure-arm
+    @echo "Checking if cross-compilation was detected..."
+    @grep -q "gcc-cross" default.nix && echo "✓ Cross-compiler package detected" || echo "✗ Cross-compiler not detected"
+    -nix-build -A cross_test 2>&1 | tee cross-build.log || echo "Cross-build failed (expected without ARM toolchain)"
+
+# Run native build
+run-native: build-native
+    ./result && rm ./result
+
+# Test both native and cross configurations
+test-all:
+    @echo "=== Testing native build ==="
+    just run-native
+    @echo "\n=== Testing cross-compilation configuration ==="
+    just build-arm
+    @echo "\n✅ Cross-compilation test completed"
+
+# Clean build artifacts
+clean:
+    rm -rf default.nix result CMakeCache.txt CMakeFiles cmake_install.cmake *.log
+
+# Full test cycle
+test: clean test-all

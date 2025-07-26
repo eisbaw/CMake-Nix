@@ -1,0 +1,47 @@
+#!/usr/bin/env just --justfile
+
+# Generate source files
+generate NUM="100":
+    python3 generate_files.py {{NUM}}
+
+# Clean generated files
+clean-generated:
+    rm -rf src include CMakeLists.txt
+
+# Configure with Nix generator
+configure:
+    rm -f default.nix
+    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+
+# Build the scale test
+build: configure
+    time nix-build -A scale_test
+
+# Run the scale test
+run: build
+    ./result && rm ./result
+
+# Clean all build artifacts
+clean: clean-generated
+    rm -rf default.nix result CMakeCache.txt CMakeFiles cmake_install.cmake
+
+# Test with different scales
+test-scales:
+    @echo "Testing with 10 files..."
+    just generate 10
+    just run
+    @echo "\nTesting with 50 files..."
+    just generate 50
+    just run
+    @echo "\nTesting with 100 files..."
+    just generate 100
+    just run
+    @echo "\nTesting with 500 files..."
+    just generate 500
+    just run
+
+# Full test cycle
+test: clean
+    just generate 100
+    just run
+    @echo "✅ Scale test completed"
