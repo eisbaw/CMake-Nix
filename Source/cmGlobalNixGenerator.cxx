@@ -1043,7 +1043,43 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     
     // Copy header dependencies that are outside the project tree
     std::set<std::string> copiedDirs;
+    size_t headersCopied = 0;
+    bool hitHeaderLimit = false;
+    
+    // Check if user has set custom header limit
+    size_t headerLimit = MAX_EXTERNAL_HEADERS_PER_SOURCE;
+    cmValue customLimit = target->Target->GetMakefile()->GetDefinition("CMAKE_NIX_EXTERNAL_HEADER_LIMIT");
+    if (customLimit && !customLimit->empty()) {
+      try {
+        size_t userLimit = std::stoul(*customLimit);
+        if (userLimit > 0) {
+          headerLimit = userLimit;
+        }
+      } catch (...) {
+        // Ignore invalid values, use default
+      }
+    }
+    
     for (const std::string& dep : dependencies) {
+      // Check if we've reached the header limit for external sources
+      if (headersCopied >= headerLimit) {
+        if (!hitHeaderLimit) {
+          nixFileStream << "      # WARNING: Hit header limit (" << headerLimit << " headers) for external source\n";
+          nixFileStream << "      # Remaining headers will not be copied to prevent Nix generation timeout\n";
+          hitHeaderLimit = true;
+          
+          // Also issue a CMake warning so users are aware
+          std::ostringstream msg;
+          msg << "External source file " << sourceFile 
+              << " has more than " << headerLimit 
+              << " header dependencies. Only the first " << headerLimit 
+              << " headers will be copied to prevent Nix generation timeout. "
+              << "Consider using CMAKE_NIX_EXTERNAL_HEADER_LIMIT to adjust this limit if needed.";
+          this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+        }
+        break;
+      }
+      
       std::string fullPath;
       if (cmSystemTools::FileIsFullPath(dep)) {
         fullPath = dep;
@@ -1084,6 +1120,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           std::string destPath = relDir.empty() ? headerFile : relDir + "/" + headerFile;
           // Use builtins.path for absolute paths
           nixFileStream << "      cp ${builtins.path { path = \"" << normalizedHeaderPath << "\"; }} $out/" << destPath << " 2>/dev/null || true\n";
+          headersCopied++;
         }
       }
     }

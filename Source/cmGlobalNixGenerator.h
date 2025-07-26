@@ -251,6 +251,7 @@ private:
   
   // Numeric constants
   static constexpr int MAX_CYCLE_DETECTION_DEPTH = 100; // Maximum depth for cycle detection
+  static constexpr size_t MAX_EXTERNAL_HEADERS_PER_SOURCE = 100; // Maximum headers to copy for external sources (prevents Zephyr timeout)
   
   // Track used derivation names to ensure uniqueness
   mutable std::set<std::string> UsedDerivationNames;
