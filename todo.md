@@ -5,9 +5,17 @@ DONE - test_dir_spaces failed to build - paths with spaces in directory names ar
 
 DONE - error: path '/home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases/build/CMakeFiles/CMakeScratch/TryCompile-NX5FxI/default.nix' does not exist (FIXED: TryCompile now works)
 
-"fix(test): handle expected failure in test_external_tools": ExternalProject_Add and FetchContent may be supported by writing a skeleton Nix file for each dependency -- the user will have to fill in the hash but we could write some boilerplate Nix that uses Nix fetchers.
+DONE - "fix(test): handle expected failure in test_external_tools": ExternalProject_Add and FetchContent may be supported by writing a skeleton Nix file for each dependency -- the user will have to fill in the hash but we could write some boilerplate Nix that uses Nix fetchers.
+     - Implemented automatic detection of ExternalProject_Add and FetchContent usage
+     - Issues clear warnings explaining Nix incompatibility
+     - Generates skeleton pkg_*.nix files for common dependencies (fmt, json, googletest, boost)
+     - Provides migration guidance in warning messages
 
-Update PRD.md with best-practices and guidelines we have used for Nix generator.
+DONE - Update PRD.md with best-practices and guidelines we have used for Nix generator.
+     - Added ExternalProject/FetchContent migration guide with examples
+     - Documented build output directory robustness patterns (mkdir -p)
+     - Updated implementation status with recent enhancements
+     - Added header management recommendations for large projects
 
 Move tasks from this todo.md to use https://github.com/MrLesk/Backlog.md . Move both tasks that are done and new tasks. Install the backlog tool, and when it works update this todo.md to be a shallow file that instructs Claude to add and pickup tasks from backlog tool using the backlog CLI. Be sure to read the readme of backlog project first. Place a git tag "backlog-init" when committed.
 
@@ -15,17 +23,13 @@ Look at git log with git notes again. The git notes contain review comments. Fix
 
 I dont like having a limit on the amount of headers. BUt we should not copy the headers for every single source file to be compiled. Rather, collect all the headers into a derivation that we then can refer to more easily - and this will limit copying.
 
-test_dir_spaces failed to build
 
-error: path '/home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases/build/CMakeFiles/CMakeScratch/TryCompile-NX5FxI/default.nix' does not exist
-
-
-"fix(test): handle expected failure in test_external_tools": ExternalProject_Add and FetchContent may be supported by writing a skeleton Nix file for each dependency -- the user will have to fill in the hash but we could write some boilerplate Nix that uses Nix fetchers.
-
-
-Update PRD.md with best-practices and guidelines we have used for Nix generator.
-
-Always emit "mkdir -p $out" in the Nix file - we can't test for the dir at generation-time.
+DONE - Always emit "mkdir -p $out" in the Nix file - we can't test for the dir at generation-time.
+     - Verified all derivations already have mkdir -p commands
+     - cmakeNixCC helper: has mkdir -p "$(dirname "$out")"
+     - cmakeNixLD helper: has mkdir -p for all target types
+     - Custom commands: already have mkdir -p $out
+     - Install derivations: have mkdir -p for destinations
 
 Move tasks from this todo.md to use https://github.com/MrLesk/Backlog.md . Move both tasks that are done and new tasks. Install the backlog tool, and when it works update this todo.md to be a shallow file that instructs Claude to add and pickup tasks from backlog tool using the backlog CLI. Be sure to read the readme of backlog project first. Place a git tag "backlog-init" when committed.
 
