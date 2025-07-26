@@ -1331,6 +1331,26 @@ DONE 5. Document the Unix-only nature of the library naming convention
 
 ## NEW CODE SMELLS AND POTENTIAL IMPROVEMENTS FOUND (2025-07-26)
 
+## NEW ISSUES FOUND (2025-07-26)
+
+### Code Quality Issues Fixed:
+1. DONE: **Unguarded Debug Output**: Fixed debug statements in cmGlobalNixGenerator.cxx lines 700-701
+   - Issue: Debug output not controlled by GetDebugOutput() flag
+   - Fixed: Wrapped in GetDebugOutput() check and changed to [NIX-DEBUG] prefix
+
+### Potential Improvements to Consider:
+1. **Path Handling Hardcoding**: cmNixTargetGenerator.cxx lines 725, 733, 748, 756
+   - Issue: Hardcoded "./../../" paths for parent directory navigation
+   - Consider: More robust path resolution mechanism
+   
+2. **Limited Test Coverage for Edge Cases**:
+   - Missing: Circular dependencies in regular (non-custom) targets
+   - Missing: Complex custom commands with WORKING_DIRECTORY and VERBATIM flags
+   - Missing: Performance benchmarks for large projects (1000+ files)
+   - Missing: Stress tests for deep dependency trees
+
+## NEW CODE SMELLS AND POTENTIAL IMPROVEMENTS FOUND (2025-07-26)
+
 ### Code Quality Issues Found:
 
 1. **Excessive Debug Output**: 54 instances of debug output across cmNixTargetGenerator.cxx and cmGlobalNixGenerator.cxx

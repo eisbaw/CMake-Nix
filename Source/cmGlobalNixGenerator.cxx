@@ -697,8 +697,10 @@ void cmGlobalNixGenerator::WriteNixFile()
         }
       }
       
-      std::cerr << "INFO: Now processing all " << orderedCommands.size() << " custom commands." << std::endl;
-      std::cerr << "DEBUG: About to write custom commands to Nix file..." << std::endl;
+      if (this->GetCMakeInstance()->GetDebugOutput()) {
+        std::cerr << "[NIX-DEBUG] Now processing all " << orderedCommands.size() << " custom commands." << std::endl;
+        std::cerr << "[NIX-DEBUG] About to write custom commands to Nix file..." << std::endl;
+      }
     } else {
       this->GetCMakeInstance()->IssueMessage(MessageType::FATAL_ERROR, msg.str());
       return;
