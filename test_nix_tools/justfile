@@ -41,11 +41,16 @@ run:
     echo "================================="
     
     # Test dry run
-    if nix-build --dry-run -A simple_app 2>&1 | grep -q "would be built"; then
+    dry_run_output=$(nix-build --dry-run -A simple_app 2>&1)
+    if echo "$dry_run_output" | grep -q "would be built"; then
         echo "✅ nix-build --dry-run shows what would be built"
-        nix-build --dry-run -A simple_app 2>&1 | head -5
+        echo "$dry_run_output" | head -5
+    elif echo "$dry_run_output" | grep -q "/nix/store/"; then
+        echo "✅ nix-build --dry-run shows the target is already built"
+        echo "$dry_run_output" | head -5
     else
         echo "⚠️  nix-build --dry-run output unexpected"
+        echo "$dry_run_output" | head -5
     fi
     
     echo ""
@@ -54,7 +59,7 @@ run:
     
     # Test evaluating attributes
     echo "Available targets:"
-    nix eval -f default.nix --json | jq -r 'keys[]' 2>/dev/null || echo "   (jq not available for pretty printing)"
+    nix --extra-experimental-features nix-command eval -f default.nix --json | jq -r 'keys[]' 2>/dev/null || echo "   (jq not available for pretty printing)"
     
     echo ""
     echo "5. Testing nix-store queries..."
@@ -84,7 +89,7 @@ run:
     attrs=("simple_app" "shared_lib" "custom_app" "simple_app_install")
     
     for attr in "${attrs[@]}"; do
-        if nix eval -f default.nix "$attr" > /dev/null 2>&1; then
+        if nix --extra-experimental-features nix-command eval -f default.nix "$attr" > /dev/null 2>&1; then
             echo "✅ Attribute '$attr' is valid"
         else
             echo "⚠️  Attribute '$attr' not found or invalid"
@@ -119,7 +124,7 @@ tips:
     @echo "=============================="
     @echo ""
     @echo "# Show all attributes:"
-    @echo "nix eval -f default.nix --json | jq"
+    @echo "nix --extra-experimental-features nix-command eval -f default.nix --json | jq"
     @echo ""
     @echo "# Check what would be built:"
     @echo "nix-build --dry-run -A target"

@@ -6,8 +6,11 @@ DONE - Make CMAKE_MAKE_PROGRAM=nix-build be default when using the Nix backend, 
      - Removed -DCMAKE_MAKE_PROGRAM=nix-build from all 45 justfiles
      - Updated documentation in Nix.rst and README.md
 
-"just test_zephyr_rtos::run" is currently skipped. It shall not be skipped. It is true it requires specific Python environment, but make a new test_zephyr_rtos/zephyr.shell.nix file which contains this python envrionment. Here is a hint: nix-shell --pure -p pkgsi686Linux.gcc pkgs.pkgsi686Linux.glibc cmake ninja dtc python312Packages.pykwalify python312Packages.pyyaml python312Packages.packaging python312Packages.pyelftools --run '(export ZEPHYR_BASE="$(pwd)"; export ZE
+DONE - "just test_zephyr_rtos::run" is currently skipped. It shall not be skipped. It is true it requires specific Python environment, but make a new test_zephyr_rtos/zephyr.shell.nix file which contains this python envrionment. Here is a hint: nix-shell --pure -p pkgsi686Linux.gcc pkgs.pkgsi686Linux.glibc cmake ninja dtc python312Packages.pykwalify python312Packages.pyyaml python312Packages.packaging python312Packages.pyelftools --run '(export ZEPHYR_BASE="$(pwd)"; export ZE
 PHYR_TOOLCHAIN_VARIANT=host; cd ./samples/posix/philosophers && cmake -B build -GNinja -DBOARD=native_sim . && (cd build && ninja))'
+     - Updated existing shell-zephyr.nix to include 32-bit toolchain (pkgsi686Linux.gcc/glibc)
+     - Created zephyr/justfile for building dining philosophers sample with Nix backend
+     - Enabled test_zephyr_rtos::run in main justfile test-all target
 
 
 "4. Testing nix eval (expression evaluation)..." reports: error: experimental Nix feature 'nix-command' is disabled; add '--extra-experimental-features nix-command' to enable it. (jq not available for pretty printing)
@@ -19,6 +22,8 @@ test_dir_spaces failed to build
 
 error: path '/home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases/build/CMakeFiles/CMakeScratch/TryCompile-NX5FxI/default.nix' does not exist
 
+
+"fix(test): handle expected failure in test_external_tools": ExternalProject_Add and FetchContent may be supported by writing a skeleton Nix file for each dependency -- the user will have to fill in the hash but we could write some boilerplate Nix that uses Nix fetchers. 
 
 
 
