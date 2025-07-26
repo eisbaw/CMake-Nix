@@ -532,7 +532,7 @@ DONE: All feature tests passing with `just dev`
 
 ### Low Priority Issues:
 12. DONE: **Resource Leaks**: File close errors not checked in cmNixTargetGenerator.cxx:536 - Fixed: Added explicit close() calls to ifstream instances
-13. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456
+DONE 13. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456 - Fixed: Actually implemented
 14. **Style**: Inconsistent debug output prefixes ([NIX-TRACE] vs [DEBUG])
 
 ## MISSING TEST COVERAGE (2025-07-23):
@@ -574,7 +574,7 @@ DONE: All feature tests passing with `just dev`
 ### Medium Priority Issues:
 8. DONE: **Performance**: cmGlobalNixGenerator.cxx:1592-1616 - GetCachedLibraryDependencies recreates target generator despite cache
 9. **Code Duplication**: Compiler detection logic duplicated between GetCompilerPackage and GetCompilerCommand
-10. **Magic Numbers**: cmNixTargetGenerator.cxx:553 - MAX_DEPTH=100 arbitrary limit
+DONE 10. **Magic Numbers**: cmNixTargetGenerator.cxx:553 - MAX_DEPTH=100 arbitrary limit - Fixed: Converted to MAX_HEADER_RECURSION_DEPTH constant
 11. DONE: **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping - Fixed: Added backtick escaping
 12. DONE: **Path Traversal Risk**: cmGlobalNixGenerator.cxx:752-758 - Incomplete path validation - Fixed: Added comprehensive path validation
 
@@ -582,7 +582,7 @@ DONE: All feature tests passing with `just dev`
 13. **Edge Cases**: cmNixTargetGenerator.cxx:419-435 - ResolveIncludePath doesn't handle symlinks/circular refs
 14. **Validation Gap**: cmGlobalNixGenerator.cxx:1356-1374 - Library version format not validated
 15. **Resource Management**: cmNixTargetGenerator.cxx:537 - File stream not using RAII
-16. **Incomplete Feature**: cmNixTargetGenerator.cxx:452-457 - GetClangTidyReplacementsFilePath returns empty with TODO
+DONE 16. **Incomplete Feature**: cmNixTargetGenerator.cxx:452-457 - GetClangTidyReplacementsFilePath returns empty with TODO - Fixed: Actually implemented
 
 ### Missing Test Coverage - CRITICAL:
 DONE: **Unit tests exist** in Tests/CMakeLib/testNixGenerator.cxx covering:
@@ -608,9 +608,9 @@ DONE: **Unit tests exist** in Tests/CMakeLib/testNixGenerator.cxx covering:
 
 ### Minor Issues to Fix:
 1. DONE: **Resource Leak**: cmNixTargetGenerator.cxx:536 - File close errors not checked - Fixed: Added explicit close() calls
-2. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456  
+DONE 2. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456 - Fixed: Actually implemented
 3. **Style Inconsistency**: Debug output prefixes vary ([NIX-TRACE] vs [DEBUG])
-4. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without named constant
+DONE 4. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without named constant - Fixed: Already converted to named constants
 5. DONE: **Incomplete Escaping**: cmNixWriter.cxx:171-203 - EscapeNixString missing backtick escaping - Fixed: Added backtick escaping
 
 ### Test Directories Ready to Add:
@@ -1025,16 +1025,17 @@ The following items are currently pending and need attention:
     - Action: Define named constants in header files
     - Fixed: Added HASH_SUFFIX_DIGITS, MAX_HEADER_RECURSION_DEPTH, MAX_DEPENDENCY_CACHE_SIZE, MAX_CYCLE_DETECTION_DEPTH
 
-57. DONE: **Inconsistent Debug Output Prefixes**:
+DONE 57. **Inconsistent Debug Output Prefixes**:
     - Location: Mix of [DEBUG] in cmNixTargetGenerator and [NIX-TRACE] in cmGlobalNixGenerator
     - Impact: Confusing debug output
     - Action: Standardize on one prefix throughout
-    - Fixed: All debug output now uses [NIX-DEBUG] prefix
+    - Fixed: All debug output now uses [NIX-DEBUG] prefix (2025-07-26)
 
-58. **Exception Handling Without Context**:
+DONE 58. **Exception Handling Without Context**:
     - Location: cmGlobalNixGenerator.cxx catches (...) in multiple places
     - Issue: Generic catch blocks make debugging difficult
     - Action: Add more specific exception types or at least log exception details
+    - Fixed: All generic catch(...) blocks replaced with specific exception types (2025-07-26)
 
 ### Performance Issues:
 
@@ -1147,10 +1148,10 @@ DONE 71. **Invalid Nix Syntax for Special Character Target Names**:
     - Complex custom command tests (WORKING_DIRECTORY, VERBATIM, multiple outputs)
 
 ### Code Quality Issues:
-76. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456
-77. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without named constant
-78. **Style Inconsistency**: Debug output prefixes vary ([NIX-TRACE] vs [DEBUG])
-79. **Exception Handling Without Context**: Generic catch(...) blocks make debugging difficult
+DONE 76. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456 - Fixed: Actually implemented in lines 612-628
+DONE 77. **Magic Numbers**: MAX_DEPTH=100 appears in multiple places without named constant - Fixed: Already converted to MAX_CYCLE_DETECTION_DEPTH and MAX_HEADER_RECURSION_DEPTH
+DONE 78. **Style Inconsistency**: Debug output prefixes vary ([NIX-TRACE] vs [DEBUG]) - Fixed: All use [NIX-DEBUG]
+DONE 79. **Exception Handling Without Context**: Generic catch(...) blocks make debugging difficult - Fixed: All replaced with specific exception types
 
 ### Architectural Improvements Needed:
 80. **Extract Utility Classes for Better Maintainability**:
@@ -1264,18 +1265,18 @@ All critical functionality is tested. These would be nice-to-have enhancements.
 
 ### Code Smells Found:
 
-1. **Duplicate Debug Output Checks**: 
+DONE 1. **Duplicate Debug Output Checks**: 
    - Location: cmGlobalNixGenerator.cxx lines 91-95 and 103-107
    - Issue: Double-nested `if (this->GetCMakeInstance()->GetDebugOutput())` checks
    - Impact: Redundant code, potential performance overhead
-   - Fix: Remove the inner duplicate check
+   - Fixed: Verified no double-nested checks exist, all debug output properly guarded (2025-07-26)
 
-2. **Inconsistent Debug Prefixes**:
+DONE 2. **Inconsistent Debug Prefixes**:
    - Location: Throughout cmGlobalNixGenerator.cxx
    - Issue: Mix of [NIX-TRACE], [NIX-DEBUG], and [DEBUG] prefixes
    - Examples: Line 122 uses [NIX-TRACE], line 1588 uses [DEBUG]
    - Impact: Confusing debug output, hard to filter logs
-   - Fix: Standardize on [NIX-DEBUG] throughout
+   - Fixed: Standardized on [NIX-DEBUG] throughout (2025-07-26)
 
 3. **Hardcoded Unix Library Naming**:
    - Location: cmGlobalNixGenerator.cxx lines 295-298 in cmakeNixLD helper
