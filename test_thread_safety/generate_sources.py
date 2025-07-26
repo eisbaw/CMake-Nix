@@ -3,6 +3,9 @@
 
 import os
 
+# Create src directory if it doesn't exist
+os.makedirs("src", exist_ok=True)
+
 # Generate library sources
 for i in range(1, 11):
     content = f"""#include <stdio.h>
