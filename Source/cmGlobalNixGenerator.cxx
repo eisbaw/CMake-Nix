@@ -229,22 +229,22 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("    dontFixup = true;");
   writer.WriteLine("    buildPhase = ''");
   writer.WriteLine("      mkdir -p \"$(dirname \"$out\")\"");
-  writer.WriteLine("      compilerBin=$(");
-  writer.WriteLine("        if [[ \"${compiler}\" == \"${gcc}\" ]]; then");
-  writer.WriteLine("          echo \"gcc\"");
-  writer.WriteLine("        elif [[ \"${compiler}\" == \"${clang}\" ]]; then");  
-  writer.WriteLine("          echo \"clang\"");
-  writer.WriteLine("        elif [[ \"${compiler}\" == \"${gfortran}\" ]]; then");
-  writer.WriteLine("          echo \"gfortran\"");
+  writer.WriteLine("      # Determine compiler binary name based on the compiler derivation");
+  writer.WriteLine("      compilerBin=\"${");
+  writer.WriteLine("        if compiler == gcc then");
+  writer.WriteLine("          \"gcc\"");
+  writer.WriteLine("        else if compiler == clang then");  
+  writer.WriteLine("          \"clang\"");
+  writer.WriteLine("        else if compiler == gfortran then");
+  writer.WriteLine("          \"gfortran\"");
   writer.WriteLine("        else");
-  writer.WriteLine("          echo \"${compiler.pname or \"cc\"}\"");
-  writer.WriteLine("        fi");
-  writer.WriteLine("      )");
+  writer.WriteLine("          compiler.pname or \"cc\"");
+  writer.WriteLine("      }\"");
   writer.WriteLine("      # When src is a directory, Nix unpacks it into a subdirectory");
   writer.WriteLine("      # We need to find the actual source file");
   writer.WriteLine("      # Store source in a variable to handle paths with spaces");
   writer.WriteLine("      sourceFile=\"${source}\"");
-  writer.WriteLine("      # Check if source is an absolute path or Nix expression (e.g., \\${derivation}/file)");
+  writer.WriteLine("      # Check if source is an absolute path or Nix expression (e.g., $\\{derivation}/file)");
   writer.WriteLine("      if [[ \"$sourceFile\" == /* ]] || [[ \"$sourceFile\" == *\"$\"* ]]; then");
   writer.WriteLine("        # Absolute path or Nix expression - use as-is");
   writer.WriteLine("        srcFile=\"$sourceFile\"");
@@ -1773,7 +1773,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   }
   
   // Write buildInputs list
-  nixFileStream << "    buildInputs = [";
+  nixFileStream << "    buildInputs = [ ";
   bool first = true;
   for (const std::string& input : buildInputs) {
     if (!first) nixFileStream << " ";
@@ -1783,7 +1783,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   nixFileStream << " ];\n";
   
   // Collect object file dependencies (reuse sources from above)
-  nixFileStream << "    objects = [";
+  nixFileStream << "    objects = [ ";
   
   // Get PCH sources to exclude from linking
   std::unordered_set<std::string> pchSources;
