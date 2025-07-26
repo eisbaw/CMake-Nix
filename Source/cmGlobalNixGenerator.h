@@ -21,6 +21,7 @@ class cmLocalGenerator;
 class cmMakefile;
 class cmake;
 class cmNixWriter;
+class cmNixCompilerResolver;
 
 /**
  * \class cmGlobalNixGenerator
@@ -34,6 +35,7 @@ class cmGlobalNixGenerator : public cmGlobalCommonGenerator
 {
 public:
   explicit cmGlobalNixGenerator(cmake* cm);
+  ~cmGlobalNixGenerator();
   
   static std::unique_ptr<cmGlobalGeneratorFactory> NewFactory()
   {
@@ -147,6 +149,9 @@ protected:
                                                const std::string& projectSourceRelPath);
   std::vector<std::string> FilterProjectHeaders(const std::vector<std::string>& headers);
   
+  // System path detection helper
+  bool IsSystemPath(const std::string& path) const;
+  
   // Helper methods for WriteLinkDerivation refactoring
   void WriteLinkDerivationHeader(cmGeneratedFileStream& nixFileStream,
                                  cmGeneratorTarget* target,
@@ -225,12 +230,13 @@ protected:
 
 private:
   
+  // Compiler resolution utility
+  mutable std::unique_ptr<cmNixCompilerResolver> CompilerResolver;
+  
   // Performance optimization: Cache frequently computed values
-  mutable std::map<std::string, std::string> CompilerPackageCache;
-  mutable std::map<std::string, std::string> CompilerCommandCache;
   mutable std::map<std::pair<cmGeneratorTarget*, std::string>, std::vector<std::string>> LibraryDependencyCache;
   mutable std::map<std::string, std::string> DerivationNameCache;
-  mutable std::mutex CacheMutex; // Protects all cache maps above
+  mutable std::mutex CacheMutex; // Protects cache maps above
   
   // Install rule tracking
   std::vector<cmGeneratorTarget*> InstallTargets;
@@ -240,8 +246,6 @@ private:
   static const std::string DefaultConfig;
   static const std::string CLanguage;
   static const std::string CXXLanguage;
-  static const std::string GccCompiler;
-  static const std::string ClangCompiler;
   
   // Numeric constants
   static constexpr int MAX_CYCLE_DETECTION_DEPTH = 100; // Maximum depth for cycle detection

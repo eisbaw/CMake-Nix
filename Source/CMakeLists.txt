@@ -801,6 +801,8 @@ add_library(
   cmNixPathUtils.h
   cmNixWriter.cxx
   cmNixWriter.h
+  cmNixCompilerResolver.cxx
+  cmNixCompilerResolver.h
 
   cm_get_date.h
   cm_get_date.c

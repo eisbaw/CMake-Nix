@@ -22,6 +22,7 @@
 #include "cmake.h"
 #include "cmNixTargetGenerator.h"
 #include "cmNixCustomCommandGenerator.h"
+#include "cmNixCompilerResolver.h"
 #include "cmInstallGenerator.h"
 #include "cmInstallTargetGenerator.h"
 #include "cmCustomCommand.h"
@@ -36,15 +37,16 @@
 const std::string cmGlobalNixGenerator::DefaultConfig = "Release";
 const std::string cmGlobalNixGenerator::CLanguage = "C";
 const std::string cmGlobalNixGenerator::CXXLanguage = "CXX";
-const std::string cmGlobalNixGenerator::GccCompiler = "gcc";
-const std::string cmGlobalNixGenerator::ClangCompiler = "clang";
 
 cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   : cmGlobalCommonGenerator(cm)
+  , CompilerResolver(std::make_unique<cmNixCompilerResolver>(cm))
 {
   // Set the make program file
   this->FindMakeProgramFile = "CMakeNixFindMake.cmake";
 }
+
+cmGlobalNixGenerator::~cmGlobalNixGenerator() = default;
 
 std::unique_ptr<cmLocalGenerator> cmGlobalNixGenerator::CreateLocalGenerator(
   cmMakefile* mf)
@@ -1248,7 +1250,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   nixFileStream << "    source = \"" << sourcePath << "\";\n";
   
   // Write compiler attribute (get from buildInputs[0])
-  nixFileStream << "    compiler = " << (!buildInputs.empty() ? buildInputs[0] : "gcc") << ";\n";
+  std::string defaultCompiler = this->GetCompilerPackage(lang);
+  nixFileStream << "    compiler = " << (!buildInputs.empty() ? buildInputs[0] : defaultCompiler) << ";\n";
   
   // Add -fPIC for shared and module libraries if not already present
   std::string allFlags = allCompileFlags;
@@ -1314,8 +1317,7 @@ bool cmGlobalNixGenerator::ValidateSourceFile(const cmSourceFile* source,
   
   // Check if resolved path is outside project directory (unless it's a system file)
   if (!cmSystemTools::IsSubDirectory(resolvedPath, resolvedProjectDir) &&
-      !cmSystemTools::IsSubDirectory(resolvedPath, "/usr") &&
-      !cmSystemTools::IsSubDirectory(resolvedPath, "/nix/store")) {
+      !this->IsSystemPath(resolvedPath)) {
     // Check if it's in the CMake build directory
     std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
     if (!cmSystemTools::IsSubDirectory(normalizedPath, buildDir)) {
@@ -1420,7 +1422,7 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
       std::string incPath = inc.Value;
       
       // Skip system include directories that would be provided by Nix
-      if (incPath == "/usr/include" || incPath.find("/nix/store/") == 0) {
+      if (this->IsSystemPath(incPath)) {
         continue;
       }
       
@@ -1781,13 +1783,9 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   // Pass the primary language to help select the right compiler binary
   std::string compilerCommand = this->GetCompilerCommand(primaryLang);
-  if (primaryLang == "CXX" && compilerPkg == "gcc") {
-    // For C++ with gcc package, we need to explicitly use g++
-    nixFileStream << "    compilerCommand = \"g++\";\n";
-  } else if (primaryLang == "Fortran" && compilerPkg == "gfortran") {
-    nixFileStream << "    compilerCommand = \"gfortran\";\n";
-  } else if (primaryLang == "CUDA") {
-    nixFileStream << "    compilerCommand = \"nvcc\";\n";
+  // Only write compilerCommand if it differs from the default (package name)
+  if (compilerCommand != compilerPkg) {
+    nixFileStream << "    compilerCommand = \"" << compilerCommand << "\";\n";
   }
   // For C and other languages, the default logic in cmakeNixLD will work
   
@@ -1882,163 +1880,20 @@ std::vector<std::string> cmGlobalNixGenerator::GetSourceDependencies(
 
 std::string cmGlobalNixGenerator::GetCompilerPackage(const std::string& lang) const
 {
-  // Check cache first
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    auto it = this->CompilerPackageCache.find(lang);
-    if (it != this->CompilerPackageCache.end()) {
-      return it->second;
-    }
-  }
+  std::string result = this->CompilerResolver->GetCompilerPackage(lang);
   
+  // Add cross-compilation suffix if needed
   cmake* cm = this->GetCMakeInstance();
-  std::string compilerIdVar = "CMAKE_" + lang + "_COMPILER_ID";
-  std::string compilerVar = "CMAKE_" + lang + "_COMPILER";
-  
-  cmValue compilerId = cm->GetState()->GetGlobalProperty(compilerIdVar);
-  if (!compilerId) {
-    compilerId = cm->GetCacheDefinition(compilerIdVar);
-  }
-
-  std::string result;
-  if (lang == "CUDA") {
-    // CUDA requires special package
-    result = "cudatoolkit";
-  } else if (lang == "Swift") {
-    // Swift requires special package
-    result = "swift";
-  } else if (lang == "ASM_NASM") {
-    // NASM requires special package
-    result = "nasm";
-  } else if (compilerId) {
-    std::string id = *compilerId;
-    if (id == "GNU") {
-      result = (lang == "Fortran") ? "gfortran" : "gcc";
-    } else if (id == "Clang" || id == "AppleClang") {
-      result = "clang";
-    } else if (id == "Intel") {
-      result = "intel-compiler";
-    } else if (id == "PGI") {
-      result = "pgi";
-    } else if (id == "MSVC") {
-      // For future Windows support
-      result = "msvc";
-    } else {
-      // Fallback to executable name
-      cmValue compiler = cm->GetCacheDefinition(compilerVar);
-      if(compiler) {
-        std::string compilerName = cmSystemTools::GetFilenameName(*compiler);
-        if (compilerName.find("clang") != std::string::npos) {
-          result = "clang";
-        } else if (compilerName.find("gcc") != std::string::npos) {
-          result = "gcc";
-        } else {
-          result = "gcc"; // Default fallback
-        }
-      } else {
-        result = "gcc"; // Default fallback
-      }
-    }
-  } else {
-    // Check for user-specified fallback package
-    std::string fallbackVar = "CMAKE_NIX_" + lang + "_COMPILER_PACKAGE";
-    cmValue fallbackPackage = cm->GetCacheDefinition(fallbackVar);
-    if (fallbackPackage && !fallbackPackage->empty()) {
-      result = *fallbackPackage;
-    } else {
-      // Default fallback packages
-      if (lang == "Fortran") {
-        result = "gfortran";
-      } else if (lang == "CUDA") {
-        result = "cudatoolkit";
-      } else if (lang == "Swift") {
-        result = "swift";
-      } else {
-        result = "gcc"; // Default for C/CXX/ASM
-      }
-    }
-  }
-
   if (cm->GetState()->GetGlobalPropertyAsBool("CMAKE_CROSSCOMPILING")) {
     result += "-cross";
   }
   
-  // Cache the result
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    this->CompilerPackageCache[lang] = result;
-  }
   return result;
 }
 
 std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) const
 {
-  // Check cache first
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    auto it = this->CompilerCommandCache.find(lang);
-    if (it != this->CompilerCommandCache.end()) {
-      return it->second;
-    }
-  }
-  
-  // In Nix, we use the compiler from the Nix package
-  // The actual command depends on the package and language
-  std::string compilerPkg = this->GetCompilerPackage(lang);
-  
-  std::string result;
-  if (lang == "Fortran") {
-    if (compilerPkg == "gcc") {
-      result = "gfortran";
-    } else if (compilerPkg == "intel-compiler") {
-      result = "ifort";
-    } else {
-      result = "gfortran"; // Default Fortran compiler
-    }
-  } else if (lang == "CUDA") {
-    result = "nvcc"; // NVIDIA CUDA compiler
-  } else if (lang == "Swift") {
-    result = "swiftc"; // Swift compiler
-  } else if (lang == "ASM" || lang == "ASM-ATT") {
-    // Assembly language - use the same compiler as C
-    result = (compilerPkg == "clang") ? "clang" : "gcc";
-  } else if (lang == "ASM_NASM") {
-    result = "nasm"; // NASM assembler
-  } else if (lang == "ASM_MASM") {
-    result = "ml"; // MASM assembler (for Windows compatibility)
-  } else if (compilerPkg == "gcc") {
-    result = (lang == "CXX") ? "g++" : "gcc";
-  } else if (compilerPkg == "clang") {
-    result = (lang == "CXX") ? "clang++" : "clang";
-  } else {
-    // Check for user-specified fallback command
-    cmake* cm = this->GetCMakeInstance();
-    std::string fallbackVar = "CMAKE_NIX_" + lang + "_COMPILER_COMMAND";
-    cmValue fallbackCommand = cm->GetCacheDefinition(fallbackVar);
-    if (fallbackCommand && !fallbackCommand->empty()) {
-      result = *fallbackCommand;
-    } else {
-      // Default fallback commands
-      if (lang == "Fortran") {
-        result = "gfortran";
-      } else if (lang == "CUDA") {
-        result = "nvcc";
-      } else if (lang == "Swift") {
-        result = "swiftc";
-      } else if (lang == "CXX") {
-        result = "g++";
-      } else {
-        result = "gcc";
-      }
-    }
-  }
-  
-  // Cache the result
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    this->CompilerCommandCache[lang] = result;
-  }
-  return result;
+  return this->CompilerResolver->GetCompilerCommand(lang);
 }
 
 std::string cmGlobalNixGenerator::GetBuildConfiguration(cmGeneratorTarget* target) const
@@ -2723,13 +2578,19 @@ std::vector<std::string> cmGlobalNixGenerator::FilterProjectHeaders(
   std::vector<std::string> projectHeaders;
   
   for (const std::string& header : headers) {
-    // Skip headers from Nix store - they're provided by buildInputs packages
-    if (header.find("/nix/store/") != std::string::npos) {
+    // Skip system headers
+    if (this->IsSystemPath(header)) {
       continue;
     }
     // Skip absolute paths outside project (system headers)
     if (cmSystemTools::FileIsFullPath(header)) {
-      continue;
+      // Check if it's in the project or build directory
+      std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
+      std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+      if (!cmSystemTools::IsSubDirectory(header, projectDir) &&
+          !cmSystemTools::IsSubDirectory(header, buildDir)) {
+        continue;
+      }
     }
     // Skip configuration-time generated files that are already in composite source
     // These would have paths like "build/zephyr/include/..." when build != source
@@ -2740,4 +2601,40 @@ std::vector<std::string> cmGlobalNixGenerator::FilterProjectHeaders(
   }
   
   return projectHeaders;
+}
+
+bool cmGlobalNixGenerator::IsSystemPath(const std::string& path) const
+{
+  // Check for CMAKE_NIX_SYSTEM_PATH_PREFIXES variable
+  cmake* cm = this->GetCMakeInstance();
+  cmValue systemPaths = cm->GetCacheDefinition("CMAKE_NIX_SYSTEM_PATH_PREFIXES");
+  
+  if (systemPaths && !systemPaths->empty()) {
+    // User-defined system path prefixes (semicolon-separated)
+    std::vector<std::string> prefixes;
+    cmExpandList(*systemPaths, prefixes);
+    for (const auto& prefix : prefixes) {
+      if (cmSystemTools::IsSubDirectory(path, prefix)) {
+        return true;
+      }
+    }
+  } else {
+    // Default system paths
+    static const std::vector<std::string> defaultSystemPaths = {
+      "/usr",
+      "/nix/store",
+      "/opt",
+      "/usr/local",
+      "/System",  // macOS
+      "/Library"  // macOS
+    };
+    
+    for (const auto& systemPath : defaultSystemPaths) {
+      if (cmSystemTools::IsSubDirectory(path, systemPath)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
 } 
