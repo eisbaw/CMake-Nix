@@ -31,6 +31,15 @@ error: path '/home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases
 
 Update PRD.md with best-practices and guidelines we have used for Nix generator.
 
+Always emit "mkdir -p $out" in the Nix file - we can't test for the dir at generation-time.
+
+Move tasks from this todo.md to use https://github.com/MrLesk/Backlog.md . Move both tasks that are done and new tasks. Install the backlog tool, and when it works update this todo.md to be a shallow file that instructs Claude to add and pickup tasks from backlog tool using the backlog CLI. Be sure to read the readme of backlog project first. Place a git tag "backlog-init" when committed.
+
+Look at git log with git notes again. The git notes contain review comments. Fix the review comments.
+
+I dont like having a limit on the amount of headers. BUt we should not copy the headers for every single source file to be compiled. Rather, collect all the headers into a derivation that we then can refer to more easily - and this will limit copying.
+
+
 
 
 DONE - Fixed test_external_tools call in justfile

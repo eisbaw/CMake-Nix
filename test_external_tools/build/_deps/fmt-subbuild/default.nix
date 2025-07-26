@@ -18,6 +18,7 @@ let
     inherit name src buildInputs propagatedInputs;
     dontFixup = true;
     buildPhase = ''
+      mkdir -p "$(dirname "$out")"
       compilerBin=$(
         if [[ "${compiler}" == "${gcc}" ]]; then
           echo "gcc"
@@ -29,7 +30,17 @@ let
           echo "${compiler.pname or "cc"}"
         fi
       )
-      ${compiler}/bin/$compilerBin -c ${flags} "${source}" -o "$out"
+      # When src is a directory, Nix unpacks it into a subdirectory
+      # We need to find the actual source file
+      if [[ -f "${source}" ]]; then
+        srcFile="${source}"
+      elif [[ -f "$(basename "$src")/${source}" ]]; then
+        srcFile="$(basename "$src")/${source}"
+      else
+        echo "Error: Cannot find source file ${source}"
+        exit 1
+      fi
+      ${compiler}/bin/$compilerBin -c ${flags} "$srcFile" -o "$out"
     '';
     installPhase = "true";
   };
@@ -55,6 +66,7 @@ let
     buildPhase =
       if type == "static" then ''
         # Unix static library: uses 'ar' to create lib*.a files
+        mkdir -p "$(dirname "$out")"
         ar rcs "$out" $objects
       '' else if type == "shared" || type == "module" then ''
         mkdir -p $out
@@ -83,6 +95,7 @@ let
           '' else ""}
         '' else ""}
       '' else ''
+        mkdir -p "$(dirname "$out")"
         compilerBin=${if compilerCommand != null then
           compilerCommand
         else if compiler == gcc then

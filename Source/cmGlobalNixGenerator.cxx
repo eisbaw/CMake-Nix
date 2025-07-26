@@ -131,21 +131,9 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   // For Nix generator, we use nix-build as the build program
   makeCommand.Add(this->SelectMakeProgram(makeProgram, "nix-build"));
   
-  // For try_compile, look for default.nix in the scratch directory without suffix
+  // For try_compile, use the actual project directory
   if (isTryCompile) {
-    // Extract the base scratch directory (remove numeric suffix if present)
-    std::string scratchDir = projectDir;
-    size_t underscorePos = scratchDir.find_last_of('_');
-    if (underscorePos != std::string::npos) {
-      // Check if everything after the underscore is numeric
-      std::string suffix = scratchDir.substr(underscorePos + 1);
-      bool isNumeric = !suffix.empty() && std::all_of(suffix.begin(), suffix.end(), 
-        [](unsigned char c) { return c >= '0' && c <= '9'; });
-      if (isNumeric) {
-        scratchDir = scratchDir.substr(0, underscorePos);
-      }
-    }
-    makeCommand.Add(scratchDir + "/default.nix");
+    makeCommand.Add(projectDir + "/default.nix");
   } else {
     // Add default.nix file  
     makeCommand.Add("default.nix");
@@ -240,6 +228,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("    inherit name src buildInputs propagatedInputs;");
   writer.WriteLine("    dontFixup = true;");
   writer.WriteLine("    buildPhase = ''");
+  writer.WriteLine("      mkdir -p \"$(dirname \"$out\")\"");
   writer.WriteLine("      compilerBin=$(");
   writer.WriteLine("        if [[ \"${compiler}\" == \"${gcc}\" ]]; then");
   writer.WriteLine("          echo \"gcc\"");
@@ -251,7 +240,17 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("          echo \"${compiler.pname or \"cc\"}\"");
   writer.WriteLine("        fi");
   writer.WriteLine("      )");
-  writer.WriteLine("      ${compiler}/bin/$compilerBin -c ${flags} \"${source}\" -o \"$out\"");
+  writer.WriteLine("      # When src is a directory, Nix unpacks it into a subdirectory");
+  writer.WriteLine("      # We need to find the actual source file");
+  writer.WriteLine("      if [[ -f \"${source}\" ]]; then");
+  writer.WriteLine("        srcFile=\"${source}\"");
+  writer.WriteLine("      elif [[ -f \"$(basename \"$src\")/${source}\" ]]; then");
+  writer.WriteLine("        srcFile=\"$(basename \"$src\")/${source}\"");
+  writer.WriteLine("      else");
+  writer.WriteLine("        echo \"Error: Cannot find source file ${source}\"");
+  writer.WriteLine("        exit 1");
+  writer.WriteLine("      fi");
+  writer.WriteLine("      ${compiler}/bin/$compilerBin -c ${flags} \"$srcFile\" -o \"$out\"");
   writer.WriteLine("    '';");
   writer.WriteLine("    installPhase = \"true\";");
   writer.WriteLine("  };");
@@ -281,6 +280,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("    buildPhase =");
   writer.WriteLine("      if type == \"static\" then ''");
   writer.WriteLine("        # Unix static library: uses 'ar' to create lib*.a files");
+  writer.WriteLine("        mkdir -p \"$(dirname \"$out\")\"");
   writer.WriteLine("        ar rcs \"$out\" $objects");
   writer.WriteLine("      '' else if type == \"shared\" || type == \"module\" then ''");
   writer.WriteLine("        mkdir -p $out");
@@ -309,6 +309,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("          '' else \"\"}");
   writer.WriteLine("        '' else \"\"}");
   writer.WriteLine("      '' else ''");
+  writer.WriteLine("        mkdir -p \"$(dirname \"$out\")\"");
   writer.WriteLine("        compilerBin=${if compilerCommand != null then");
   writer.WriteLine("          compilerCommand");
   writer.WriteLine("        else if compiler == gcc then");
@@ -1286,6 +1287,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   } else {
     // All files (source and generated) - use relative path from source directory
     std::string projectSourceDir = this->GetCMakeInstance()->GetHomeDirectory();
+    std::string projectBuildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
     std::string sourceFileRelativePath = cmSystemTools::RelativePath(projectSourceDir, sourceFile);
     
     // Check if this is an external file (outside project tree)
@@ -1295,7 +1297,22 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       sourcePath = fileName;
     } else {
       // File within project tree (source or generated)
-      sourcePath = sourceFileRelativePath;
+      // Check if file is in build directory for out-of-source builds
+      if (projectSourceDir != projectBuildDir && sourceFile.find(projectBuildDir) == 0) {
+        // File is in build directory - calculate path relative to build dir
+        std::string buildRelativePath = cmSystemTools::RelativePath(projectBuildDir, sourceFile);
+        
+        // For out-of-source builds, prefix with build directory relative path
+        std::string srcToBuildRelPath = cmSystemTools::RelativePath(projectSourceDir, projectBuildDir);
+        if (!srcToBuildRelPath.empty()) {
+          sourcePath = srcToBuildRelPath + "/" + buildRelativePath;
+        } else {
+          sourcePath = buildRelativePath;
+        }
+      } else {
+        // File is in source directory
+        sourcePath = sourceFileRelativePath;
+      }
     }
   }
   
