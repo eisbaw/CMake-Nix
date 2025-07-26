@@ -1200,12 +1200,12 @@ The CMake Nix backend is in excellent condition with only minor refactoring oppo
 ## CODE SMELLS FOUND (2025-07-26)
 
 ### Major Issue Found:
-1. **Inconsistent Debug Output Control**: Debug statements use different methods
-   - Some use GetDebugOutput()
-   - Some use CMAKE_NIX_DEBUG environment variable 
-   - Some have no check at all (lines 508-509, 530-533, 672-674, 690-691)
-   - Should standardize on GetDebugOutput() for all debug output
-   - Impact: Verbose output in production builds
+1. DONE: **Inconsistent Debug Output Control**: Debug statements use different methods
+   - Fixed: All debug output now uses GetDebugOutput()
+   - Fixed: Replaced CMAKE_NIX_DEBUG with GetDebugOutput() checks
+   - Fixed: All unguarded debug outputs now properly checked
+   - Fixed: Changed all [NIX-TRACE] and [DEBUG] prefixes to [NIX-DEBUG]
+   - Fixed: Warning outputs now use IssueMessage() instead of std::cerr
 
 ### Minor Issues:
 2. **Repeated Debug Output Pattern**: GetCMakeInstance()->GetDebugOutput() check is repeated many times
@@ -1230,22 +1230,20 @@ The CMake Nix backend is in excellent condition with only minor refactoring oppo
 
 Based on review of todo.md and existing tests, the following tests need to be created:
 
-1. **test_external_tools**: ExternalProject_Add and FetchContent support
-   - Test downloading external dependencies
-   - Test integration with CMake's ExternalProject module
-   - Priority: Medium (item 553 in todo.md)
+1. DONE: **test_external_tools**: ExternalProject_Add and FetchContent support
+   - Created test showing that these tools conflict with Nix's pure build philosophy
+   - Documented recommended alternatives (find_package, Git submodules, Nix flakes)
+   - Test demonstrates the Nix generator creates default.nix but external downloads fail in sandbox
 
-2. **test_file_edge_cases**: File names with special characters
-   - Test spaces in file/target names
-   - Test unicode characters in paths
-   - Test symlinks handling
-   - Priority: Medium (item 556 in todo.md)
+2. DONE: **test_file_edge_cases**: File names with special characters
+   - Created comprehensive test for spaces, dots, dashes, unicode, and symlinks
+   - Test shows which edge cases work and which fail due to Nix naming restrictions
+   - Documents Nix attribute naming rules and how the generator handles special characters
 
-3. **test_nix_tools**: Integration with Nix evaluation tools
-   - Test nix-build --dry-run output
-   - Test nix-instantiate evaluation
-   - Verify Nix expression syntax correctness
-   - Priority: Medium (item 1101 in todo.md)
+3. DONE: **test_nix_tools**: Integration with Nix evaluation tools
+   - Created test demonstrating nix-instantiate, nix-build --dry-run, nix eval
+   - Shows nix-store queries for dependencies and closure size
+   - Verifies generated expressions work with all major Nix evaluation tools
 
 4. **test_large_scale**: Enhance existing test_scale for 1000+ files
    - Current test_scale may need enhancement for truly large projects
