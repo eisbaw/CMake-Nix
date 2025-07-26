@@ -401,27 +401,24 @@ void cmGlobalNixGenerator::WriteNixFile()
                 }
               }
             }
+          } catch (const std::bad_alloc& e) {
+            std::ostringstream msg;
+            msg << "Out of memory in custom command processing for " << cc->GetComment();
+            this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+          } catch (const std::system_error& e) {
+            std::ostringstream msg;
+            msg << "System error in custom command processing for " << cc->GetComment()
+                << ": " << e.what() << " (code: " << e.code() << ")";
+            this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+          } catch (const std::runtime_error& e) {
+            std::ostringstream msg;
+            msg << "Runtime error in custom command processing for " << cc->GetComment() 
+                << ": " << e.what();
+            this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
           } catch (const std::exception& e) {
             std::ostringstream msg;
             msg << "Exception in custom command processing for " << cc->GetComment() 
                 << ": " << e.what();
-            this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-          } catch (...) {
-            std::ostringstream msg;
-            msg << "Unknown exception in custom command processing for " << cc->GetComment()
-                << " (possible causes: out of memory, filesystem error, or system exception)";
-            
-            // Try to get current exception info if available
-            try {
-              std::rethrow_exception(std::current_exception());
-            } catch (const std::bad_alloc&) {
-              msg << " - detected: out of memory";
-            } catch (const std::system_error& se) {
-              msg << " - detected: system error (" << se.code() << ")";
-            } catch (...) {
-              // Can't determine exact type
-            }
-            
             this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
           }
         }
@@ -716,26 +713,22 @@ void cmGlobalNixGenerator::WriteNixFile()
       }
       cmNixCustomCommandGenerator ccg(info->Command, info->LocalGen, config);
       ccg.Generate(nixFileStream);
+    } catch (const std::bad_alloc& e) {
+      std::ostringstream msg;
+      msg << "Out of memory writing custom command " << info->DerivationName;
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    } catch (const std::system_error& e) {
+      std::ostringstream msg;
+      msg << "System error writing custom command " << info->DerivationName 
+          << ": " << e.what() << " (code: " << e.code() << ")";
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    } catch (const std::runtime_error& e) {
+      std::ostringstream msg;
+      msg << "Runtime error writing custom command " << info->DerivationName << ": " << e.what();
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
     } catch (const std::exception& e) {
       std::ostringstream msg;
       msg << "Exception writing custom command " << info->DerivationName << ": " << e.what();
-      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-    } catch (...) {
-      std::ostringstream msg;
-      msg << "Unknown exception writing custom command " << info->DerivationName 
-          << " (possible causes: out of memory, filesystem error, or system exception)";
-      
-      // Try to get current exception info if available
-      try {
-        std::rethrow_exception(std::current_exception());
-      } catch (const std::bad_alloc&) {
-        msg << " - detected: out of memory";
-      } catch (const std::system_error& se) {
-        msg << " - detected: system error (" << se.code() << ")";
-      } catch (...) {
-        // Can't determine exact type
-      }
-      
       this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
     }
   }

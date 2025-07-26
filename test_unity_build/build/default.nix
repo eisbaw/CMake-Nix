@@ -60,6 +60,8 @@ let
           "gcc"
         else if compiler == clang then
           "clang"
+        else if compiler == gfortran then
+          "gfortran"
         else
           compiler.pname or "cc"
         }
@@ -82,6 +84,8 @@ let
           "gcc"
         else if compiler == clang then
           "clang"
+        else if compiler == gfortran then
+          "gfortran"
         else
           compiler.pname or "cc"
         }

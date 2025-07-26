@@ -205,30 +205,33 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
       
       return uniqueDeps;
     }
-  } catch (const std::exception& e) {
-    // Log the specific exception before falling back
+  } catch (const std::bad_alloc& e) {
+    // Handle out of memory specifically
     if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Exception in ScanWithCompiler for " 
+      std::cerr << "[NIX-DEBUG] Out of memory in ScanWithCompiler for " 
+                << source->GetFullPath() << std::endl;
+    }
+    // Fall back to other methods if compiler scanning fails
+  } catch (const std::system_error& e) {
+    // Handle system errors (file I/O, process execution)
+    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] System error in ScanWithCompiler for " 
+                << source->GetFullPath() << ": " << e.what() 
+                << " (code: " << e.code() << ")" << std::endl;
+    }
+    // Fall back to other methods if compiler scanning fails
+  } catch (const std::runtime_error& e) {
+    // Handle runtime errors (command execution failures)
+    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Runtime error in ScanWithCompiler for " 
                 << source->GetFullPath() << ": " << e.what() << std::endl;
     }
     // Fall back to other methods if compiler scanning fails
-  } catch (...) {
-    // Log unknown exception before falling back
+  } catch (const std::exception& e) {
+    // Handle any other standard exceptions
     if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Unknown exception in ScanWithCompiler for " 
-                << source->GetFullPath();
-      
-      // Try to get current exception info if available
-      try {
-        std::rethrow_exception(std::current_exception());
-      } catch (const std::bad_alloc&) {
-        std::cerr << " - detected: out of memory";
-      } catch (const std::system_error& se) {
-        std::cerr << " - detected: system error (" << se.code() << ")";
-      } catch (...) {
-        std::cerr << " - type: unknown";
-      }
-      std::cerr << std::endl;
+      std::cerr << "[NIX-DEBUG] Exception in ScanWithCompiler for " 
+                << source->GetFullPath() << ": " << e.what() << std::endl;
     }
     // Fall back to other methods if compiler scanning fails
   }
