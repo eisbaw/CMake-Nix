@@ -25,7 +25,12 @@ DONE - Look at git log with git notes again. The git notes contain review commen
      - Made error handling stricter for dangerous characters in paths (returns false now)
      - Allow CMake internal files (like ABI tests) outside project directory with warning
 
-I dont like having a limit on the amount of headers. BUt we should not copy the headers for every single source file to be compiled. Rather, collect all the headers into a derivation that we then can refer to more easily - and this will limit copying.
+DONE - I dont like having a limit on the amount of headers. BUt we should not copy the headers for every single source file to be compiled. Rather, collect all the headers into a derivation that we then can refer to more easily - and this will limit copying.
+     - Implemented external header derivations that collect all headers for a source directory
+     - Each external source directory gets one shared header derivation
+     - Object derivations reference the header derivation instead of copying headers individually
+     - Removes need for MAX_EXTERNAL_HEADERS_PER_SOURCE limit
+     - More efficient and scalable for projects with many external headers
 
 
 DONE - Always emit "mkdir -p $out" in the Nix file - we can't test for the dir at generation-time.
@@ -43,7 +48,12 @@ DONE - Look at git log with git notes again. The git notes contain review commen
      - Made error handling stricter for dangerous characters in paths (returns false now)
      - Allow CMake internal files (like ABI tests) outside project directory with warning
 
-I dont like having a limit on the amount of headers. BUt we should not copy the headers for every single source file to be compiled. Rather, collect all the headers into a derivation that we then can refer to more easily - and this will limit copying.
+DONE - I dont like having a limit on the amount of headers. BUt we should not copy the headers for every single source file to be compiled. Rather, collect all the headers into a derivation that we then can refer to more easily - and this will limit copying.
+     - Implemented external header derivations that collect all headers for a source directory
+     - Each external source directory gets one shared header derivation
+     - Object derivations reference the header derivation instead of copying headers individually
+     - Removes need for MAX_EXTERNAL_HEADERS_PER_SOURCE limit
+     - More efficient and scalable for projects with many external headers
 
 
 

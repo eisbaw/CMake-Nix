@@ -347,8 +347,13 @@ This PRD provides a comprehensive roadmap for implementing a Nix backend that le
 - Compiler auto-detection with user overrides
 - Full test suite with 14+ test projects
 
+**Recent Improvements** (2025-01-26):
+- ✅ Implemented unified header derivation for external sources
+  - Shared header derivations reduce copying overhead
+  - Scalable solution for projects with many external headers
+  - Automatic header collection per source directory
+
 **Future Improvements** (Low Priority):
-- Unified header derivation to reduce copying overhead
 - Enhanced Git notes integration for review workflow
 - Backlog.md tool integration (pending NixOS compatibility)
 
@@ -420,9 +425,10 @@ nix-build -A my_target
 - Set `CMAKE_NIX_EXTERNAL_HEADER_LIMIT` to control header copying
 - Use `CMAKE_NIX_EXPLICIT_SOURCES=ON` for precise source tracking
 - Consider breaking large targets into smaller libraries
-- **Header Management**: For projects with many headers, consider:
-  - Using CMAKE_NIX_EXTERNAL_HEADER_LIMIT to limit per-source header copying
-  - Future: Unified header derivation to reduce redundant copying (planned)
+- **Header Management**: For projects with many headers:
+  - External headers are automatically collected into shared derivations
+  - No more per-source header copying limits needed
+  - Efficient handling of projects with thousands of headers
 
 #### Debugging Build Issues
 ```bash
