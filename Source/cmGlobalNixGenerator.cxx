@@ -244,7 +244,11 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("      # We need to find the actual source file");
   writer.WriteLine("      # Store source in a variable to handle paths with spaces");
   writer.WriteLine("      sourceFile=\"${source}\"");
-  writer.WriteLine("      if [[ -f \"$sourceFile\" ]]; then");
+  writer.WriteLine("      # Check if source is an absolute path or Nix expression (e.g., \\${derivation}/file)");
+  writer.WriteLine("      if [[ \"$sourceFile\" == /* ]] || [[ \"$sourceFile\" == *\"$\"* ]]; then");
+  writer.WriteLine("        # Absolute path or Nix expression - use as-is");
+  writer.WriteLine("        srcFile=\"$sourceFile\"");
+  writer.WriteLine("      elif [[ -f \"$sourceFile\" ]]; then");
   writer.WriteLine("        srcFile=\"$sourceFile\"");
   writer.WriteLine("      elif [[ -f \"$(basename \"$src\")/$sourceFile\" ]]; then");
   writer.WriteLine("        srcFile=\"$(basename \"$src\")/$sourceFile\"");
@@ -286,7 +290,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        ar rcs \"$out\" $objects");
   writer.WriteLine("      '' else if type == \"shared\" || type == \"module\" then ''");
   writer.WriteLine("        mkdir -p $out");
-  writer.WriteLine("        compilerBin=${if compilerCommand != null then");
+  writer.WriteLine("        compilerBin=\"${if compilerCommand != null then");
   writer.WriteLine("          compilerCommand");
   writer.WriteLine("        else if compiler == gcc then");
   writer.WriteLine("          \"gcc\"");
@@ -296,7 +300,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("          \"gfortran\"");
   writer.WriteLine("        else");
   writer.WriteLine("          compiler.pname or \"cc\"");
-  writer.WriteLine("        }");
+  writer.WriteLine("        }\";");
   writer.WriteLine("        # Unix library naming: static=lib*.a, shared=lib*.so, module=*.so");
   writer.WriteLine("        libname=\"${if type == \"module\" then name else \"lib\" + name}.so\"");
   writer.WriteLine("        ${if version != null && type != \"module\" then ''");
@@ -312,7 +316,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        '' else \"\"}");
   writer.WriteLine("      '' else ''");
   writer.WriteLine("        mkdir -p \"$(dirname \"$out\")\"");
-  writer.WriteLine("        compilerBin=${if compilerCommand != null then");
+  writer.WriteLine("        compilerBin=\"${if compilerCommand != null then");
   writer.WriteLine("          compilerCommand");
   writer.WriteLine("        else if compiler == gcc then");
   writer.WriteLine("          \"gcc\"");
@@ -322,7 +326,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("          \"gfortran\"");
   writer.WriteLine("        else");
   writer.WriteLine("          compiler.pname or \"cc\"");
-  writer.WriteLine("        }");
+  writer.WriteLine("        }\";");
   writer.WriteLine("        ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out\"");
   writer.WriteLine("      '';");
   writer.WriteLine("    inherit postBuildPhase;");
@@ -1318,7 +1322,12 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
   }
   
-  nixFileStream << "    source = \"" << cmNixWriter::EscapeNixString(sourcePath) << "\";\n";
+  // Don't escape Nix expressions (those containing ${...})
+  if (sourcePath.find("${") != std::string::npos) {
+    nixFileStream << "    source = \"" << sourcePath << "\";\n";
+  } else {
+    nixFileStream << "    source = \"" << cmNixWriter::EscapeNixString(sourcePath) << "\";\n";
+  }
   
   // Write compiler attribute (get from buildInputs[0])
   std::string defaultCompiler = this->GetCompilerPackage(lang);

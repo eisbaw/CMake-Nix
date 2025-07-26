@@ -32,12 +32,14 @@ let
       )
       # When src is a directory, Nix unpacks it into a subdirectory
       # We need to find the actual source file
-      if [[ -f "${source}" ]]; then
-        srcFile="${source}"
-      elif [[ -f "$(basename "$src")/${source}" ]]; then
-        srcFile="$(basename "$src")/${source}"
+      # Store source in a variable to handle paths with spaces
+      sourceFile="${source}"
+      if [[ -f "$sourceFile" ]]; then
+        srcFile="$sourceFile"
+      elif [[ -f "$(basename "$src")/$sourceFile" ]]; then
+        srcFile="$(basename "$src")/$sourceFile"
       else
-        echo "Error: Cannot find source file ${source}"
+        echo "Error: Cannot find source file $sourceFile"
         exit 1
       fi
       ${compiler}/bin/$compilerBin -c ${flags} "$srcFile" -o "$out"
