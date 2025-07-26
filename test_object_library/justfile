@@ -8,7 +8,7 @@ default:
 # Configure the project
 configure:
     rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Build and run the calculator
 run: configure

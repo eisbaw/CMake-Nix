@@ -7,7 +7,7 @@ clean:
 # Configure the project with CMake using Nix generator
 configure:
     rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Build and run the test
 run: clean configure

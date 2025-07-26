@@ -4,14 +4,14 @@
 # Test the integration application
 run:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
     @echo "=== Building package integration application ==="
     nix-build -A integration_app && ./result && rm ./result
 
 # Test the threaded library independently
 run-lib:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
     @echo "=== Building threaded library ==="
     nix-build --no-out-link -A threaded_lib
 
@@ -24,7 +24,7 @@ test-all: run run-lib
 # Check which packages were found and linked
 check-packages:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
     @echo "=== Checking linked packages ==="
     @grep -E "(zlib|openssl|curl|libpng)" default.nix || echo "Optional packages not found"
     @echo "=== Checking pthread linking ==="

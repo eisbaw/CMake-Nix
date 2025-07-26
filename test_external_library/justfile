@@ -4,7 +4,7 @@
 # Generate Nix files for external library test
 generate:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Build and run the math program
 run: generate

@@ -3,12 +3,12 @@
 # Configure with explicit sources enabled
 configure:
     rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_NIX_EXPLICIT_SOURCES=ON .
+    ../bin/cmake -G Nix -DCMAKE_NIX_EXPLICIT_SOURCES=ON .
 
 # Configure without explicit sources (default)
 configure-default:
     rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Build with explicit sources
 build: configure

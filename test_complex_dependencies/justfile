@@ -4,14 +4,14 @@
 # Test the main application (transitive dependencies)
 run:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
     @echo "=== Building complex application (transitive deps) ==="
     nix-build -A complex_app && ./result && rm ./result
 
 # Test direct dependencies application
 run-direct:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
     @echo "=== Building direct dependencies application ==="
     nix-build -A direct_app && ./result && rm ./result
 
@@ -29,7 +29,7 @@ test-all: run run-direct
 # Check dependency structure in generated Nix
 check-deps:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
     @echo "=== Checking library dependencies ==="
     @grep -E "(buildInputs.*base_utils|buildInputs.*math_lib)" default.nix || echo "Dependencies not found"
     @echo "=== Checking string interpolation ==="

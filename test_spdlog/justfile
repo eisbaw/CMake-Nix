@@ -2,7 +2,7 @@
 
 # Configure spdlog with Nix generator
 configure:
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S spdlog -B build
+    ../bin/cmake -G Nix -S spdlog -B build
 
 # Build spdlog library
 build-lib: configure

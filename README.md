@@ -6,7 +6,7 @@ A production-ready CMake generator that produces Nix expressions for building C/
 
 ```bash
 # Configure your CMake project to use the Nix generator
-cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
 
 # Build specific targets
 nix-build -A my_executable

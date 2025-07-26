@@ -3,12 +3,12 @@
 # Configure for native build
 configure-native:
     rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Configure for ARM cross-compilation (simulation)
 configure-arm:
     rm -f default.nix
-    -../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_TOOLCHAIN_FILE=toolchain-arm.cmake . 2>&1 | tee cross-config.log
+    -../bin/cmake -G Nix -DCMAKE_TOOLCHAIN_FILE=toolchain-arm.cmake . 2>&1 | tee cross-config.log
 
 # Build native version
 build-native: configure-native

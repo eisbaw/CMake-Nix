@@ -14,7 +14,7 @@ run:
     
     # Configure with Nix generator (expect this to fail)
     echo "Configuring project..."
-    if ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build 2>&1; then
+    if ../bin/cmake -G Nix -S . -B build 2>&1; then
         echo "❌ Configuration succeeded unexpectedly!"
         echo "Expected configuration to fail due to FetchContent incompatibility"
         exit 1

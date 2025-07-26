@@ -53,11 +53,9 @@ To configure a project with the Nix generator:
 
   $ cmake -G Nix [options] <path-to-source>
 
-The ``CMAKE_MAKE_PROGRAM`` variable should be set to ``nix-build``:
-
-.. code-block:: console
-
-  $ cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build <path-to-source>
+The generator automatically detects and uses ``nix-build`` as the build program. 
+If ``nix-build`` is not in your PATH, it will default to using ``nix-build`` anyway, 
+assuming it will be available when needed.
 
 To build targets, use ``nix-build`` with the appropriate target name:
 
@@ -197,7 +195,7 @@ Configure and build:
 
 .. code-block:: console
 
-  $ cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+  $ cmake -G Nix .
   $ nix-build -A hello
   $ ./result
 
@@ -221,7 +219,7 @@ Configure and build:
 
 .. code-block:: console
 
-  $ cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+  $ cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
   $ nix-build -A myapp
   $ nix-build -A mylib  
   $ nix-build -A myapp_install

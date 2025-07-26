@@ -7,7 +7,7 @@ generate:
 # Configure with Nix generator
 configure:
     rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Build with parallel jobs to test thread safety
 build-parallel: configure

@@ -4,17 +4,17 @@
 # Generate Nix files for headers test
 generate:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Generate Debug configuration
 generate-debug:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_BUILD_TYPE=Debug .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug .
 
 # Generate Release configuration  
 generate-release:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_BUILD_TYPE=Release .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
 
 # Build and run the test project
 run: generate

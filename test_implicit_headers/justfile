@@ -4,12 +4,12 @@
 # Generate Nix files for implicit headers test
 generate:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Generate Debug configuration
 generate-debug:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -DCMAKE_BUILD_TYPE=Debug .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug .
 
 # Build and run the calc app
 run: generate

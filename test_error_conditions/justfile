@@ -4,7 +4,7 @@
 # Generate Nix files (may produce errors/warnings)
 generate:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Try to build valid targets only (skip missing/invalid ones)
 run: generate

@@ -13,7 +13,7 @@ run:
     
     # Configure with Nix generator
     echo "1. Configuring project..."
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build
+    ../bin/cmake -G Nix -S . -B build
     
     cd build
     

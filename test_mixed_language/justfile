@@ -4,7 +4,7 @@
 # Generate and test the mixed language project
 run:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
     @echo "=== Building mixed language application ==="
     nix-build -A mixed_app && ./result && rm ./result
 
@@ -20,7 +20,7 @@ test-all: run
 # Check generated Nix for mixed languages
 check:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
     @echo "=== Checking for C compilation ==="
     @grep -E "gcc.*-c.*\.c" default.nix || echo "C compilation not found"
     @echo "=== Checking for C++ compilation ==="

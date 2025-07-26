@@ -1,5 +1,24 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
+
+Make CMAKE_MAKE_PROGRAM=nix-build be default when using the Nix backend, so "../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build ." becomes "../bin/cmake -G Nix .". Set the default an appropriate place in the C++ Sources/ but only for the Nix backend selected. Update all justfiles.
+
+"just test_zephyr_rtos::run" is currently skipped. It shall not be skipped. It is true it requires specific Python environment, but make a new test_zephyr_rtos/zephyr.shell.nix file which contains this python envrionment. Here is a hint: nix-shell --pure -p pkgsi686Linux.gcc pkgs.pkgsi686Linux.glibc cmake ninja dtc python312Packages.pykwalify python312Packages.pyyaml python312Packages.packaging python312Packages.pyelftools --run '(export ZEPHYR_BASE="$(pwd)"; export ZE
+PHYR_TOOLCHAIN_VARIANT=host; cd ./samples/posix/philosophers && cmake -B build -GNinja -DBOARD=native_sim . && (cd build && ninja))'
+
+
+"4. Testing nix eval (expression evaluation)..." reports: error: experimental Nix feature 'nix-command' is disabled; add '--extra-experimental-features nix-command' to enable it. (jq not available for pretty printing)
+
+
+"3. Testing nix-build --dry-run..." reports ⚠  nix-build --dry-run output unexpected
+
+test_dir_spaces failed to build
+
+error: path '/home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases/build/CMakeFiles/CMakeScratch/TryCompile-NX5FxI/default.nix' does not exist
+
+
+
+
 DONE - Fixed test_external_tools call in justfile
      - The test is designed to fail to demonstrate incompatibility with Nix
      - Main justfile now handles the expected failure gracefully

@@ -3,14 +3,14 @@ build_dir := "build"
 # Configure the project
 configure:
     mkdir -p {{build_dir}}
-    cd {{build_dir}} && cmake -G Nix -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=nix-build ..
+    cd {{build_dir}} && cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
 
 # Build and run (will fail due to circular dependencies)
 run: configure
     @echo "=== Testing circular dependency detection ==="
     @echo "Note: This test is expected to fail during CMake configuration"
     @echo "CMake should detect and report the circular dependencies"
-    -cd {{build_dir}} && cmake -G Nix -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=nix-build ..
+    -cd {{build_dir}} && cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
     @echo "=== Test completed (failure expected) ==="
 
 # Clean build artifacts

@@ -4,7 +4,7 @@
 # Generate Nix files for CMake components
 generate:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Build and run the CMake self-hosting test
 run: generate

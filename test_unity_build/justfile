@@ -9,7 +9,7 @@ test: build run
 
 # Configure with CMake
 configure:
-    {{cmake_bin}} -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build 2>&1 | tee configure.log
+    {{cmake_bin}} -G Nix -S . -B build 2>&1 | tee configure.log
 
 # Build both apps  
 build: configure

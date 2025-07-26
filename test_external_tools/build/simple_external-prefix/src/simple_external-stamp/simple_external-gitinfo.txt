@@ -1,0 +1,15 @@
+# This is a generated file and its contents are an internal implementation detail.
+# The download step will be re-executed if anything in this file changes.
+# No other meaning or use of this file is supported.
+
+method=git
+command=/home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/tmp/simple_external-gitclone.cmake
+source_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external
+work_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src
+repository=https://github.com/nlohmann/json.git
+remote=origin
+init_submodules=TRUE
+recurse_submodules=--recursive
+submodules=
+CMP0097=NEW
+      

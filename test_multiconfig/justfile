@@ -4,19 +4,19 @@
 # Generate Nix files for different configurations
 generate-debug:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug .
 
 generate-release:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
 
 generate-relwithdebinfo:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=RelWithDebInfo .
 
 generate-minsizerel:
     -rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=MinSizeRel .
 
 # Test all configurations
 test-all: generate-debug test-debug generate-release test-release generate-relwithdebinfo test-relwithdebinfo generate-minsizerel test-minsizerel

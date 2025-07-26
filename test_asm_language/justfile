@@ -5,7 +5,7 @@ clean:
     rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
 
 configure:
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 build:
     nix-build -A asm_test

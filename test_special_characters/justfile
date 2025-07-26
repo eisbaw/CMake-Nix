@@ -4,7 +4,7 @@ default: run
 # Configure and build with Nix generator
 configure:
     rm -f default.nix
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build .
+    ../bin/cmake -G Nix .
 
 # Test that configuration succeeds (or fails appropriately)
 test-configure: configure
