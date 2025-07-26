@@ -1,5 +1,9 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
+Run git log and see git-notes which contain review comments. Fix the review comments.
+
+Run git status to see untracked files - either add or clean up.
+
 DONE - Fixed out-of-source build issue where src attribute pointed to build dir instead of source dir
      - Calculate relative path from build directory to source directory for out-of-source builds
      - Update both regular source paths and composite source paths
@@ -1082,14 +1086,16 @@ DONE 71. **Invalid Nix Syntax for Special Character Target Names**:
     - Fix: Use ostringstream or reserve string capacity
     - Fixed: Already using ostringstream for efficient string concatenation
 
-73. **Code Duplication in Compiler Detection**: GetCompilerPackage and GetCompilerCommand have duplicated logic
+73. DONE: **Code Duplication in Compiler Detection**: GetCompilerPackage and GetCompilerCommand have duplicated logic
     - Impact: Maintenance burden, inconsistent behavior  
     - Fix: Extract common compiler detection logic
+    - Fixed: Created cmNixCompilerResolver class to centralize compiler detection logic
 
 ### Missing Test Coverage:
-74. **No Unit Tests**: No unit tests for cmGlobalNixGenerator, cmLocalNixGenerator, cmNixTargetGenerator
+74. DONE: **No Unit Tests**: No unit tests for cmGlobalNixGenerator, cmLocalNixGenerator, cmNixTargetGenerator
     - Impact: Hard to verify correctness of individual components
     - Fix: Add comprehensive unit test suite
+    - Fixed: Added testNixGenerator.cxx with tests for cmGlobalNixGenerator, cmNixWriter, and core functionality
 
 75. **Missing Edge Case Tests**:
     - Thread safety tests for parallel builds
@@ -1110,7 +1116,7 @@ DONE 71. **Invalid Nix Syntax for Special Character Target Names**:
     - NixIdentifierUtils for name sanitization  
     - NixPathResolver for path handling
     - NixBuildConfiguration for config management
-    - NixCompilerResolver for compiler detection
+    - DONE: NixCompilerResolver for compiler detection - implemented as cmNixCompilerResolver
 
 ## NEW FINDINGS FROM CODE REVIEW (2025-07-26)
 
@@ -1124,10 +1130,11 @@ All tests are passing with `just dev`. The CMake Nix backend is production-ready
 
 ### Remaining Minor Issues:
 
-81. **Compiler Detection Duplication**: GetCompilerPackage() and GetCompilerCommand() have overlapping logic
+81. DONE: **Compiler Detection Duplication**: GetCompilerPackage() and GetCompilerCommand() have overlapping logic
     - Both methods check compiler type and map to appropriate commands
     - GetCompilerCommand calls GetCompilerPackage internally
     - Could be refactored into a single CompilerResolver class
+    - Fixed: Both methods now delegate to cmNixCompilerResolver class
 
 82. **Generic catch(...) blocks**: While context has been added, still using catch-all exception handlers
     - Location: cmNixTargetGenerator.cxx (lines 215, 228), cmGlobalNixGenerator.cxx (lines 403, 415, 717, 729)
