@@ -333,18 +333,24 @@ This PRD provides a comprehensive roadmap for implementing a Nix backend that le
 
 **Current Status**: ✅ ALL PHASES COMPLETE (100%)
 
-For detailed implementation status, current gaps, and next steps, see [plan.md](plan.md) which provides:
-- Current implementation status and achievements
-- Critical gaps requiring immediate attention  
-- Detailed implementation roadmap with timelines
-- Testing strategy and success metrics
-- Risk assessment and mitigation strategies
+**Recent Enhancements** (2025-01-26):
+- ✅ ExternalProject/FetchContent detection and warning system
+- ✅ Automatic skeleton pkg_*.nix file generation 
+- ✅ Comprehensive best practices documentation
+- ✅ Build output directory robustness (`mkdir -p` everywhere)
 
-**Key achievements**: Source handling fixed, include paths working, basic configuration support, multi-directory projects with headers build successfully.
+**Key achievements**: 
+- Fine-grained per-source derivations maximize parallelism
+- Header dependency tracking with configurable limits
+- External library support via find_package() and pkg_*.nix files
+- Multi-configuration support (Debug/Release/etc)
+- Compiler auto-detection with user overrides
+- Full test suite with 14+ test projects
 
-**Critical gaps**: Header dependency tracking incomplete, external library support missing, compiler detection hardcoded.
-
-**Next priority**: Fix header dependency tracking for correctness, then add external library support for real-world project compatibility.
+**Future Improvements** (Low Priority):
+- Unified header derivation to reduce copying overhead
+- Enhanced Git notes integration for review workflow
+- Backlog.md tool integration (pending NixOS compatibility)
 
 ## Best Practices and Guidelines for Nix Generator
 
@@ -362,6 +368,10 @@ For detailed implementation status, current gaps, and next steps, see [plan.md](
 - Use relative paths within Nix expressions to maintain portability
 - Handle spaces in paths by proper quoting in shell commands
 - Validate paths to prevent traversal attacks
+- **Build Output Structure**: Always use `mkdir -p` for output directories
+  - Object files: `mkdir -p "$(dirname "$out")"`
+  - Libraries: `mkdir -p $out` (for directory outputs)
+  - Ensures robustness when parent directories don't exist
 
 #### Compiler Detection
 - Use `cmNixCompilerResolver` for consistent compiler package resolution
@@ -372,6 +382,10 @@ For detailed implementation status, current gaps, and next steps, see [plan.md](
 - Map CMake package names to Nix packages using `cmNixPackageMapper`
 - Generate `pkg_<PackageName>.nix` files for custom package configurations
 - Support find_package() through Nix-provided packages
+- **ExternalProject/FetchContent**: These modules are incompatible with Nix
+  - Automatic detection and warning system implemented
+  - Skeleton pkg_*.nix files generated for common dependencies
+  - Users should migrate to find_package() or Git submodules
 
 #### Debug Support
 - Guard all debug output with `GetDebugOutput()` checks
@@ -406,12 +420,37 @@ nix-build -A my_target
 - Set `CMAKE_NIX_EXTERNAL_HEADER_LIMIT` to control header copying
 - Use `CMAKE_NIX_EXPLICIT_SOURCES=ON` for precise source tracking
 - Consider breaking large targets into smaller libraries
+- **Header Management**: For projects with many headers, consider:
+  - Using CMAKE_NIX_EXTERNAL_HEADER_LIMIT to limit per-source header copying
+  - Future: Unified header derivation to reduce redundant copying (planned)
 
 #### Debugging Build Issues
 ```bash
 export CMAKE_NIX_DEBUG=1
 cmake -G Nix .
 nix-build --show-trace -A my_target
+```
+
+#### Migrating from ExternalProject/FetchContent
+When encountering ExternalProject_Add or FetchContent warnings:
+1. Check for generated `pkg_*.nix` skeleton files
+2. Edit these files to reference appropriate Nix packages
+3. Replace FetchContent_Declare with find_package()
+4. Consider using Git submodules for vendored dependencies
+
+Example migration:
+```cmake
+# Before (incompatible with Nix):
+include(FetchContent)
+FetchContent_Declare(fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG 10.1.1
+)
+FetchContent_MakeAvailable(fmt)
+
+# After (Nix-compatible):
+find_package(fmt REQUIRED)
+# Ensure pkg_fmt.nix exists with: { fmt }: { buildInputs = [ fmt ]; }
 ```
 
 ### Known Limitations
