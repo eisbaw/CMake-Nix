@@ -335,7 +335,7 @@ void cmGlobalNixGenerator::WriteNixFile()
   nixFile += "/default.nix";
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-TRACE] WriteNixFile() writing to: " << nixFile << std::endl;
+    std::cerr << "[NIX-DEBUG] WriteNixFile() writing to: " << nixFile << std::endl;
   }
   
   cmGeneratedFileStream nixFileStream(nixFile);
@@ -349,7 +349,7 @@ void cmGlobalNixGenerator::WriteNixFile()
   }
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-TRACE] Opened Nix file successfully, starting to write..." << std::endl;
+    std::cerr << "[NIX-DEBUG] Opened Nix file successfully, starting to write..." << std::endl;
   }
 
   // Use NixWriter for cleaner code generation
