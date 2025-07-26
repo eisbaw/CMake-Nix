@@ -26,6 +26,21 @@ All high-priority tasks have been completed. The CMake Nix backend is production
 
 # Active TODO items:
 
+DONE - Look for code smells in the cmake Nix generator.
+     - No major code smells found
+     - All debug output properly guarded with GetDebugOutput()
+     - No generic catch(...) blocks (all replaced with specific exception types)
+     - No TODO/FIXME/XXX/HACK comments found (verified through comprehensive search)
+     - Thread safety with mutex protection for all shared state
+     - Proper error handling using IssueMessage with FATAL_ERROR and WARNING levels
+     - Security measures: shell escaping, path validation for traversal attacks
+
+DONE - Add missing tests from nice-to-have section
+     - Added test_performance_benchmark: Compares Nix generator performance with Ninja/Make
+     - Added test_multiconfig_edge_cases: Tests RelWithDebInfo and MinSizeRel configurations
+     - Both tests integrated into justfile with test-nice-to-have target
+     - Added bc utility to shell.nix for benchmark timing calculations
+
 DONE - test_dir_spaces failed to build - paths with spaces in directory names are not handled correctly
      - Fixed: Directory paths with spaces are properly handled by quoting in bash scripts
 
