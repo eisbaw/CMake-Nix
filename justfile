@@ -183,6 +183,12 @@ test-all:
     just test_fortran_language::run
     just test_fmt_library::run
     # Scale and error recovery tests (run separately due to special nature)
+    # NOTE: These tests are not included in the standard regression suite due to:
+    # - test_scale: Extended runtime with configurable file counts
+    # - test_error_recovery: Tests error conditions that may fail intentionally
+    # - test_cross_compile: Requires specific cross-compilation toolchain setup
+    # - test_thread_safety: Stress test that may have unpredictable runtime
+    # To run these tests individually:
     # just test_scale::test
     # just test_error_recovery::test
     # just test_cross_compile::test
@@ -191,6 +197,15 @@ test-all:
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself
     # just test_opencv::configure-core
     @echo "✅ All tests passed!"
+
+# Run special tests that are not part of the standard regression suite
+test-special:
+    @echo "Running special tests (may take longer or have special requirements)..."
+    just test_scale::test
+    just test_error_recovery::test
+    just test_cross_compile::test
+    just test_thread_safety::test
+    @echo "✅ Special tests completed!"
 
 ########################################################
 
