@@ -283,6 +283,8 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("          \"gcc\"");
   writer.WriteLine("        else if compiler == clang then");
   writer.WriteLine("          \"clang\"");
+  writer.WriteLine("        else if compiler == gfortran then");
+  writer.WriteLine("          \"gfortran\"");
   writer.WriteLine("        else");
   writer.WriteLine("          compiler.pname or \"cc\"");
   writer.WriteLine("        }");
@@ -305,6 +307,8 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("          \"gcc\"");
   writer.WriteLine("        else if compiler == clang then");
   writer.WriteLine("          \"clang\"");
+  writer.WriteLine("        else if compiler == gfortran then");
+  writer.WriteLine("          \"gfortran\"");
   writer.WriteLine("        else");
   writer.WriteLine("          compiler.pname or \"cc\"");
   writer.WriteLine("        }");
