@@ -1022,8 +1022,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     // For external sources, create a composite source including both project and external file
     nixFileStream << "    src = pkgs.runCommand \"composite-src\" {} ''\n";
     nixFileStream << "      mkdir -p $out\n";
-    // Copy project source tree
-    nixFileStream << "      cp -r ${" << projectSourceRelPath << "}/* $out/ 2>/dev/null || true\n";
+    // Copy project source tree (use -L to follow symlinks and avoid permission issues)
+    nixFileStream << "      cp -rL ${" << projectSourceRelPath << "}/* $out/ 2>/dev/null || true\n";
     // Copy external source file to build dir root
     std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
     // Use builtins.path for absolute paths
@@ -2511,7 +2511,7 @@ void cmGlobalNixGenerator::WriteCompositeSource(
       rootPath = "./.";
     }
   }
-  nixFileStream << "      cp -r ${" << rootPath << "}/* $out/ 2>/dev/null || true\n";
+  nixFileStream << "      cp -rL ${" << rootPath << "}/* $out/ 2>/dev/null || true\n";
   
   // Copy configuration-time generated files to their correct locations
   nixFileStream << "      # Copy configuration-time generated files\n";
@@ -2534,15 +2534,23 @@ void cmGlobalNixGenerator::WriteCompositeSource(
       contents << inFile.rdbuf();
       inFile.close();
       
-      // Write the file content directly using a here-doc
-      nixFileStream << "      cat > $out/" << relPath << " <<'EOF'\n";
-      // Split content by lines and write each line
-      std::istringstream contentStream(contents.str());
-      std::string line;
-      while (std::getline(contentStream, line)) {
-        nixFileStream << line << "\n";
+      // Create parent directory if needed
+      std::string parentDir = cmSystemTools::GetFilenamePath(relPath);
+      if (!parentDir.empty()) {
+        nixFileStream << "      mkdir -p $out/" << parentDir << "\n";
       }
-      nixFileStream << "      EOF\n";
+      
+      // Write the file content directly using a here-doc with a unique delimiter
+      // Use a complex delimiter to avoid conflicts with file contents
+      std::string delimiter = "NIXEOF_" + std::to_string(std::hash<std::string>{}(genFile)) + "_END";
+      nixFileStream << "      cat > $out/" << relPath << " <<'" << delimiter << "'\n";
+      // Write the entire file content without line-by-line processing to preserve exact content
+      nixFileStream << contents.str();
+      // Ensure we end with a newline before the delimiter
+      if (!contents.str().empty() && contents.str().back() != '\n') {
+        nixFileStream << "\n";
+      }
+      nixFileStream << delimiter << "\n";
     } else {
       // If we can't read the file, issue a warning but continue
       std::ostringstream msg;
