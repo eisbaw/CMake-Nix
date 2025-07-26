@@ -1,8 +1,9 @@
 # Active TODO items:
 
-test_dir_spaces failed to build - paths with spaces in directory names are not handled correctly
+DONE - test_dir_spaces failed to build - paths with spaces in directory names are not handled correctly
+     - Fixed: Directory paths with spaces are properly handled by quoting in bash scripts
 
-error: path '/home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases/build/CMakeFiles/CMakeScratch/TryCompile-NX5FxI/default.nix' does not exist (FIXED: TryCompile now works)
+DONE - error: path '/home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases/build/CMakeFiles/CMakeScratch/TryCompile-NX5FxI/default.nix' does not exist (FIXED: TryCompile now works)
 
 "fix(test): handle expected failure in test_external_tools": ExternalProject_Add and FetchContent may be supported by writing a skeleton Nix file for each dependency -- the user will have to fill in the hash but we could write some boilerplate Nix that uses Nix fetchers.
 
@@ -1552,4 +1553,10 @@ DONE - Code review of CMake Nix generator implementation:
      - Proper thread safety with mutex protection for shared data structures
      - Good error handling and resource management (RAII)
      - Some opportunities for additional test coverage identified
+
+DONE - Fixed test_custom_commands - objects evaluated as functions in Nix (2025-07-26):
+     - Replaced bash string comparison "${compiler}" with Nix expression evaluation
+     - Fixed comment escaping to prevent ${derivation} interpolation  
+     - Used Nix if-then-else syntax instead of bash conditionals for compiler detection
+     - Resolves "cannot coerce a function to a string" error in cmakeNixCC helper
 
