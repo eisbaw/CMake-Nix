@@ -6,34 +6,38 @@ run:
     set -euo pipefail
     
     echo "=== Testing ExternalProject_Add and FetchContent ==="
-    echo "NOTE: This test requires network access to download dependencies"
+    echo "NOTE: This test demonstrates that these features are incompatible with Nix"
     echo ""
     
     # Clean previous build
     rm -rf build default.nix
     
-    # Configure with Nix generator
+    # Configure with Nix generator (expect this to fail)
     echo "Configuring project..."
-    ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build
-    
-    echo ""
-    echo "Note: ExternalProject_Add and FetchContent are not directly supported by Nix"
-    echo "These tools download code at configure/build time, which violates Nix's"
-    echo "pure build principles. Users should pre-fetch dependencies and use"
-    echo "find_package() or direct source inclusion instead."
-    echo ""
-    echo "The Nix generator will generate a default.nix, but external downloads"
-    echo "will fail in the Nix sandbox environment."
-    
-    # Check if default.nix was generated
-    if [ -f build/default.nix ]; then
-        echo "✅ default.nix was generated successfully"
-        echo ""
-        echo "Preview of generated file:"
-        head -20 build/default.nix
-    else
-        echo "❌ Failed to generate default.nix"
+    if ../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build -S . -B build 2>&1; then
+        echo "❌ Configuration succeeded unexpectedly!"
+        echo "Expected configuration to fail due to FetchContent incompatibility"
         exit 1
+    else
+        echo "✅ Configuration failed as expected"
+        echo ""
+        echo "This is the expected behavior because:"
+        echo "1. FetchContent tries to download dependencies at configure time"
+        echo "2. Nix builds are pure and cannot access the network"
+        echo "3. The downloaded content would not be in the Nix store"
+        echo ""
+        echo "Recommended alternatives for Nix:"
+        echo "- Pre-fetch dependencies and add to Nix store"
+        echo "- Use find_package() with Nix-provided packages"
+        echo "- Include dependencies as Git submodules"
+        echo "- Use Nix flakes for dependency management"
+        echo ""
+        echo "Example: Instead of FetchContent for fmt, create pkg_fmt.nix:"
+        echo "  { fmt }:"
+        echo "  {"
+        echo "    buildInputs = [ fmt ];"
+        echo "    cmakeFlags = [];"
+        echo "  }"
     fi
 
 # Clean build artifacts
