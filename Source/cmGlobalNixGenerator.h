@@ -174,6 +174,11 @@ protected:
   // Custom command support
   void WriteCustomCommandDerivations(cmGeneratedFileStream& nixFileStream);
   std::map<std::string, std::string> CollectCustomCommands();
+  
+  // External header derivation support
+  void WriteExternalHeaderDerivations(cmGeneratedFileStream& nixFileStream);
+  std::string GetOrCreateHeaderDerivation(const std::string& sourceDir, 
+                                         const std::vector<std::string>& headers);
 
   // Install rule support
   void WriteInstallRules(cmGeneratedFileStream& nixFileStream);
@@ -273,6 +278,18 @@ private:
     cmLocalGenerator* LocalGen;
   };
   std::vector<CustomCommandInfo> CustomCommands;
+  
+  // Header derivation tracking for external sources
+  struct HeaderDerivationInfo {
+    std::string DerivationName;
+    std::set<std::string> Headers;
+    std::string SourceDirectory;
+  };
+  // Map from source directory to header derivation info
+  std::map<std::string, HeaderDerivationInfo> ExternalHeaderDerivations;
+  // Map from source file to header derivation name (for easy lookup)
+  std::map<std::string, std::string> SourceToHeaderDerivation;
+  mutable std::mutex ExternalHeaderMutex;
   
   // Mutex to protect CustomCommands and CustomCommandOutputs
   mutable std::mutex CustomCommandMutex;

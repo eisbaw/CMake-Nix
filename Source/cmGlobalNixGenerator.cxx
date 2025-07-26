@@ -759,6 +759,9 @@ void cmGlobalNixGenerator::WriteNixFile()
   // Collect install targets
   this->CollectInstallTargets();
 
+  // Write external header derivations first (before object derivations that depend on them)
+  this->WriteExternalHeaderDerivations(nixFileStream);
+
   // Write per-translation-unit derivations
   this->WritePerTranslationUnitDerivations(nixFileStream);
   
@@ -1052,47 +1055,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     auto targetGen = cmNixTargetGenerator::New(target);
     std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
     
-    // Copy header dependencies that are outside the project tree
-    std::set<std::string> copiedDirs;
-    size_t headersCopied = 0;
-    bool hitHeaderLimit = false;
-    
-    // Check if user has set custom header limit
-    size_t headerLimit = MAX_EXTERNAL_HEADERS_PER_SOURCE;
-    cmValue customLimit = target->Target->GetMakefile()->GetDefinition("CMAKE_NIX_EXTERNAL_HEADER_LIMIT");
-    if (customLimit && !customLimit->empty()) {
-      try {
-        size_t userLimit = std::stoul(*customLimit);
-        if (userLimit > 0) {
-          headerLimit = userLimit;
-        }
-      } catch (const std::invalid_argument& e) {
-        // Ignore non-numeric values, use default
-      } catch (const std::out_of_range& e) {
-        // Ignore values too large for size_t, use default
-      }
-    }
-    
+    // Collect external headers that need to be made available
+    std::vector<std::string> externalHeaders;
     for (const std::string& dep : dependencies) {
-      // Check if we've reached the header limit for external sources
-      if (headersCopied >= headerLimit) {
-        if (!hitHeaderLimit) {
-          nixFileStream << "      # WARNING: Hit header limit (" << headerLimit << " headers) for external source\n";
-          nixFileStream << "      # Remaining headers will not be copied to prevent Nix generation timeout\n";
-          hitHeaderLimit = true;
-          
-          // Also issue a CMake warning so users are aware
-          std::ostringstream msg;
-          msg << "External source file " << sourceFile 
-              << " has more than " << headerLimit 
-              << " header dependencies. Only the first " << headerLimit 
-              << " headers will be copied to prevent Nix generation timeout. "
-              << "Consider using CMAKE_NIX_EXTERNAL_HEADER_LIMIT to adjust this limit if needed.";
-          this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-        }
-        break;
-      }
-      
       std::string fullPath;
       if (cmSystemTools::FileIsFullPath(dep)) {
         fullPath = dep;
@@ -1101,12 +1066,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
       
       // Skip if it's a system header or in Nix store
-      if (fullPath.find("/nix/store/") != std::string::npos ||
-          fullPath.find("/usr/include/") != std::string::npos ||
-          fullPath.find("/usr/local/include/") != std::string::npos ||
-          fullPath.find("/opt/") != std::string::npos ||
-          fullPath.find("/System/Library/") != std::string::npos ||  // macOS system headers
-          fullPath.find("/Library/Developer/") != std::string::npos) { // macOS developer headers
+      if (this->IsSystemPath(fullPath)) {
         continue;
       }
       
@@ -1114,28 +1074,27 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       std::string relPath = cmSystemTools::RelativePath(
         this->GetCMakeInstance()->GetHomeDirectory(), fullPath);
       if (!relPath.empty() && cmNixPathUtils::IsPathOutsideTree(relPath)) {
-        // This is an external header, need to copy it
-        std::string headerDir = cmSystemTools::GetFilenamePath(fullPath);
-        std::string headerFile = cmSystemTools::GetFilenameName(fullPath);
-        
-        // Create directory structure in composite source
-        std::string relDir = cmSystemTools::RelativePath(
-          cmSystemTools::GetFilenamePath(sourceFile), headerDir);
-        if (!relDir.empty() && copiedDirs.find(relDir) == copiedDirs.end()) {
-          nixFileStream << "      mkdir -p $out/" << relDir << "\n";
-          copiedDirs.insert(relDir);
-        }
-        
-        // Copy the header file if it exists
-        if (cmSystemTools::FileExists(fullPath)) {
-          // Normalize the path to resolve .. segments before using in Nix expression
-          std::string normalizedHeaderPath = cmSystemTools::CollapseFullPath(fullPath);
-          std::string destPath = relDir.empty() ? headerFile : relDir + "/" + headerFile;
-          // Use builtins.path for absolute paths
-          nixFileStream << "      cp ${builtins.path { path = \"" << normalizedHeaderPath << "\"; }} $out/" << destPath << " 2>/dev/null || true\n";
-          headersCopied++;
-        }
+        externalHeaders.push_back(fullPath);
       }
+    }
+    
+    // If we have external headers, create or update the header derivation
+    std::string headerDerivName;
+    if (!externalHeaders.empty()) {
+      std::string sourceDir = cmSystemTools::GetFilenamePath(sourceFile);
+      headerDerivName = this->GetOrCreateHeaderDerivation(sourceDir, externalHeaders);
+      
+      // Store mapping from source file to header derivation
+      {
+        std::lock_guard<std::mutex> lock(this->ExternalHeaderMutex);
+        this->SourceToHeaderDerivation[sourceFile] = headerDerivName;
+      }
+      
+      // Symlink headers from the header derivation
+      nixFileStream << "      # Link headers from external header derivation\n";
+      nixFileStream << "      if [ -d ${" << headerDerivName << "} ]; then\n";
+      nixFileStream << "        cp -rL ${" << headerDerivName << "}/* $out/ 2>/dev/null || true\n";
+      nixFileStream << "      fi\n";
     }
     
     nixFileStream << "    '';\n";
@@ -2131,6 +2090,88 @@ void cmGlobalNixGenerator::WriteInstallOutputs(cmGeneratedFileStream& nixFileStr
   }
 }
 
+void cmGlobalNixGenerator::WriteExternalHeaderDerivations(
+  cmGeneratedFileStream& nixFileStream)
+{
+  std::lock_guard<std::mutex> lock(this->ExternalHeaderMutex);
+  
+  if (this->ExternalHeaderDerivations.empty()) {
+    return;
+  }
+  
+  cmNixWriter writer(nixFileStream);
+  writer.WriteComment("External header collection derivations");
+  
+  for (const auto& [sourceDir, headerInfo] : this->ExternalHeaderDerivations) {
+    nixFileStream << "  " << headerInfo.DerivationName << " = stdenv.mkDerivation {\n";
+    writer.WriteAttribute("name", "external-headers-" + 
+                         cmSystemTools::GetFilenameName(sourceDir));
+    
+    // Create a composite source that copies all headers
+    nixFileStream << "    postUnpack = ''\n";
+    
+    // Create directory structure for headers
+    std::set<std::string> createdDirs;
+    for (const std::string& header : headerInfo.Headers) {
+      // Get relative path from source directory
+      std::string relPath = cmSystemTools::RelativePath(sourceDir, header);
+      std::string headerDir = cmSystemTools::GetFilenamePath(relPath);
+      if (!headerDir.empty() && createdDirs.find(headerDir) == createdDirs.end()) {
+        nixFileStream << "      mkdir -p $out/" << headerDir << "\n";
+        createdDirs.insert(headerDir);
+      }
+    }
+    
+    // Copy all headers
+    for (const std::string& header : headerInfo.Headers) {
+      if (cmSystemTools::FileExists(header)) {
+        std::string normalizedPath = cmSystemTools::CollapseFullPath(header);
+        std::string relPath = cmSystemTools::RelativePath(sourceDir, header);
+        nixFileStream << "      cp -L ${builtins.path { path = \"" 
+                     << normalizedPath << "\"; }} $out/" << relPath 
+                     << " 2>/dev/null || true\n";
+      }
+    }
+    
+    nixFileStream << "    '';\n";
+    writer.WriteAttribute("dontUnpack", "true");
+    writer.WriteAttribute("dontBuild", "true");
+    writer.WriteAttribute("dontInstall", "true");
+    writer.WriteAttribute("dontFixup", "true");
+    nixFileStream << "  };\n\n";
+  }
+}
+
+std::string cmGlobalNixGenerator::GetOrCreateHeaderDerivation(
+  const std::string& sourceDir, 
+  const std::vector<std::string>& headers)
+{
+  std::lock_guard<std::mutex> lock(this->ExternalHeaderMutex);
+  
+  // Check if we already have a header derivation for this directory
+  auto it = this->ExternalHeaderDerivations.find(sourceDir);
+  if (it != this->ExternalHeaderDerivations.end()) {
+    // Add any new headers to the existing derivation
+    for (const std::string& header : headers) {
+      it->second.Headers.insert(header);
+    }
+    return it->second.DerivationName;
+  }
+  
+  // Create a new header derivation
+  HeaderDerivationInfo info;
+  info.SourceDirectory = sourceDir;
+  info.DerivationName = this->GetDerivationName("external_headers_" + 
+                        cmSystemTools::GetFilenameName(sourceDir));
+  
+  for (const std::string& header : headers) {
+    info.Headers.insert(header);
+  }
+  
+  this->ExternalHeaderDerivations[sourceDir] = info;
+  return info.DerivationName;
+}
+
 void cmGlobalNixGenerator::CollectInstallTargets()
 {
   std::lock_guard<std::mutex> lock(this->InstallTargetsMutex);
@@ -2654,6 +2695,19 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
       std::cerr << "[NIX-DEBUG] Available custom command outputs:" << std::endl;
       for (const auto& kv : this->CustomCommandOutputs) {
         std::cerr << "[NIX-DEBUG]   " << kv.first << " -> " << kv.second << std::endl;
+      }
+    }
+  }
+  
+  // Check if this source file has an external header derivation dependency
+  {
+    std::lock_guard<std::mutex> lock(this->ExternalHeaderMutex);
+    auto headerIt = this->SourceToHeaderDerivation.find(sourceFile);
+    if (headerIt != this->SourceToHeaderDerivation.end() && !headerIt->second.empty()) {
+      buildInputs.push_back(headerIt->second);
+      if (this->GetCMakeInstance()->GetDebugOutput()) {
+        std::cerr << "[NIX-DEBUG] Found header derivation dependency for " << sourceFile 
+                  << " -> " << headerIt->second << std::endl;
       }
     }
   }
