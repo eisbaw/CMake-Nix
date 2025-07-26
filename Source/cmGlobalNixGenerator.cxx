@@ -23,6 +23,7 @@
 #include "cmNixTargetGenerator.h"
 #include "cmNixCustomCommandGenerator.h"
 #include "cmNixCompilerResolver.h"
+#include "cmNixPathUtils.h"
 #include "cmInstallGenerator.h"
 #include "cmInstallTargetGenerator.h"
 #include "cmCustomCommand.h"
@@ -89,9 +90,7 @@ void cmGlobalNixGenerator::Generate()
   this->cmGlobalGenerator::Generate();
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
-    }
+    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
   }
   
   // Build dependency graph for transitive dependency resolution
@@ -101,9 +100,7 @@ void cmGlobalNixGenerator::Generate()
   this->WriteNixFile();
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Generate() completed" << std::endl;
-    }
+    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Generate() completed" << std::endl;
   }
 }
 
@@ -119,7 +116,7 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   bool isTryCompile = projectDir.find("CMakeScratch") != std::string::npos;
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
               << " GenerateBuildCommand() called for projectDir: " << projectDir
               << " isTryCompile: " << (isTryCompile ? "true" : "false")
               << " targetNames: ";
@@ -191,24 +188,24 @@ cmGlobalNixGenerator::GenerateBuildCommand(
         copyScript << "if [ -f " << escapedLocationFile << " ]; then ";
         copyScript << "TARGET_LOCATION=$(cat " << escapedLocationFile << "); ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript << "echo '[NIX-TRACE] Target location: '\"$TARGET_LOCATION\"; ";
+          copyScript << "echo '[NIX-DEBUG] Target location: '\"$TARGET_LOCATION\"; ";
         }
         copyScript << "if [ -f \"result\" ]; then ";
         copyScript << "STORE_PATH=$(readlink result); ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript << "echo '[NIX-TRACE] Store path: '\"$STORE_PATH\"; ";
+          copyScript << "echo '[NIX-DEBUG] Store path: '\"$STORE_PATH\"; ";
         }
         copyScript << "cp \"$STORE_PATH\" \"$TARGET_LOCATION\" 2>/dev/null";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript << " || echo '[NIX-TRACE] Copy failed'";
+          copyScript << " || echo '[NIX-DEBUG] Copy failed'";
         }
         copyScript << "; ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript << "else echo '[NIX-TRACE] No result symlink found'; ";
+          copyScript << "else echo '[NIX-DEBUG] No result symlink found'; ";
         }
         copyScript << "fi; ";
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          copyScript << "else echo '[NIX-TRACE] No location file for " 
+          copyScript << "else echo '[NIX-DEBUG] No location file for " 
                      << cmOutputConverter::EscapeForShell(escapedTargetName, cmOutputConverter::Shell_Flag_IsUnix) 
                      << "'; ";
         }
@@ -261,6 +258,11 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine();
   
   // Linking helper function
+  // NOTE: This uses Unix-style library naming conventions (lib*.a, lib*.so)
+  // This is appropriate since Nix only runs on Unix-like systems (Linux, macOS)
+  writer.WriteLine("  # Linking helper function");
+  writer.WriteLine("  # NOTE: This uses Unix-style library naming conventions (lib*.a, lib*.so)");
+  writer.WriteLine("  # This is appropriate since Nix only runs on Unix-like systems (Linux, macOS)");
   writer.WriteLine("  cmakeNixLD = {");
   writer.WriteLine("    name,");
   writer.WriteLine("    type ? \"executable\",  # \"executable\", \"static\", \"shared\", \"module\"");
@@ -278,6 +280,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("    dontUnpack = true;");
   writer.WriteLine("    buildPhase =");
   writer.WriteLine("      if type == \"static\" then ''");
+  writer.WriteLine("        # Unix static library: uses 'ar' to create lib*.a files");
   writer.WriteLine("        ar rcs \"$out\" $objects");
   writer.WriteLine("      '' else if type == \"shared\" || type == \"module\" then ''");
   writer.WriteLine("        mkdir -p $out");
@@ -292,6 +295,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        else");
   writer.WriteLine("          compiler.pname or \"cc\"");
   writer.WriteLine("        }");
+  writer.WriteLine("        # Unix library naming: static=lib*.a, shared=lib*.so, module=*.so");
   writer.WriteLine("        libname=\"${if type == \"module\" then name else \"lib\" + name}.so\"");
   writer.WriteLine("        ${if version != null && type != \"module\" then ''");
   writer.WriteLine("          libname=\"lib${name}.so.${version}\"");
@@ -1009,7 +1013,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   std::string initialRelativePath = cmSystemTools::RelativePath(this->GetCMakeInstance()->GetHomeDirectory(), sourceFile);
   
   // Check if source file is external (outside project tree)
-  bool isExternalSource = (initialRelativePath.find("../") == 0 || cmSystemTools::FileIsFullPath(initialRelativePath));
+  bool isExternalSource = (cmNixPathUtils::IsPathOutsideTree(initialRelativePath) || cmSystemTools::FileIsFullPath(initialRelativePath));
   
   // Write src attribute
   if (isExternalSource) {
@@ -1058,7 +1062,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       // Check if this header is outside the project directory
       std::string relPath = cmSystemTools::RelativePath(
         this->GetCMakeInstance()->GetHomeDirectory(), fullPath);
-      if (!relPath.empty() && relPath.find("../") == 0) {
+      if (!relPath.empty() && cmNixPathUtils::IsPathOutsideTree(relPath)) {
         // This is an external header, need to copy it
         std::string headerDir = cmSystemTools::GetFilenamePath(fullPath);
         std::string headerFile = cmSystemTools::GetFilenameName(fullPath);
@@ -1244,7 +1248,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     std::string sourceFileRelativePath = cmSystemTools::RelativePath(projectSourceDir, sourceFile);
     
     // Check if this is an external file (outside project tree)
-    if (sourceFileRelativePath.find("../") == 0 || cmSystemTools::FileIsFullPath(sourceFileRelativePath)) {
+    if (cmNixPathUtils::IsPathOutsideTree(sourceFileRelativePath) || cmSystemTools::FileIsFullPath(sourceFileRelativePath)) {
       // External file - use just the filename, it will be copied to source dir
       std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
       sourcePath = fileName;
@@ -1438,7 +1442,7 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
       if (cmSystemTools::FileIsFullPath(incPath)) {
         relativeInclude = cmSystemTools::RelativePath(sourceDir, incPath);
         // If the relative path goes outside the source tree, keep absolute
-        if (relativeInclude.find("../") == 0) {
+        if (cmNixPathUtils::IsPathOutsideTree(relativeInclude)) {
           relativeInclude = "";
         }
       } else {
@@ -1589,7 +1593,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   // Debug output
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[DEBUG] WriteLinkDerivation: sourceDir=" << sourceDir 
+    std::cerr << "[NIX-DEBUG] WriteLinkDerivation: sourceDir=" << sourceDir 
               << ", buildDir=" << buildDir << ", projectSourceRelPath=" << projectSourceRelPath << std::endl;
   }
   
@@ -1597,7 +1601,7 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   bool isTryCompile = buildDir.find("CMakeScratch") != std::string::npos;
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-TRACE] " << __FILE__ << ":" << __LINE__ 
+    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
               << " WriteLinkDerivation for target: " << targetName
               << " buildDir: " << buildDir
               << " isTryCompile: " << (isTryCompile ? "true" : "false") << std::endl;
@@ -1862,13 +1866,13 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     nixFileStream << "      COPY_DEST=" << escapedBuildDir << "/" << escapedTargetName << "\n";
     nixFileStream << "      cp \"$out\" \"$COPY_DEST\"\n";
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      nixFileStream << "      echo '[NIX-TRACE] Copied try_compile output to: '\"$COPY_DEST\"\n";
+      nixFileStream << "      echo '[NIX-DEBUG] Copied try_compile output to: '\"$COPY_DEST\"\n";
     }
     nixFileStream << "      # Write location file that CMake expects to find the executable path\n";
     nixFileStream << "      echo \"$COPY_DEST\" > " << escapedBuildDir << "/" << escapedTargetName << "_loc\n";
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      nixFileStream << "      echo '[NIX-TRACE] Wrote location file: '" << escapedBuildDir << "/" << escapedTargetName << "_loc\n";
-      nixFileStream << "      echo '[NIX-TRACE] Location file contains: '\"$COPY_DEST\"\n";
+      nixFileStream << "      echo '[NIX-DEBUG] Wrote location file: '" << escapedBuildDir << "/" << escapedTargetName << "_loc\n";
+      nixFileStream << "      echo '[NIX-DEBUG] Location file contains: '\"$COPY_DEST\"\n";
     }
     nixFileStream << "    '';\n";
   }
@@ -2025,7 +2029,7 @@ void cmGlobalNixGenerator::ProcessLibraryDependenciesForBuildInputs(
         if (!projectSourceRelPath.empty() && lib.find("./") == 0) {
           // Check if the path already has parent directory navigation
           std::string pathAfterDot = lib.substr(2);
-          if (pathAfterDot.find("../") == 0) {
+          if (cmNixPathUtils::IsPathOutsideTree(pathAfterDot)) {
             // Path already navigates to parent, don't prepend projectSourceRelPath
             buildInputs.push_back("(import " + lib + " { inherit pkgs; })");
           } else {

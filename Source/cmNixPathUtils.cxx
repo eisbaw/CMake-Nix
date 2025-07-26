@@ -133,3 +133,8 @@ std::string cmNixPathUtils::AbsolutePathToNixExpr(const std::string& path)
   // Use builtins.path for absolute paths
   return "(builtins.path { path = \"" + path + "\"; })";
 }
+
+bool cmNixPathUtils::IsPathOutsideTree(const std::string& relativePath)
+{
+  return relativePath.empty() || relativePath.find("../") == 0;
+}

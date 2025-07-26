@@ -13,6 +13,7 @@
 #include "cmMakefile.h"
 #include "cmNixTargetGenerator.h"
 #include "cmNixWriter.h"
+#include "cmNixPathUtils.h"
 #include "cmSourceFile.h"
 #include "cmStateTypes.h"
 #include "cmSystemTools.h"
@@ -264,7 +265,7 @@ void cmGlobalNixMultiGenerator::WriteObjectDerivationForConfig(
     
     // If the relative path starts with ../, it's outside the source tree
     // In this case, just use the filename
-    if (relPath.find("../") == 0 || relPath.empty()) {
+    if (cmNixPathUtils::IsPathOutsideTree(relPath) || relPath.empty()) {
       relSourcePath = cmSystemTools::GetFilenameName(sourceFile);
     } else {
       relSourcePath = relPath;
@@ -292,7 +293,7 @@ void cmGlobalNixMultiGenerator::WriteObjectDerivationForConfig(
   // Handle source specification
   std::string homeDir = this->GetCMakeInstance()->GetHomeDirectory();
   std::string relPath = cmSystemTools::RelativePath(homeDir, sourceFile);
-  bool isExternalSource = (relPath.find("../") == 0 || cmSystemTools::FileIsFullPath(relPath));
+  bool isExternalSource = (cmNixPathUtils::IsPathOutsideTree(relPath) || cmSystemTools::FileIsFullPath(relPath));
   
   if (isExternalSource) {
     // For external sources (like try_compile), create a composite source

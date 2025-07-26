@@ -816,7 +816,9 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
   
   // Limit recursion depth to prevent stack overflow
   if (depth > MAX_HEADER_RECURSION_DEPTH) {
-    std::cerr << "[WARNING] Header dependency recursion depth exceeded for: " << filePath << std::endl;
+    this->GetMakefile()->IssueMessage(
+      MessageType::WARNING,
+      cmStrCat("Header dependency recursion depth exceeded for: ", filePath));
     return dependencies;
   }
   

@@ -74,6 +74,15 @@ public:
    * @return Nix expression for the path
    */
   static std::string AbsolutePathToNixExpr(const std::string& path);
+
+  /**
+   * Check if a relative path goes outside the tree (starts with ../).
+   * This is a convenience function for a common pattern.
+   * 
+   * @param relativePath The relative path to check
+   * @return true if the path starts with ../
+   */
+  static bool IsPathOutsideTree(const std::string& relativePath);
 };
 
 #endif

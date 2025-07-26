@@ -182,6 +182,9 @@ test-all:
     just test_unity_build::run
     just test_fortran_language::run
     just test_fmt_library::run
+    just test_external_tools::run
+    just test_file_edge_cases::run
+    just test_nix_tools::run
     # Scale and error recovery tests (run separately due to special nature)
     # NOTE: These tests are not included in the standard regression suite due to:
     # - test_scale: Extended runtime with configurable file counts
@@ -236,3 +239,12 @@ mod test_cross_compile
 
 # Thread safety test
 mod test_thread_safety
+
+# External tools test (ExternalProject_Add and FetchContent)
+mod test_external_tools
+
+# File edge cases test (spaces, unicode, special characters)
+mod test_file_edge_cases
+
+# Nix tools integration test
+mod test_nix_tools
