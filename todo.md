@@ -13,17 +13,23 @@ PHYR_TOOLCHAIN_VARIANT=host; cd ./samples/posix/philosophers && cmake -B build -
      - Enabled test_zephyr_rtos::run in main justfile test-all target
 
 
-"4. Testing nix eval (expression evaluation)..." reports: error: experimental Nix feature 'nix-command' is disabled; add '--extra-experimental-features nix-command' to enable it. (jq not available for pretty printing)
+DONE - "4. Testing nix eval (expression evaluation)..." reports: error: experimental Nix feature 'nix-command' is disabled; add '--extra-experimental-features nix-command' to enable it. (jq not available for pretty printing)
+     - Added --extra-experimental-features nix-command flag to all nix eval commands in test_nix_tools/justfile
+     - Updated tips section with the flag as well
 
-
-"3. Testing nix-build --dry-run..." reports ⚠  nix-build --dry-run output unexpected
+DONE - "3. Testing nix-build --dry-run..." reports ⚠  nix-build --dry-run output unexpected
+     - Fixed test to handle both "would be built" and already-built cases
+     - Test now shows appropriate success message for both scenarios
 
 test_dir_spaces failed to build
 
 error: path '/home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases/build/CMakeFiles/CMakeScratch/TryCompile-NX5FxI/default.nix' does not exist
 
 
-"fix(test): handle expected failure in test_external_tools": ExternalProject_Add and FetchContent may be supported by writing a skeleton Nix file for each dependency -- the user will have to fill in the hash but we could write some boilerplate Nix that uses Nix fetchers. 
+"fix(test): handle expected failure in test_external_tools": ExternalProject_Add and FetchContent may be supported by writing a skeleton Nix file for each dependency -- the user will have to fill in the hash but we could write some boilerplate Nix that uses Nix fetchers.
+
+
+Update PRD.md with best-practices and guidelines we have used for Nix generator.
 
 
 
@@ -1446,6 +1452,24 @@ The CMake Nix backend code is of high quality with good error handling, consiste
 2. DONE: **Magic numbers**: All magic numbers have been converted to named constants (MAX_CYCLE_DETECTION_DEPTH, HASH_SUFFIX_DIGITS, MAX_HEADER_RECURSION_DEPTH, MAX_DEPENDENCY_CACHE_SIZE)
 3. DONE: **Compiler detection duplication**: GetCompilerPackage and GetCompilerCommand now delegate to cmNixCompilerResolver class
 
+## ADDITIONAL CODE REVIEW FINDINGS (2025-01-26):
+
+### Test Coverage Improvements Needed:
+1. **Unit Test Coverage**: While testNixGenerator.cxx exists, it could be expanded to cover:
+   - Edge cases in cmNixWriter::EscapeNixString (e.g., control characters, unicode)
+   - Path validation with malicious inputs in cmGlobalNixGenerator
+   - Concurrent access patterns for thread safety validation
+
+2. **Integration Test Gaps**:
+   - Multi-language projects combining Fortran/CUDA/C++
+   - Projects with 1000+ source files to test scalability
+   - Complex dependency graphs with 10+ levels of transitive dependencies
+
+3. **Performance Testing**:
+   - No benchmarks comparing Nix generator performance to Ninja/Make
+   - Missing tests for memory usage under load
+   - No tests for generation time with varying project sizes
+
 ### Remaining Minor Issues:
 1. **Inconsistent error reporting**: Still some mix of std::cerr for debug output vs IssueMessage for warnings/errors, but all debug output is properly guarded with GetDebugOutput()
 2. **No incremental build support**: By design - Nix derivations are pure and always rebuild from scratch for reproducibility
@@ -1519,4 +1543,11 @@ DONE - Fixed generic catch(...) block in cmGlobalNixGenerator.cxx:
      - Replaced catch(...) with specific exception types (std::invalid_argument, std::out_of_range)
      - Improves error handling clarity when parsing CMAKE_NIX_EXTERNAL_HEADER_LIMIT
      - Follows C++ best practices for exception handling
+
+DONE - Code review of CMake Nix generator implementation:
+     - No critical bugs or security vulnerabilities found
+     - All generic catch blocks have been replaced with specific exception types
+     - Proper thread safety with mutex protection for shared data structures
+     - Good error handling and resource management (RAII)
+     - Some opportunities for additional test coverage identified
 
