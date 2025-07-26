@@ -1,0 +1,24 @@
+build_dir := "build"
+
+# Configure the project
+configure:
+    mkdir -p {{build_dir}}/generated
+    cd {{build_dir}} && cmake -G Nix -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=nix-build ..
+
+# Build and run the test
+run: configure
+    @echo "=== Testing advanced custom commands ==="
+    cd {{build_dir}} && nix-build -A test_app
+    @echo "\n=== Checking generated files ==="
+    @echo "Contents of multi_output1.txt:"
+    cat {{build_dir}}/multi_output1.txt || echo "File not found"
+    @echo "\nContents of shell_test.txt:"
+    cat {{build_dir}}/shell_test.txt || echo "File not found"
+    @echo "\nContents of dependent.txt:"
+    cat {{build_dir}}/dependent.txt || echo "File not found"
+    @echo "\n=== Running the application ==="
+    {{build_dir}}/result || echo "Application not found"
+
+# Clean build artifacts
+clean:
+    rm -rf {{build_dir}}

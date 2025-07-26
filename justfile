@@ -253,3 +253,6 @@ mod test_nix_tools
 
 # Circular dependency test
 mod test_circular_deps
+
+# Advanced custom commands test
+mod test_custom_commands_advanced
