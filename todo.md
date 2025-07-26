@@ -972,6 +972,44 @@ The following items are currently pending and need attention:
 - Code refactoring opportunities for maintainability (items 35-51)
 - New issues from code review (items 56-70)
 
+## NEW CODE QUALITY ISSUES (2025-01-16)
+
+### Debug Output Issues:
+83. **Inconsistent Debug Output Control**:
+    - Location: cmGlobalNixGenerator.cxx and cmNixTargetGenerator.cxx
+    - Issue: Some debug output uses CMAKE_NIX_DEBUG env var, others are always printed
+    - Examples: Lines 507-532, 690, 1585 in cmGlobalNixGenerator.cxx use [DEBUG] or DEBUG: without checking debug flag
+    - Impact: Verbose output in production builds
+    - Fix: Ensure all debug output checks GetDebugOutput() or CMAKE_NIX_DEBUG
+
+84. **Mixed Debug Prefixes**:
+    - Location: Throughout Nix generator code
+    - Issue: Mix of [NIX-TRACE], [NIX-DEBUG], [DEBUG], DEBUG:, and [WARNING] prefixes
+    - Impact: Confusing log output, hard to filter
+    - Fix: Standardize on [NIX-DEBUG] for debug, [NIX-WARNING] for warnings
+
+### Resource Management:
+85. **Raw new Without Smart Pointers**:
+    - Location: cmLocalNixGenerator.cxx:41, cmNixTargetGenerator.cxx:35
+    - Issue: Using raw new for cmRulePlaceholderExpander and cmNixTargetGenerator
+    - Impact: Potential memory leaks if exceptions thrown
+    - Fix: Use std::unique_ptr or std::make_unique
+
+### Thread Safety:
+86. **Static Variables Without Synchronization**:
+    - Location: cmNixWriter.cxx:308 (reservedWords), cmNixPathUtils.cxx:106 (dangerousChars)
+    - Issue: Static variables accessed without mutex protection
+    - Impact: Potential race conditions in multi-threaded builds
+    - Fix: Use std::once_flag or make const static
+
+### Error Handling:
+87. **Inconsistent Error Reporting**:
+    - Location: Throughout codebase
+    - Issue: Mix of std::cerr, IssueMessage, and silent failures
+    - Examples: Warnings printed to cerr instead of using IssueMessage(WARNING)
+    - Impact: Users may miss important warnings
+    - Fix: Use IssueMessage consistently for all user-facing errors/warnings
+
 ## NEW ISSUES FROM CODE REVIEW (2025-07-25)
 
 ### Code Quality Issues:
