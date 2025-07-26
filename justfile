@@ -106,6 +106,12 @@ mod test_fortran_language
 # fmt library test (medium-sized C++ formatting library)
 mod test_fmt_library
 
+# Performance benchmark test
+mod test_performance_benchmark
+
+# Multi-config edge cases test (RelWithDebInfo, MinSizeRel)
+mod test_multiconfig_edge_cases
+
 # Bootstrap CMake from scratch (only needed once)
 bootstrap:
     ./bootstrap --parallel=$(nproc) --no-system-curl -- -DCMAKE_USE_OPENSSL=OFF -DCMAKE_USE_SYSTEM_ZLIB=OFF
@@ -138,6 +144,8 @@ clean-test-projects:
     -just test_package_integration::clean
     -just test_feature_detection::clean
     -just test_opencv::clean
+    -just test_performance_benchmark::clean
+    -just test_multiconfig_edge_cases::clean
 
 # Clean build of CMake itself and test project cruft½
 clean: clean-test-projects
@@ -211,6 +219,20 @@ test-special:
     just test_cross_compile::test
     just test_thread_safety::test
     @echo "✅ Special tests completed!"
+
+########################################################
+
+# Run nice-to-have tests (performance benchmarks, edge cases)
+test-nice-to-have:
+    @echo "=== Running Nice-to-Have Tests ==="
+    @echo "These tests are optional and may take longer to run"
+    @echo ""
+    # Performance benchmark with different file counts
+    just test_performance_benchmark::test
+    # Multi-config edge cases (RelWithDebInfo, MinSizeRel)
+    just test_multiconfig_edge_cases::run
+    @echo ""
+    @echo "✅ Nice-to-have tests completed"
 
 ########################################################
 

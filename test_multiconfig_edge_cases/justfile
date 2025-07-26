@@ -1,0 +1,82 @@
+# Test edge cases for multi-configuration builds
+
+# Clean build artifacts
+clean:
+    rm -rf build-*
+    rm -f default.nix
+
+# Test all four standard configurations
+test-all-configs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    echo "=== Testing Multi-Configuration Edge Cases ==="
+    
+    CONFIGS=("Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+    
+    for CONFIG in "${CONFIGS[@]}"; do
+        echo ""
+        echo "Testing $CONFIG configuration..."
+        
+        # Clean previous build
+        rm -rf "build-$CONFIG"
+        rm -f default.nix
+        
+        # Configure
+        ../bin/cmake -B "build-$CONFIG" -G Nix -DCMAKE_BUILD_TYPE="$CONFIG" .
+        
+        # Build
+        cd "build-$CONFIG"
+        if nix-build -A config_test; then
+            echo "✓ Build succeeded for $CONFIG"
+            
+            # Run the test
+            echo "Output:"
+            ./result
+            
+            # Check install targets
+            if nix-build -A config_test_install >/dev/null 2>&1; then
+                echo "✓ Install target exists for $CONFIG"
+            fi
+        else
+            echo "✗ Build failed for $CONFIG"
+        fi
+        cd ..
+    done
+    
+    echo ""
+    echo "=== Configuration Test Summary ==="
+    echo "All standard configurations tested"
+
+# Test RelWithDebInfo specifically
+test-relwithdebinfo: clean
+    ../bin/cmake -B build-relwithdebinfo -G Nix -DCMAKE_BUILD_TYPE=RelWithDebInfo .
+    cd build-relwithdebinfo && nix-build -A config_test
+    ./result
+
+# Test MinSizeRel specifically  
+test-minsizerel: clean
+    ../bin/cmake -B build-minsizerel -G Nix -DCMAKE_BUILD_TYPE=MinSizeRel .
+    cd build-minsizerel && nix-build -A config_test
+    ./result
+
+# Compare optimization flags across configurations
+compare-flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    echo "=== Comparing Optimization Flags ==="
+    
+    CONFIGS=("Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+    
+    for CONFIG in "${CONFIGS[@]}"; do
+        rm -rf "build-$CONFIG"
+        ../bin/cmake -B "build-$CONFIG" -G Nix -DCMAKE_BUILD_TYPE="$CONFIG" . >/dev/null 2>&1
+        
+        echo ""
+        echo "$CONFIG configuration flags:"
+        grep -E "(gcc|g\+\+).*-[O0-3]" "build-$CONFIG/default.nix" | head -1 | sed 's/.*gcc/gcc/' || echo "No optimization flags found"
+    done
+
+# Quick test
+run: test-all-configs

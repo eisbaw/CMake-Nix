@@ -1,0 +1,72 @@
+# Performance benchmark test for CMake Nix generator
+
+# Default number of source files
+num_files := "100"
+
+# Clean build artifacts
+clean:
+    rm -rf build-*
+    rm -f benchmark_results.txt
+
+# Run benchmark with different generators
+benchmark num_files=num_files:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    echo "=== CMake Generator Performance Benchmark ==="
+    echo "Testing with {{num_files}} source files"
+    echo ""
+    
+    # Results file
+    RESULTS="benchmark_results.txt"
+    echo "Generator,Configure Time (s),Files" > "$RESULTS"
+    
+    # Test Nix generator
+    echo "Testing Nix generator..."
+    START=$(date +%s.%N)
+    ../bin/cmake -B build-nix -G Nix -DNUM_SOURCE_FILES={{num_files}} . >/dev/null 2>&1
+    END=$(date +%s.%N)
+    NIX_TIME=$(echo "$END - $START" | bc)
+    echo "Nix,$NIX_TIME,{{num_files}}" >> "$RESULTS"
+    echo "Nix generator: ${NIX_TIME}s"
+    
+    # Test Unix Makefiles generator
+    echo "Testing Unix Makefiles generator..."
+    START=$(date +%s.%N)
+    ../bin/cmake -B build-make -G "Unix Makefiles" -DNUM_SOURCE_FILES={{num_files}} . >/dev/null 2>&1
+    END=$(date +%s.%N)
+    MAKE_TIME=$(echo "$END - $START" | bc)
+    echo "Unix Makefiles,$MAKE_TIME,{{num_files}}" >> "$RESULTS"
+    echo "Unix Makefiles generator: ${MAKE_TIME}s"
+    
+    # Test Ninja generator (if available)
+    if command -v ninja >/dev/null 2>&1; then
+        echo "Testing Ninja generator..."
+        START=$(date +%s.%N)
+        ../bin/cmake -B build-ninja -G Ninja -DNUM_SOURCE_FILES={{num_files}} . >/dev/null 2>&1
+        END=$(date +%s.%N)
+        NINJA_TIME=$(echo "$END - $START" | bc)
+        echo "Ninja,$NINJA_TIME,{{num_files}}" >> "$RESULTS"
+        echo "Ninja generator: ${NINJA_TIME}s"
+    fi
+    
+    echo ""
+    echo "=== Results Summary ==="
+    cat "$RESULTS" | column -t -s,
+
+# Run benchmark with different file counts
+benchmark-suite:
+    just clean
+    just benchmark 10
+    just benchmark 50
+    just benchmark 100
+    just benchmark 200
+    just benchmark 500
+    
+    echo ""
+    echo "=== Full Benchmark Results ==="
+    cat benchmark_results.txt | column -t -s,
+
+# Quick test to ensure it works
+test: clean
+    just benchmark 10

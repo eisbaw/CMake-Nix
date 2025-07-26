@@ -15,6 +15,8 @@ pkgs.mkShell {
     cppcheck
     include-what-you-use
     valgrind
+    # Utilities
+    bc  # For benchmark timing calculations
   ];
   
   buildInputs = with pkgs; [
