@@ -1,25 +1,18 @@
-# Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
+# Active TODO items:
 
+test_dir_spaces failed to build - paths with spaces in directory names are not handled correctly
 
-DONE - Make CMAKE_MAKE_PROGRAM=nix-build be default when using the Nix backend, so "../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build ." becomes "../bin/cmake -G Nix .". Set the default an appropriate place in the C++ Sources/ but only for the Nix backend selected. Update all justfiles.
-     - Updated CMakeNixFindMake.cmake to automatically set CMAKE_MAKE_PROGRAM to "nix-build" when not found in PATH
-     - Removed -DCMAKE_MAKE_PROGRAM=nix-build from all 45 justfiles
-     - Updated documentation in Nix.rst and README.md
+error: path '/home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases/build/CMakeFiles/CMakeScratch/TryCompile-NX5FxI/default.nix' does not exist (FIXED: TryCompile now works)
 
-DONE - "just test_zephyr_rtos::run" is currently skipped. It shall not be skipped. It is true it requires specific Python environment, but make a new test_zephyr_rtos/zephyr.shell.nix file which contains this python envrionment. Here is a hint: nix-shell --pure -p pkgsi686Linux.gcc pkgs.pkgsi686Linux.glibc cmake ninja dtc python312Packages.pykwalify python312Packages.pyyaml python312Packages.packaging python312Packages.pyelftools --run '(export ZEPHYR_BASE="$(pwd)"; export ZE
-PHYR_TOOLCHAIN_VARIANT=host; cd ./samples/posix/philosophers && cmake -B build -GNinja -DBOARD=native_sim . && (cd build && ninja))'
-     - Updated existing shell-zephyr.nix to include 32-bit toolchain (pkgsi686Linux.gcc/glibc)
-     - Created zephyr/justfile for building dining philosophers sample with Nix backend
-     - Enabled test_zephyr_rtos::run in main justfile test-all target
+"fix(test): handle expected failure in test_external_tools": ExternalProject_Add and FetchContent may be supported by writing a skeleton Nix file for each dependency -- the user will have to fill in the hash but we could write some boilerplate Nix that uses Nix fetchers.
 
+Update PRD.md with best-practices and guidelines we have used for Nix generator.
 
-DONE - "4. Testing nix eval (expression evaluation)..." reports: error: experimental Nix feature 'nix-command' is disabled; add '--extra-experimental-features nix-command' to enable it. (jq not available for pretty printing)
-     - Added --extra-experimental-features nix-command flag to all nix eval commands in test_nix_tools/justfile
-     - Updated tips section with the flag as well
+Move tasks from this todo.md to use https://github.com/MrLesk/Backlog.md . Move both tasks that are done and new tasks. Install the backlog tool, and when it works update this todo.md to be a shallow file that instructs Claude to add and pickup tasks from backlog tool using the backlog CLI. Be sure to read the readme of backlog project first. Place a git tag "backlog-init" when committed.
 
-DONE - "3. Testing nix-build --dry-run..." reports ⚠  nix-build --dry-run output unexpected
-     - Fixed test to handle both "would be built" and already-built cases
-     - Test now shows appropriate success message for both scenarios
+Look at git log with git notes again. The git notes contain review comments. Fix the review comments.
+
+I dont like having a limit on the amount of headers. BUt we should not copy the headers for every single source file to be compiled. Rather, collect all the headers into a derivation that we then can refer to more easily - and this will limit copying.
 
 test_dir_spaces failed to build
 

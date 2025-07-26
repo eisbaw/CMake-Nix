@@ -242,12 +242,14 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("      )");
   writer.WriteLine("      # When src is a directory, Nix unpacks it into a subdirectory");
   writer.WriteLine("      # We need to find the actual source file");
-  writer.WriteLine("      if [[ -f \"${source}\" ]]; then");
-  writer.WriteLine("        srcFile=\"${source}\"");
-  writer.WriteLine("      elif [[ -f \"$(basename \"$src\")/${source}\" ]]; then");
-  writer.WriteLine("        srcFile=\"$(basename \"$src\")/${source}\"");
+  writer.WriteLine("      # Store source in a variable to handle paths with spaces");
+  writer.WriteLine("      sourceFile=\"${source}\"");
+  writer.WriteLine("      if [[ -f \"$sourceFile\" ]]; then");
+  writer.WriteLine("        srcFile=\"$sourceFile\"");
+  writer.WriteLine("      elif [[ -f \"$(basename \"$src\")/$sourceFile\" ]]; then");
+  writer.WriteLine("        srcFile=\"$(basename \"$src\")/$sourceFile\"");
   writer.WriteLine("      else");
-  writer.WriteLine("        echo \"Error: Cannot find source file ${source}\"");
+  writer.WriteLine("        echo \"Error: Cannot find source file $sourceFile\"");
   writer.WriteLine("        exit 1");
   writer.WriteLine("      fi");
   writer.WriteLine("      ${compiler}/bin/$compilerBin -c ${flags} \"$srcFile\" -o \"$out\"");
@@ -1316,7 +1318,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
   }
   
-  nixFileStream << "    source = \"" << sourcePath << "\";\n";
+  nixFileStream << "    source = \"" << cmNixWriter::EscapeNixString(sourcePath) << "\";\n";
   
   // Write compiler attribute (get from buildInputs[0])
   std::string defaultCompiler = this->GetCompilerPackage(lang);
@@ -1340,7 +1342,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   // Write flags attribute
   if (!allFlags.empty()) {
-    nixFileStream << "    flags = \"" << allFlags << "\";\n";
+    nixFileStream << "    flags = \"" << cmNixWriter::EscapeNixString(allFlags) << "\";\n";
   }
   
   // Close the derivation
@@ -1510,7 +1512,13 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
       if (!firstFlag) {
         compileFlagsStream << " ";
       }
-      compileFlagsStream << "-I" << (!relativeInclude.empty() ? relativeInclude : incPath);
+      std::string finalIncPath = !relativeInclude.empty() ? relativeInclude : incPath;
+      // Quote the path if it contains spaces
+      if (finalIncPath.find(' ') != std::string::npos) {
+        compileFlagsStream << "-I\"" << finalIncPath << "\"";
+      } else {
+        compileFlagsStream << "-I" << finalIncPath;
+      }
       firstFlag = false;
     }
   }
