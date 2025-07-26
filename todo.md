@@ -1,30 +1,24 @@
-# CMake Nix Backend - TODO Status (2025-01-26)
+# CMake Nix Backend - TODO Status
 
-## Summary
-All high-priority tasks have been completed. The CMake Nix backend is production-ready.
 
-## Completed in this session:
-1. ✅ Fixed git notes review comments
-   - ValidateSourceFile now uses const parameters
-   - GetCompileFlags trusts ParseUnixCommandLine output
-   - Stricter error handling for dangerous characters
-   
-2. ✅ Implemented external header derivation system
-   - Shared header derivations for external sources
-   - Eliminates per-source header copying limits
-   - Scalable solution for projects with many headers
+Run just dev but log stdout and stderr to a file, dev.log. Run grep -C10 on this dev.log file for errors and warnings and failures. Add found issues to todo.md . 
 
-3. ✅ Updated documentation
-   - PRD.md reflects all recent improvements
-   - Best practices documented for header management
+Add profiling timing traces to Nix backend C++ source code. Only emit when a debug profiling flag is provided to cmake.
 
-## Status: Production Ready
-- All tests passing (100% success rate)
-- Feature-complete for C/C++/Fortran/CUDA projects
-- Efficient handling of large projects
-- Comprehensive error handling and validation
 
 # Active TODO items:
+
+- test_symlinks failed to build
+     - Found in dev.log grep: "⚠️  test_symlinks failed to build"
+     - Need to investigate why symlink tests fail in Nix environment
+
+- test_zephyr_rtos: cmake command not found error  
+     - Found in dev.log: "/run/user/1000/just/just-5fL4fu/build-via-nix: line 17: cmake: command not found"
+     - The zephyr justfile needs to reference the built cmake binary correctly
+
+- Add profiling timing traces to Nix backend C++ source code
+     - Only emit when a debug profiling flag is provided to cmake
+     - Would help understand performance characteristics of the Nix generator
 
 DONE - Look for code smells in the cmake Nix generator.
      - No major code smells found
@@ -40,6 +34,11 @@ DONE - Add missing tests from nice-to-have section
      - Added test_multiconfig_edge_cases: Tests RelWithDebInfo and MinSizeRel configurations
      - Both tests integrated into justfile with test-nice-to-have target
      - Added bc utility to shell.nix for benchmark timing calculations
+
+DONE - Run just dev with logging to dev.log and grep for errors
+     - Found test_symlinks failure
+     - Found test_zephyr_rtos cmake command not found error
+     - All other tests pass successfully
 
 DONE - test_dir_spaces failed to build - paths with spaces in directory names are not handled correctly
      - Fixed: Directory paths with spaces are properly handled by quoting in bash scripts
