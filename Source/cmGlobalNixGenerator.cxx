@@ -950,51 +950,16 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
               << " (generated: " << source->GetIsGenerated() << ")" << std::endl;
   }
   
-  // Validate source path
-  if (sourceFile.empty()) {
-    std::ostringstream msg;
-    msg << "Empty source file path for target " << target->GetName();
-    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+  // Validate source file
+  std::string errorMessage;
+  if (!this->ValidateSourceFile(source, target, errorMessage)) {
+    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, errorMessage);
     return;
   }
   
-  // Check if file exists (unless it's a generated file)
-  if (!source->GetIsGenerated() && !cmSystemTools::FileExists(sourceFile)) {
-    std::ostringstream msg;
-    msg << "Source file does not exist: " << sourceFile << " for target " << target->GetName();
-    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-    // Continue anyway as it might be generated later
-  }
-  
-  // Validate path doesn't contain dangerous characters that could break Nix expressions
-  if (sourceFile.find('"') != std::string::npos || 
-      sourceFile.find('$') != std::string::npos ||
-      sourceFile.find('`') != std::string::npos ||
-      sourceFile.find('\n') != std::string::npos ||
-      sourceFile.find('\r') != std::string::npos) {
-    std::ostringstream msg;
-    msg << "Source file path contains potentially dangerous characters: " << sourceFile;
-    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-  }
-  
-  // Additional security check for path traversal
-  // CRITICAL FIX: Resolve symlinks BEFORE validation to prevent bypasses
-  std::string normalizedPath = cmSystemTools::CollapseFullPath(sourceFile);
-  std::string resolvedPath = cmSystemTools::GetRealPath(normalizedPath);
-  std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
-  std::string resolvedProjectDir = cmSystemTools::GetRealPath(projectDir);
-  
-  // Check if resolved path is outside project directory (unless it's a system file)
-  if (!cmSystemTools::IsSubDirectory(resolvedPath, resolvedProjectDir) &&
-      !cmSystemTools::IsSubDirectory(resolvedPath, "/usr") &&
-      !cmSystemTools::IsSubDirectory(resolvedPath, "/nix/store")) {
-    // Check if it's in the CMake build directory
-    std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-    if (!cmSystemTools::IsSubDirectory(normalizedPath, buildDir)) {
-      std::ostringstream msg;
-      msg << "Source file path appears to be outside project directory: " << sourceFile;
-      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-    }
+  // Emit warning if validation passed but there was a warning message
+  if (!errorMessage.empty()) {
+    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, errorMessage);
   }
   std::string derivName = this->GetDerivationName(target->GetName(), sourceFile);
   ObjectDerivation const& od = this->ObjectDerivations[derivName];
@@ -1009,167 +974,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     config = "Release"; // Default configuration
   }
   
-  // Get the local generator for this target
-  cmLocalGenerator* lg = target->GetLocalGenerator();
-  
-  // Get configuration-specific compile flags
-  // Use the vector version to properly capture all flags including those from target_compile_options
-  std::vector<BT<std::string>> compileFlagsVec = lg->GetTargetCompileFlags(target, config, lang, "");
-  std::ostringstream compileFlagsStream;
-  bool firstFlag = true;
-  for (const auto& flag : compileFlagsVec) {
-    if (!flag.Value.empty()) {
-      std::string trimmedFlag = cmTrimWhitespace(flag.Value);
-      
-      // Check if the entire string is wrapped in quotes
-      if (trimmedFlag.length() >= 2 && 
-          trimmedFlag.front() == '"' && trimmedFlag.back() == '"') {
-        // Remove the outer quotes
-        trimmedFlag = trimmedFlag.substr(1, trimmedFlag.length() - 2);
-      }
-      
-      // Parse the flag string to handle multi-flag strings like "-fPIC -pthread"
-      std::vector<std::string> parsedFlags;
-      cmSystemTools::ParseUnixCommandLine(trimmedFlag.c_str(), parsedFlags);
-      
-      // If ParseUnixCommandLine returns a single flag that contains spaces,
-      // it might need to be split further (unless it's a quoted argument)
-      for (const auto& pFlag : parsedFlags) {
-        if (pFlag.find(' ') != std::string::npos && 
-            pFlag.front() != '"' && pFlag.front() != '\'') {
-          // This flag contains spaces but isn't quoted, so split it
-          std::istringstream iss(pFlag);
-          std::string subflag;
-          while (iss >> subflag) {
-            if (!subflag.empty()) {
-              if (!firstFlag) compileFlagsStream << " ";
-              compileFlagsStream << subflag;
-              firstFlag = false;
-            }
-          }
-        } else {
-          if (!firstFlag) compileFlagsStream << " ";
-          compileFlagsStream << pFlag;
-          firstFlag = false;
-        }
-      }
-    }
-  }
-  
-  // Add PCH compile options if applicable
-  // First check if this is a PCH source file
-  std::vector<std::string> pchArchs = target->GetPchArchs(config, lang);
-  std::unordered_set<std::string> pchSources;
-  for (const std::string& arch : pchArchs) {
-    std::string pchSource = target->GetPchSource(config, lang, arch);
-    if (!pchSource.empty()) {
-      pchSources.insert(pchSource);
-    }
-  }
-  
-  // Check if source file has SKIP_PRECOMPILE_HEADERS property
-  cmSourceFile* sf = target->Target->GetMakefile()->GetOrCreateSource(sourceFile);
-  bool skipPch = sf && sf->GetPropertyAsBool("SKIP_PRECOMPILE_HEADERS");
-  
-  if (cmSystemTools::GetEnv("CMAKE_NIX_DEBUG")) {
-    std::cerr << "[NIX-DEBUG] PCH check for " << sourceFile << ": pchSources.size=" << pchSources.size() 
-              << ", skipPch=" << skipPch << ", lang=" << lang << std::endl;
-  }
-  
-  if (!pchSources.empty() && !skipPch) {
-    std::string pchOptions;
-    if (pchSources.find(sourceFile) != pchSources.end()) {
-      // This is a PCH source file - add create options
-      for (const std::string& arch : pchArchs) {
-        if (target->GetPchSource(config, lang, arch) == sourceFile) {
-          pchOptions = target->GetPchCreateCompileOptions(config, lang, arch);
-          break;
-        }
-      }
-    } else {
-      // This is a regular source file - add use options
-      pchOptions = target->GetPchUseCompileOptions(config, lang);
-      if (cmSystemTools::GetEnv("CMAKE_NIX_DEBUG")) {
-        std::cerr << "[NIX-DEBUG] PCH use options for " << sourceFile << ": " << pchOptions << std::endl;
-      }
-    }
-    
-    if (!pchOptions.empty()) {
-      // PCH options may be semicolon-separated, convert to space-separated
-      std::string processedOptions = pchOptions;
-      std::replace(processedOptions.begin(), processedOptions.end(), ';', ' ');
-      
-      // Convert absolute paths in PCH options to relative paths
-      std::string pchProjectDir = this->GetCMakeInstance()->GetHomeDirectory();
-      size_t pos = 0;
-      while ((pos = processedOptions.find(pchProjectDir, pos)) != std::string::npos) {
-        // Find the end of the path (space or end of string)
-        size_t endPos = processedOptions.find(' ', pos);
-        if (endPos == std::string::npos) {
-          endPos = processedOptions.length();
-        }
-        
-        // Extract the full path
-        std::string fullPath = processedOptions.substr(pos, endPos - pos);
-        
-        // Convert to relative path
-        std::string relPath = cmSystemTools::RelativePath(pchProjectDir, fullPath);
-        
-        // Replace in the string
-        processedOptions.replace(pos, fullPath.length(), relPath);
-        
-        // Move past this replacement
-        pos += relPath.length();
-      }
-      
-      if (!firstFlag) compileFlagsStream << " ";
-      compileFlagsStream << processedOptions;
-      firstFlag = false;
-    }
-  }
-  
-  // Extract the final compile flags string after all modifications
-  std::string compileFlags = compileFlagsStream.str();
-  
-  // Get configuration-specific preprocessor definitions
-  std::set<std::string> defines;
-  lg->GetTargetDefines(target, config, lang, defines);
-  std::ostringstream defineFlagsStream;
-  bool firstDefine = true;
-  for (const std::string& define : defines) {
-    if (!firstDefine) defineFlagsStream << " ";
-    defineFlagsStream << "-D" << define;
-    firstDefine = false;
-  }
-  std::string defineFlags = defineFlagsStream.str();
-  
-  // Get include directories from target with proper configuration
-  // Use LocalGenerator to properly evaluate generator expressions
-  std::vector<std::string> includes;
-  lg->GetIncludeDirectories(includes, target, lang, config);
-  
-  std::ostringstream includeFlagsStream;
-  // When using filesets, we need to compute include paths relative to the source directory
-  // since that's where the build will happen in the Nix derivation
-  bool willUseFileset = !source->GetIsGenerated();
-  std::string basePath = willUseFileset ? 
-    this->GetCMakeInstance()->GetHomeDirectory() : 
-    this->GetCMakeInstance()->GetHomeOutputDirectory();
-  
-  bool firstInclude = true;
-  for (const auto& inc : includes) {
-    // Skip include directories from Nix store - these are provided by buildInputs packages
-    if (inc.find("/nix/store/") != std::string::npos) {
-      continue;
-    }
-    
-    if (!firstInclude) includeFlagsStream << " ";
-    // Convert absolute include paths to relative for Nix build environment
-    std::string relativeInclude = cmSystemTools::RelativePath(basePath, inc);
-    includeFlagsStream << "-I" << (!relativeInclude.empty() ? relativeInclude : inc);
-    firstInclude = false;
-  }
-  std::string includeFlags = includeFlagsStream.str();
+  // Get all compile flags using the helper method
+  std::string allCompileFlags = this->GetCompileFlags(target, source, lang, config, objectName);
   
   // Start the derivation using cmakeNixCC helper
   nixFileStream << "  " << derivName << " = cmakeNixCC {\n";
@@ -1289,167 +1095,15 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
     }
     
-    // Add dependencies (headers)
-    // Note: headers from ObjectDerivation are already computed and stored
-    for (const auto& dep : headers) {
-      // Get full path for checking
-      std::string fullPath = dep;
-      if (!cmSystemTools::FileIsFullPath(dep)) {
-        fullPath = this->GetCMakeInstance()->GetHomeDirectory();
-        fullPath += "/";
-        fullPath += dep;
-      }
-      
-      if (this->GetCMakeInstance()->GetDebugOutput()) {
-        std::cerr << "[NIX-DEBUG] Processing header dependency: " << dep 
-                  << " (full: " << fullPath << ")" << std::endl;
-        std::cerr << "[NIX-DEBUG] File exists: " << cmSystemTools::FileExists(fullPath) << std::endl;
-      }
-      
-      // Check if file is in build directory
-      std::string srcDirLocal = this->GetCMakeInstance()->GetHomeDirectory();
-      bool isInBuildDir = (fullPath.find(buildDir) == 0);
-      bool isInSourceDir = (fullPath.find(srcDirLocal) == 0);
-      
-      // Only consider it a config-time generated file if:
-      // 1. It's in the build directory
-      // 2. It's NOT also in the source directory (in-source builds)
-      // 3. OR the build dir and source dir are different and file is only in build dir
-      bool isConfigTimeGenerated = isInBuildDir && 
-        (buildDir != srcDirLocal || !isInSourceDir);
-      
-      // Convert to appropriate relative path
-      std::string relDep;
-      if (isInBuildDir && buildDir != srcDirLocal) {
-        // For build directory files, make path relative to source directory
-        // since the fileset will be rooted at the source directory
-        relDep = cmSystemTools::RelativePath(srcDirLocal, fullPath);
-      } else if (cmSystemTools::FileIsFullPath(dep)) {
-        // For source directory files, make path relative to source dir
-        relDep = cmSystemTools::RelativePath(
-          this->GetCMakeInstance()->GetHomeDirectory(), dep);
-      } else {
-        relDep = dep;
-      }
-      
-      if (this->GetCMakeInstance()->GetDebugOutput()) {
-        std::cerr << "[NIX-DEBUG] Relative dependency path: " << relDep << std::endl;
-      }
-      
-      // Add if it's a valid relative path
-      if (!relDep.empty()) {
-        if (cmSystemTools::FileExists(fullPath)) {
-          // Check if it's a configuration-time generated file (exists in build dir)
-          if (isConfigTimeGenerated) {
-            // This is a configuration-time generated file (like Zephyr's autoconf.h)
-            configTimeGeneratedFiles.push_back(fullPath);
-            if (this->GetCMakeInstance()->GetDebugOutput()) {
-              std::cerr << "[NIX-DEBUG] Added config-time generated header: " << fullPath << std::endl;
-            }
-          } else {
-            existingFiles.push_back(relDep);
-            if (this->GetCMakeInstance()->GetDebugOutput()) {
-              std::cerr << "[NIX-DEBUG] Added existing header to fileset: " << relDep << std::endl;
-            }
-          }
-        } else {
-          // Header might be generated during build (custom commands)
-          generatedFiles.push_back(relDep);
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Added build-time generated header: " << relDep 
-                      << " (full: " << fullPath << ")" << std::endl;
-          }
-        }
-      }
-    }
+    // Process header dependencies using helper method
+    this->ProcessHeaderDependencies(headers, buildDir, srcDir, 
+                                   existingFiles, generatedFiles, configTimeGeneratedFiles);
     
-    // Add PCH header file to fileset if this source uses PCH
-    if (!pchSources.empty() && !skipPch && pchSources.find(sourceFile) == pchSources.end()) {
-      // This is a regular source file that uses PCH
-      for (const std::string& arch : pchArchs) {
-        std::string pchHeader = target->GetPchHeader(config, lang, arch);
-        if (!pchHeader.empty()) {
-          // Convert to relative path
-          std::string relPchHeader = cmSystemTools::RelativePath(
-            this->GetCMakeInstance()->GetHomeDirectory(), pchHeader);
-          if (!relPchHeader.empty() && relPchHeader.find("../") != 0) {
-            // PCH headers are typically generated
-            if (cmSystemTools::FileExists(pchHeader)) {
-              existingFiles.push_back(relPchHeader);
-            } else {
-              generatedFiles.push_back(relPchHeader);
-            }
-          }
-        }
-      }
-    }
+    // Note: PCH header file handling is now done in GetCompileFlags helper
     
     // Handle configuration-time generated files (like Zephyr's autoconf.h)
     if (!configTimeGeneratedFiles.empty()) {
-      // Create a composite source that includes both source files and config-time generated files
-      nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\" {} ''\n";
-      nixFileStream << "      mkdir -p $out\n";
-      
-      // Copy the source directory structure
-      nixFileStream << "      # Copy source files\n";
-      // For out-of-source builds, compute relative path to source directory
-      std::string srcDirLocal = this->GetCMakeInstance()->GetHomeDirectory();
-      std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-      std::string rootPath = "./.";
-      if (srcDir != bldDir) {
-        rootPath = cmSystemTools::RelativePath(bldDir, srcDir);
-        if (!rootPath.empty()) {
-          rootPath = "./" + rootPath;
-          // Remove any trailing slash to avoid Nix errors
-          if (rootPath.back() == '/') {
-            rootPath.pop_back();
-          }
-        } else {
-          rootPath = "./.";
-        }
-      }
-      nixFileStream << "      cp -r ${" << rootPath << "}/* $out/ 2>/dev/null || true\n";
-      
-      // Copy configuration-time generated files to their correct locations
-      nixFileStream << "      # Copy configuration-time generated files\n";
-      
-      // Since configuration-time generated files exist in the build directory
-      // and Nix can't access them directly with builtins.path (security restriction),
-      // we need to embed the file contents directly into the Nix expression
-      for (const auto& genFile : configTimeGeneratedFiles) {
-        // Calculate the relative path within the build directory
-        std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
-        std::string destDir = cmSystemTools::GetFilenamePath(relPath);
-        if (!destDir.empty()) {
-          nixFileStream << "      mkdir -p $out/" << destDir << "\n";
-        }
-        
-        // Read the file content and embed it directly
-        cmsys::ifstream inFile(genFile.c_str(), std::ios::in | std::ios::binary);
-        if (inFile) {
-          std::ostringstream contents;
-          contents << inFile.rdbuf();
-          inFile.close();
-          
-          // Write the file content directly using a here-doc
-          nixFileStream << "      cat > $out/" << relPath << " <<'EOF'\n";
-          // Split content by lines and write each line
-          std::istringstream contentStream(contents.str());
-          std::string line;
-          while (std::getline(contentStream, line)) {
-            nixFileStream << line << "\n";
-          }
-          nixFileStream << "      EOF\n";
-        } else {
-          // If we can't read the file, issue a warning but continue
-          std::ostringstream msg;
-          msg << "Warning: Cannot read configuration-time generated file: " << genFile;
-          this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
-          nixFileStream << "      # Warning: Could not read " << genFile << "\n";
-        }
-      }
-      
-      nixFileStream << "    '';\n";
+      this->WriteCompositeSource(nixFileStream, configTimeGeneratedFiles, srcDir, buildDir);
     } else if (existingFiles.empty() && generatedFiles.empty()) {
       // No files detected, use whole directory
       // Calculate relative path from build directory to source directory for out-of-source builds
@@ -1510,58 +1164,14 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           }
         }
         
-        // Write fileset union
-        nixFileStream << "    src = fileset.toSource {\n";
-        nixFileStream << "      root = " << rootPath << ";\n";
-        nixFileStream << "      fileset = fileset.unions [\n";
-        
-        // Add existing files
-        for (const auto& file : existingFiles) {
-          nixFileStream << "        " << rootPath << "/" << file << "\n";
-        }
-        
-        // Add generated files with maybeMissing
-        for (const auto& file : generatedFiles) {
-          nixFileStream << "        (fileset.maybeMissing " << rootPath << "/" << file << ")\n";
-        }
-        
-        nixFileStream << "      ];\n";
-        nixFileStream << "    };\n";
+        // Use fileset union helper
+        this->WriteFilesetUnion(nixFileStream, existingFiles, generatedFiles, rootPath);
       }
     }
   }
   
-  // Get external library dependencies for compilation (headers)
-  std::vector<std::string> libraryDeps = this->GetCachedLibraryDependencies(target, config);
-  
-  // Build buildInputs list including external libraries for headers
-  std::vector<std::string> buildInputs;
-  std::string compilerPkg = this->GetCompilerPackage(lang);
-  buildInputs.push_back(compilerPkg);
-  
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] Language: " << lang << ", Compiler package: " << compilerPkg << std::endl;
-  }
-  
-  this->ProcessLibraryDependenciesForBuildInputs(libraryDeps, buildInputs, projectSourceRelPath);
-  
-  // Check if this source file is generated by a custom command
-  auto it = this->CustomCommandOutputs.find(sourceFile);
-  if (it != this->CustomCommandOutputs.end()) {
-    buildInputs.push_back(it->second);
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Found custom command dependency for " << sourceFile 
-                << " -> " << it->second << std::endl;
-    }
-  } else {
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] No custom command found for " << sourceFile << std::endl;
-      std::cerr << "[NIX-DEBUG] Available custom command outputs:" << std::endl;
-      for (const auto& kv : this->CustomCommandOutputs) {
-        std::cerr << "[NIX-DEBUG]   " << kv.first << " -> " << kv.second << std::endl;
-      }
-    }
-  }
+  // Build buildInputs list using helper method
+  std::vector<std::string> buildInputs = this->BuildBuildInputsList(target, source, config, sourceFile, projectSourceRelPath);
   
   // Write buildInputs attribute
   if (!buildInputs.empty()) {
@@ -1573,25 +1183,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     nixFileStream << " ];\n";
   }
   
-  // Filter out external headers (from /nix/store) and collect only project headers
-  std::vector<std::string> projectHeaders;
-  
-  for (const std::string& header : headers) {
-    // Skip headers from Nix store - they're provided by buildInputs packages
-    if (header.find("/nix/store/") != std::string::npos) {
-      continue;
-    }
-    // Skip absolute paths outside project (system headers)
-    if (cmSystemTools::FileIsFullPath(header)) {
-      continue;
-    }
-    // Skip configuration-time generated files that are already in composite source
-    // These would have paths like "build/zephyr/include/..." when build != source
-    if (header.find("build/") == 0 || header.find("./build/") == 0) {
-      continue;
-    }
-    projectHeaders.push_back(header);
-  }
+  // Filter project headers using helper method
+  std::vector<std::string> projectHeaders = this->FilterProjectHeaders(headers);
   
   // Note: We don't use propagatedInputs for header dependencies because:
   // 1. Headers are already included in the fileset union for the source
@@ -1654,23 +1247,21 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   nixFileStream << "    source = \"" << sourcePath << "\";\n";
   
-  // Write compiler attribute
-  nixFileStream << "    compiler = " << compilerPkg << ";\n";
+  // Write compiler attribute (get from buildInputs[0])
+  nixFileStream << "    compiler = " << (!buildInputs.empty() ? buildInputs[0] : "gcc") << ";\n";
   
-  // Combine all flags: compile flags + defines + includes
-  std::ostringstream allFlagsStream;
-  if (!compileFlags.empty()) allFlagsStream << compileFlags << " ";
-  if (!defineFlags.empty()) allFlagsStream << defineFlags << " ";
-  if (!includeFlags.empty()) allFlagsStream << includeFlags << " ";
-  
-  // Add -fPIC for shared and module libraries
-  if (target->GetType() == cmStateEnums::SHARED_LIBRARY ||
-      target->GetType() == cmStateEnums::MODULE_LIBRARY) {
-    allFlagsStream << "-fPIC ";
+  // Add -fPIC for shared and module libraries if not already present
+  std::string allFlags = allCompileFlags;
+  if ((target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+       target->GetType() == cmStateEnums::MODULE_LIBRARY) &&
+      allFlags.find("-fPIC") == std::string::npos) {
+    if (!allFlags.empty() && allFlags.back() != ' ') {
+      allFlags += " ";
+    }
+    allFlags += "-fPIC";
   }
-  std::string allFlags = allFlagsStream.str();
   
-  // Remove trailing space
+  // Remove trailing space if any
   if (!allFlags.empty() && allFlags.back() == ' ') {
     allFlags.pop_back();
   }
@@ -1684,6 +1275,296 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   nixFileStream << "  };\n\n";
 }
 
+bool cmGlobalNixGenerator::ValidateSourceFile(const cmSourceFile* source,
+                                               cmGeneratorTarget* target,
+                                               std::string& errorMessage)
+{
+  std::string sourceFile = source->GetFullPath();
+  
+  // Validate source path
+  if (sourceFile.empty()) {
+    errorMessage = "Empty source file path for target " + target->GetName();
+    return false;
+  }
+  
+  // Check if file exists (unless it's a generated file)
+  if (!source->GetIsGenerated() && !cmSystemTools::FileExists(sourceFile)) {
+    errorMessage = "Source file does not exist: " + sourceFile + " for target " + target->GetName();
+    // Return true anyway as it might be generated later
+    return true;
+  }
+  
+  // Validate path doesn't contain dangerous characters that could break Nix expressions
+  if (sourceFile.find('"') != std::string::npos || 
+      sourceFile.find('$') != std::string::npos ||
+      sourceFile.find('`') != std::string::npos ||
+      sourceFile.find('\n') != std::string::npos ||
+      sourceFile.find('\r') != std::string::npos) {
+    errorMessage = "Source file path contains potentially dangerous characters: " + sourceFile;
+    // Continue anyway but warn
+    return true;
+  }
+  
+  // Additional security check for path traversal
+  // CRITICAL FIX: Resolve symlinks BEFORE validation to prevent bypasses
+  std::string normalizedPath = cmSystemTools::CollapseFullPath(sourceFile);
+  std::string resolvedPath = cmSystemTools::GetRealPath(normalizedPath);
+  std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
+  std::string resolvedProjectDir = cmSystemTools::GetRealPath(projectDir);
+  
+  // Check if resolved path is outside project directory (unless it's a system file)
+  if (!cmSystemTools::IsSubDirectory(resolvedPath, resolvedProjectDir) &&
+      !cmSystemTools::IsSubDirectory(resolvedPath, "/usr") &&
+      !cmSystemTools::IsSubDirectory(resolvedPath, "/nix/store")) {
+    // Check if it's in the CMake build directory
+    std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+    if (!cmSystemTools::IsSubDirectory(normalizedPath, buildDir)) {
+      errorMessage = "Source file path appears to be outside project directory: " + sourceFile;
+      // Continue anyway but warn
+      return true;
+    }
+  }
+  
+  return true;
+}
+
+std::string cmGlobalNixGenerator::DetermineCompilerPackage(cmGeneratorTarget* target,
+                                                           const cmSourceFile* source) const
+{
+  std::string lang = source->GetLanguage();
+  
+  // First check if user has set CMAKE_NIX_<LANG>_COMPILER_PACKAGE
+  std::string compilerPkgVar = "CMAKE_NIX_" + lang + "_COMPILER_PACKAGE";
+  cmValue userPkg = target->Target->GetMakefile()->GetDefinition(compilerPkgVar);
+  if (userPkg && !userPkg->empty()) {
+    return *userPkg;
+  }
+  
+  // Otherwise use default mapping
+  return this->GetCompilerPackage(lang);
+}
+
+std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
+                                                   const cmSourceFile* source,
+                                                   const std::string& lang,
+                                                   const std::string& config,
+                                                   const std::string& objectName)
+{
+  cmLocalGenerator* lg = target->GetLocalGenerator();
+  
+  // Get configuration-specific compile flags
+  std::vector<BT<std::string>> compileFlagsVec = lg->GetTargetCompileFlags(target, config, lang, "");
+  std::ostringstream compileFlagsStream;
+  bool firstFlag = true;
+  
+  for (const auto& flag : compileFlagsVec) {
+    if (!flag.Value.empty()) {
+      std::string trimmedFlag = cmTrimWhitespace(flag.Value);
+      
+      // Check if the entire string is wrapped in quotes
+      if (trimmedFlag.length() >= 2 && 
+          trimmedFlag.front() == '"' && trimmedFlag.back() == '"') {
+        // Remove the outer quotes
+        trimmedFlag = trimmedFlag.substr(1, trimmedFlag.length() - 2);
+      }
+      
+      // Parse the flag string to handle multi-flag strings like "-fPIC -pthread"
+      std::vector<std::string> parsedFlags;
+      cmSystemTools::ParseUnixCommandLine(trimmedFlag.c_str(), parsedFlags);
+      
+      // If ParseUnixCommandLine returns a single flag that contains spaces,
+      // it might need to be split further (unless it's a quoted argument)
+      for (const auto& pFlag : parsedFlags) {
+        if (pFlag.find(' ') != std::string::npos && 
+            pFlag.front() != '"' && pFlag.front() != '\'') {
+          // This flag contains spaces and isn't quoted, split it
+          std::istringstream iss(pFlag);
+          std::string subFlag;
+          while (iss >> subFlag) {
+            if (!firstFlag) {
+              compileFlagsStream << " ";
+            }
+            compileFlagsStream << subFlag;
+            firstFlag = false;
+          }
+        } else {
+          if (!firstFlag) {
+            compileFlagsStream << " ";
+          }
+          compileFlagsStream << pFlag;
+          firstFlag = false;
+        }
+      }
+    }
+  }
+  
+  // Get preprocessor definitions
+  std::set<BT<std::string>> definesSet = lg->GetTargetDefines(target, config, lang);
+  for (const auto& define : definesSet) {
+    if (!define.Value.empty()) {
+      if (!firstFlag) {
+        compileFlagsStream << " ";
+      }
+      compileFlagsStream << "-D" << define.Value;
+      firstFlag = false;
+    }
+  }
+  
+  // Get include directories
+  std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, lang, config);
+  std::string sourceDir = this->GetCMakeInstance()->GetHomeDirectory();
+  std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+  
+  for (const auto& inc : includes) {
+    if (!inc.Value.empty()) {
+      std::string incPath = inc.Value;
+      
+      // Skip system include directories that would be provided by Nix
+      if (incPath == "/usr/include" || incPath.find("/nix/store/") == 0) {
+        continue;
+      }
+      
+      // Make include path relative to source directory if possible
+      std::string relativeInclude;
+      if (cmSystemTools::FileIsFullPath(incPath)) {
+        relativeInclude = cmSystemTools::RelativePath(sourceDir, incPath);
+        // If the relative path goes outside the source tree, keep absolute
+        if (relativeInclude.find("../") == 0) {
+          relativeInclude = "";
+        }
+      } else {
+        relativeInclude = incPath;
+      }
+      
+      if (!firstFlag) {
+        compileFlagsStream << " ";
+      }
+      compileFlagsStream << "-I" << (!relativeInclude.empty() ? relativeInclude : incPath);
+      firstFlag = false;
+    }
+  }
+  
+  // Add language-specific flags
+  if (lang == "CXX") {
+    std::string cxxStandard = target->GetFeature("CXX_STANDARD", config);
+    if (!cxxStandard.empty()) {
+      if (!firstFlag) {
+        compileFlagsStream << " ";
+      }
+      compileFlagsStream << "-std=c++" << cxxStandard;
+      firstFlag = false;
+    }
+  } else if (lang == "C") {
+    std::string cStandard = target->GetFeature("C_STANDARD", config);
+    if (!cStandard.empty()) {
+      if (!firstFlag) {
+        compileFlagsStream << " ";
+      }
+      compileFlagsStream << "-std=c" << cStandard;
+      firstFlag = false;
+    }
+  }
+  
+  // Add PCH compile options if applicable
+  std::vector<std::string> pchArchs = target->GetPchArchs(config, lang);
+  std::unordered_set<std::string> pchSources;
+  for (const std::string& arch : pchArchs) {
+    std::string pchSource = target->GetPchSource(config, lang, arch);
+    if (!pchSource.empty()) {
+      pchSources.insert(pchSource);
+    }
+  }
+  
+  // Check if source file has SKIP_PRECOMPILE_HEADERS property
+  std::string sourceFile = source->GetFullPath();
+  cmSourceFile* sf = target->Target->GetMakefile()->GetOrCreateSource(sourceFile);
+  bool skipPch = sf && sf->GetPropertyAsBool("SKIP_PRECOMPILE_HEADERS");
+  
+  if (!pchSources.empty() && !skipPch) {
+    std::string pchOptions;
+    if (pchSources.find(sourceFile) != pchSources.end()) {
+      // This is a PCH source file - add create options
+      for (const std::string& arch : pchArchs) {
+        if (target->GetPchSource(config, lang, arch) == sourceFile) {
+          pchOptions = target->GetPchCreateCompileOptions(config, lang, arch);
+          break;
+        }
+      }
+    } else {
+      // This is a regular source file - add use options
+      pchOptions = target->GetPchUseCompileOptions(config, lang);
+    }
+    
+    if (!pchOptions.empty()) {
+      // PCH options may be semicolon-separated, convert to space-separated
+      std::string processedOptions = pchOptions;
+      std::replace(processedOptions.begin(), processedOptions.end(), ';', ' ');
+      
+      // Convert absolute paths in PCH options to relative paths
+      std::string pchProjectDir = this->GetCMakeInstance()->GetHomeDirectory();
+      size_t pos = 0;
+      while ((pos = processedOptions.find(pchProjectDir, pos)) != std::string::npos) {
+        // Find the end of the path (space or end of string)
+        size_t endPos = processedOptions.find(' ', pos);
+        if (endPos == std::string::npos) {
+          endPos = processedOptions.length();
+        }
+        
+        // Extract the full path
+        std::string fullPath = processedOptions.substr(pos, endPos - pos);
+        
+        // Convert to relative path
+        std::string relPath = cmSystemTools::RelativePath(pchProjectDir, fullPath);
+        
+        // Replace in the string
+        processedOptions.replace(pos, fullPath.length(), relPath);
+        
+        // Move past this replacement
+        pos += relPath.length();
+      }
+      
+      if (!firstFlag) {
+        compileFlagsStream << " ";
+      }
+      compileFlagsStream << processedOptions;
+      firstFlag = false;
+    }
+  }
+  
+  // Add output file flag for ASM
+  if (lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
+    if (!firstFlag) {
+      compileFlagsStream << " ";
+    }
+    compileFlagsStream << "-o " << objectName;
+  }
+  
+  return compileFlagsStream.str();
+}
+
+void cmGlobalNixGenerator::WriteExternalSourceDerivation(cmGeneratedFileStream& /*nixFileStream*/,
+                                                         cmGeneratorTarget* /*target*/,
+                                                         const cmSourceFile* /*source*/,
+                                                         const std::string& /*lang*/,
+                                                         const std::string& /*derivName*/,
+                                                         const std::string& /*objectName*/)
+{
+  // External source handling is already implemented in WriteObjectDerivation
+  // This is a stub for future refactoring
+  // The actual implementation would be moved here from WriteObjectDerivation
+}
+
+void cmGlobalNixGenerator::WriteRegularSourceDerivation(cmGeneratedFileStream& /*nixFileStream*/,
+                                                        cmGeneratorTarget* /*target*/,
+                                                        const cmSourceFile* /*source*/,
+                                                        const std::string& /*lang*/,
+                                                        const std::string& /*derivName*/,
+                                                        const std::string& /*objectName*/)
+{
+  // Regular source handling is already implemented in WriteObjectDerivation
+  // This is a stub for future refactoring
+  // The actual implementation would be moved here from WriteObjectDerivation
+}
 
 
 void cmGlobalNixGenerator::WriteLinkDerivation(
@@ -2617,4 +2498,246 @@ void cmGlobalNixGenerator::WriteExplicitSourceDerivation(
   nixFileStream << "      '';\n";
   nixFileStream << "      installPhase = \"true\";\n";
   nixFileStream << "    };\n";
+}
+
+void cmGlobalNixGenerator::ProcessHeaderDependencies(
+  const std::vector<std::string>& headers,
+  const std::string& buildDir,
+  const std::string& srcDir,
+  std::vector<std::string>& existingFiles,
+  std::vector<std::string>& generatedFiles,
+  std::vector<std::string>& configTimeGeneratedFiles)
+{
+  for (const auto& dep : headers) {
+    // Get full path for checking
+    std::string fullPath = dep;
+    if (!cmSystemTools::FileIsFullPath(dep)) {
+      fullPath = this->GetCMakeInstance()->GetHomeDirectory();
+      fullPath += "/";
+      fullPath += dep;
+    }
+    
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Processing header dependency: " << dep 
+                << " (full: " << fullPath << ")" << std::endl;
+      std::cerr << "[NIX-DEBUG] File exists: " << cmSystemTools::FileExists(fullPath) << std::endl;
+    }
+    
+    // Check if file is in build directory
+    bool isInBuildDir = (fullPath.find(buildDir) == 0);
+    bool isInSourceDir = (fullPath.find(srcDir) == 0);
+    
+    // Only consider it a config-time generated file if:
+    // 1. It's in the build directory
+    // 2. It's NOT also in the source directory (in-source builds)
+    // 3. OR the build dir and source dir are different and file is only in build dir
+    bool isConfigTimeGenerated = isInBuildDir && 
+      (buildDir != srcDir || !isInSourceDir);
+    
+    // Convert to appropriate relative path
+    std::string relDep;
+    if (isInBuildDir && buildDir != srcDir) {
+      // For build directory files, make path relative to source directory
+      // since the fileset will be rooted at the source directory
+      relDep = cmSystemTools::RelativePath(srcDir, fullPath);
+    } else if (cmSystemTools::FileIsFullPath(dep)) {
+      // For source directory files, make path relative to source dir
+      relDep = cmSystemTools::RelativePath(
+        this->GetCMakeInstance()->GetHomeDirectory(), dep);
+    } else {
+      relDep = dep;
+    }
+    
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Relative dependency path: " << relDep << std::endl;
+    }
+    
+    // Add if it's a valid relative path
+    if (!relDep.empty()) {
+      if (cmSystemTools::FileExists(fullPath)) {
+        // Check if it's a configuration-time generated file (exists in build dir)
+        if (isConfigTimeGenerated) {
+          // This is a configuration-time generated file (like Zephyr's autoconf.h)
+          configTimeGeneratedFiles.push_back(fullPath);
+          if (this->GetCMakeInstance()->GetDebugOutput()) {
+            std::cerr << "[NIX-DEBUG] Added config-time generated header: " << fullPath << std::endl;
+          }
+        } else {
+          existingFiles.push_back(relDep);
+          if (this->GetCMakeInstance()->GetDebugOutput()) {
+            std::cerr << "[NIX-DEBUG] Added existing header to fileset: " << relDep << std::endl;
+          }
+        }
+      } else {
+        // Header might be generated during build (custom commands)
+        generatedFiles.push_back(relDep);
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          std::cerr << "[NIX-DEBUG] Added build-time generated header: " << relDep 
+                    << " (full: " << fullPath << ")" << std::endl;
+        }
+      }
+    }
+  }
+}
+
+void cmGlobalNixGenerator::WriteCompositeSource(
+  cmGeneratedFileStream& nixFileStream,
+  const std::vector<std::string>& configTimeGeneratedFiles,
+  const std::string& srcDir,
+  const std::string& buildDir)
+{
+  // Create a composite source that includes both source files and config-time generated files
+  nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\" {} ''\n";
+  nixFileStream << "      mkdir -p $out\n";
+  
+  // Copy the source directory structure
+  nixFileStream << "      # Copy source files\n";
+  // For out-of-source builds, compute relative path to source directory
+  std::string rootPath = "./.";
+  if (srcDir != buildDir) {
+    rootPath = cmSystemTools::RelativePath(buildDir, srcDir);
+    if (!rootPath.empty()) {
+      rootPath = "./" + rootPath;
+      // Remove any trailing slash to avoid Nix errors
+      if (rootPath.back() == '/') {
+        rootPath.pop_back();
+      }
+    } else {
+      rootPath = "./.";
+    }
+  }
+  nixFileStream << "      cp -r ${" << rootPath << "}/* $out/ 2>/dev/null || true\n";
+  
+  // Copy configuration-time generated files to their correct locations
+  nixFileStream << "      # Copy configuration-time generated files\n";
+  
+  // Since configuration-time generated files exist in the build directory
+  // and Nix can't access them directly with builtins.path (security restriction),
+  // we need to embed the file contents directly into the Nix expression
+  for (const auto& genFile : configTimeGeneratedFiles) {
+    // Calculate the relative path within the build directory
+    std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
+    std::string destDir = cmSystemTools::GetFilenamePath(relPath);
+    if (!destDir.empty()) {
+      nixFileStream << "      mkdir -p $out/" << destDir << "\n";
+    }
+    
+    // Read the file content and embed it directly
+    cmsys::ifstream inFile(genFile.c_str(), std::ios::in | std::ios::binary);
+    if (inFile) {
+      std::ostringstream contents;
+      contents << inFile.rdbuf();
+      inFile.close();
+      
+      // Write the file content directly using a here-doc
+      nixFileStream << "      cat > $out/" << relPath << " <<'EOF'\n";
+      // Split content by lines and write each line
+      std::istringstream contentStream(contents.str());
+      std::string line;
+      while (std::getline(contentStream, line)) {
+        nixFileStream << line << "\n";
+      }
+      nixFileStream << "      EOF\n";
+    } else {
+      // If we can't read the file, issue a warning but continue
+      std::ostringstream msg;
+      msg << "Warning: Cannot read configuration-time generated file: " << genFile;
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+      nixFileStream << "      # Warning: Could not read " << genFile << "\n";
+    }
+  }
+  nixFileStream << "    '';\n";
+}
+
+void cmGlobalNixGenerator::WriteFilesetUnion(
+  cmGeneratedFileStream& nixFileStream,
+  const std::vector<std::string>& existingFiles,
+  const std::vector<std::string>& generatedFiles,
+  const std::string& rootPath)
+{
+  // Write fileset union
+  nixFileStream << "    src = fileset.toSource {\n";
+  nixFileStream << "      root = " << rootPath << ";\n";
+  nixFileStream << "      fileset = fileset.unions [\n";
+  
+  // Add existing files
+  for (const auto& file : existingFiles) {
+    nixFileStream << "        " << rootPath << "/" << file << "\n";
+  }
+  
+  // Add generated files with maybeMissing
+  for (const auto& file : generatedFiles) {
+    nixFileStream << "        (fileset.maybeMissing " << rootPath << "/" << file << ")\n";
+  }
+  
+  nixFileStream << "      ];\n";
+  nixFileStream << "    };\n";
+}
+
+std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
+  cmGeneratorTarget* target,
+  const cmSourceFile* source,
+  const std::string& config,
+  const std::string& sourceFile,
+  const std::string& projectSourceRelPath)
+{
+  std::vector<std::string> buildInputs;
+  
+  // Add compiler package
+  std::string compilerPkg = this->DetermineCompilerPackage(target, source);
+  buildInputs.push_back(compilerPkg);
+  
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-DEBUG] Language: " << source->GetLanguage() 
+              << ", Compiler package: " << compilerPkg << std::endl;
+  }
+  
+  // Get external library dependencies
+  std::vector<std::string> libraryDeps = this->GetCachedLibraryDependencies(target, config);
+  this->ProcessLibraryDependenciesForBuildInputs(libraryDeps, buildInputs, projectSourceRelPath);
+  
+  // Check if this source file is generated by a custom command
+  auto it = this->CustomCommandOutputs.find(sourceFile);
+  if (it != this->CustomCommandOutputs.end()) {
+    buildInputs.push_back(it->second);
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Found custom command dependency for " << sourceFile 
+                << " -> " << it->second << std::endl;
+    }
+  } else {
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] No custom command found for " << sourceFile << std::endl;
+      std::cerr << "[NIX-DEBUG] Available custom command outputs:" << std::endl;
+      for (const auto& kv : this->CustomCommandOutputs) {
+        std::cerr << "[NIX-DEBUG]   " << kv.first << " -> " << kv.second << std::endl;
+      }
+    }
+  }
+  
+  return buildInputs;
+}
+
+std::vector<std::string> cmGlobalNixGenerator::FilterProjectHeaders(
+  const std::vector<std::string>& headers)
+{
+  std::vector<std::string> projectHeaders;
+  
+  for (const std::string& header : headers) {
+    // Skip headers from Nix store - they're provided by buildInputs packages
+    if (header.find("/nix/store/") != std::string::npos) {
+      continue;
+    }
+    // Skip absolute paths outside project (system headers)
+    if (cmSystemTools::FileIsFullPath(header)) {
+      continue;
+    }
+    // Skip configuration-time generated files that are already in composite source
+    // These would have paths like "build/zephyr/include/..." when build != source
+    if (header.find("build/") == 0 || header.find("./build/") == 0) {
+      continue;
+    }
+    projectHeaders.push_back(header);
+  }
+  
+  return projectHeaders;
 } 

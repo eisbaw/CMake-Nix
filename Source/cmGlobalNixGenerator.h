@@ -104,24 +104,48 @@ protected:
   // Helper methods for WriteObjectDerivation decomposition
   bool ValidateSourceFile(const cmSourceFile* source, 
                          cmGeneratorTarget* target,
-                         std::string& sourceFile) const;
+                         std::string& errorMessage);
   void WriteExternalSourceDerivation(cmGeneratedFileStream& nixFileStream,
                                     cmGeneratorTarget* target,
                                     const cmSourceFile* source,
-                                    const std::string& sourceFile,
+                                    const std::string& lang,
                                     const std::string& derivName,
                                     const std::string& objectName);
   void WriteRegularSourceDerivation(cmGeneratedFileStream& nixFileStream,
                                    cmGeneratorTarget* target,
                                    const cmSourceFile* source,
-                                   const std::string& sourceFile,
+                                   const std::string& lang,
                                    const std::string& derivName,
                                    const std::string& objectName);
   std::string DetermineCompilerPackage(cmGeneratorTarget* target,
                                       const cmSourceFile* source) const;
   std::string GetCompileFlags(cmGeneratorTarget* target,
                              const cmSourceFile* source,
-                             const std::string& config) const;
+                             const std::string& lang,
+                             const std::string& config,
+                             const std::string& objectName);
+  
+  // Additional helper methods for WriteObjectDerivation decomposition
+  void ProcessHeaderDependencies(const std::vector<std::string>& headers,
+                                const std::string& buildDir,
+                                const std::string& srcDir,
+                                std::vector<std::string>& existingFiles,
+                                std::vector<std::string>& generatedFiles,
+                                std::vector<std::string>& configTimeGeneratedFiles);
+  void WriteCompositeSource(cmGeneratedFileStream& nixFileStream,
+                           const std::vector<std::string>& configTimeGeneratedFiles,
+                           const std::string& srcDir,
+                           const std::string& buildDir);
+  void WriteFilesetUnion(cmGeneratedFileStream& nixFileStream,
+                        const std::vector<std::string>& existingFiles,
+                        const std::vector<std::string>& generatedFiles,
+                        const std::string& rootPath);
+  std::vector<std::string> BuildBuildInputsList(cmGeneratorTarget* target,
+                                               const cmSourceFile* source,
+                                               const std::string& config,
+                                               const std::string& sourceFile,
+                                               const std::string& projectSourceRelPath);
+  std::vector<std::string> FilterProjectHeaders(const std::vector<std::string>& headers);
   
   // Helper methods for WriteLinkDerivation refactoring
   void WriteLinkDerivationHeader(cmGeneratedFileStream& nixFileStream,
