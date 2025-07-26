@@ -1,8 +1,13 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
-Run git log and see git-notes which contain review comments. Fix the review comments.
+DONE - Run git log and see git-notes which contain review comments. Fix the review comments.
+     - Fixed critical issue: Replaced generic catch(...) blocks with specific exception types
+     - Fixed test_error_recovery to avoid CMake configuration failure
+     - All review comments have been addressed
 
-Run git status to see untracked files - either add or clean up.
+DONE - Run git status to see untracked files - either add or clean up.
+     - Cleaned up generated pkg_*.nix files
+     - Generated missing test_thread_safety source files
 
 DONE - Fixed out-of-source build issue where src attribute pointed to build dir instead of source dir
      - Calculate relative path from build directory to source directory for out-of-source builds
@@ -1174,9 +1179,14 @@ All tests are passing with `just dev`. The CMake Nix backend is production-ready
     - Could be refactored into a single CompilerResolver class
     - Fixed: Both methods now delegate to cmNixCompilerResolver class
 
-82. **Generic catch(...) blocks**: While context has been added, still using catch-all exception handlers
-    - Location: cmNixTargetGenerator.cxx (lines 215, 228), cmGlobalNixGenerator.cxx (lines 403, 415, 717, 729)
-    - These now include type detection logic but could benefit from more specific exception types
+82. DONE: **Generic catch(...) blocks**: Replaced with specific exception types
+    - Location: cmNixTargetGenerator.cxx and cmGlobalNixGenerator.cxx
+    - Replaced all generic catch(...) blocks with specific catches for:
+      - std::bad_alloc (out of memory)
+      - std::system_error (file I/O, process execution)
+      - std::runtime_error (command execution failures)
+      - std::exception (general fallback)
+    - Fixed: Each exception type now has appropriate error messages
 
 ### Code Quality Assessment:
 - No TODO/FIXME/XXX/HACK comments found in Nix generator code
@@ -1186,4 +1196,25 @@ All tests are passing with `just dev`. The CMake Nix backend is production-ready
 
 ### Overall Status:
 The CMake Nix backend is in excellent condition with only minor refactoring opportunities remaining. All critical issues have been resolved and the code is production-ready.
+
+## CODE SMELLS FOUND (2025-07-26)
+
+### Minor Issues:
+1. **Repeated Debug Output Pattern**: GetCMakeInstance()->GetDebugOutput() check is repeated many times
+   - Could be refactored into a helper method or macro
+   - Low priority as it doesn't affect functionality
+
+2. **Hardcoded System Paths**: /usr/include/, /nix/store/, /opt/ are hardcoded
+   - Could be made configurable but reasonable defaults for Unix systems
+   - Low priority as Nix backend is Unix-only
+
+3. **Unused Parameters**: Several methods have commented out parameters
+   - This is acceptable for interface compatibility
+   - Parameters are properly marked with /* */
+
+### Completed Fixes:
+- DONE: Generic catch(...) blocks replaced with specific exception types
+- DONE: Compiler detection duplication resolved with cmNixCompilerResolver
+- DONE: All TODO/FIXME/XXX/HACK comments removed
+- DONE: Thread safety implemented with proper mutex protection
 
