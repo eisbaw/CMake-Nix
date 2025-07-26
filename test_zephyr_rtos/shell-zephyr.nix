@@ -11,6 +11,10 @@ pkgs.mkShell {
     git
     just
     
+    # 32-bit toolchain for native_sim board
+    pkgsi686Linux.gcc
+    pkgsi686Linux.glibc
+    
     # Zephyr-specific dependencies
     python3Packages.west
     python3Packages.pyelftools

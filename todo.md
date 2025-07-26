@@ -1,7 +1,10 @@
 # Update this todo.md whenever something is completed and tests are passing and git commit has been made - then prefix the task with "DONE".
 
 
-Make CMAKE_MAKE_PROGRAM=nix-build be default when using the Nix backend, so "../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build ." becomes "../bin/cmake -G Nix .". Set the default an appropriate place in the C++ Sources/ but only for the Nix backend selected. Update all justfiles.
+DONE - Make CMAKE_MAKE_PROGRAM=nix-build be default when using the Nix backend, so "../bin/cmake -G Nix -DCMAKE_MAKE_PROGRAM=nix-build ." becomes "../bin/cmake -G Nix .". Set the default an appropriate place in the C++ Sources/ but only for the Nix backend selected. Update all justfiles.
+     - Updated CMakeNixFindMake.cmake to automatically set CMAKE_MAKE_PROGRAM to "nix-build" when not found in PATH
+     - Removed -DCMAKE_MAKE_PROGRAM=nix-build from all 45 justfiles
+     - Updated documentation in Nix.rst and README.md
 
 "just test_zephyr_rtos::run" is currently skipped. It shall not be skipped. It is true it requires specific Python environment, but make a new test_zephyr_rtos/zephyr.shell.nix file which contains this python envrionment. Here is a hint: nix-shell --pure -p pkgsi686Linux.gcc pkgs.pkgsi686Linux.glibc cmake ninja dtc python312Packages.pykwalify python312Packages.pyyaml python312Packages.packaging python312Packages.pyelftools --run '(export ZEPHYR_BASE="$(pwd)"; export ZE
 PHYR_TOOLCHAIN_VARIANT=host; cd ./samples/posix/philosophers && cmake -B build -GNinja -DBOARD=native_sim . && (cd build && ninja))'

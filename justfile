@@ -198,7 +198,7 @@ test-all:
     # just test_error_recovery::test
     # just test_cross_compile::test
     # just test_thread_safety::test
-    # just test_zephyr_rtos::run  # Skip - requires specific Python environment
+    just test_zephyr_rtos::run
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself
     # just test_opencv::configure-core
     @echo "✅ All tests passed!"
