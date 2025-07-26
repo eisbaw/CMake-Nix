@@ -1619,3 +1619,10 @@ DONE - Fixed test_custom_commands - objects evaluated as functions in Nix (2025-
      - Used Nix if-then-else syntax instead of bash conditionals for compiler detection
      - Resolves "cannot coerce a function to a string" error in cmakeNixCC helper
 
+## Nice-to-have tests (low priority):
+- Performance benchmarks: Compare Nix generator performance with Ninja/Make generators
+- Multi-config edge cases: Test RelWithDebInfo, MinSizeRel configurations
+- Library versioning edge cases: Complex VERSION/SOVERSION scenarios (basic versioning already tested)
+- RPATH handling: More comprehensive RPATH tests (basic RPATH support exists)
+- Large-scale stress tests: Projects with 1000+ files, deep dependency trees
+
