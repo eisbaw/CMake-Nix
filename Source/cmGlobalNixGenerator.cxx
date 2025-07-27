@@ -54,6 +54,15 @@ cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
 
 cmGlobalNixGenerator::~cmGlobalNixGenerator() = default;
 
+void cmGlobalNixGenerator::LogDebug(const std::string& message) const
+{
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::ostringstream oss;
+    oss << "[NIX-DEBUG] " << message;
+    cmSystemTools::Message(oss.str());
+  }
+}
+
 std::unique_ptr<cmLocalGenerator> cmGlobalNixGenerator::CreateLocalGenerator(
   cmMakefile* mf)
 {
@@ -72,9 +81,7 @@ void cmGlobalNixGenerator::Generate()
 {
   ProfileTimer timer(this, "cmGlobalNixGenerator::Generate");
   
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Generate() started" << std::endl;
-  }
+  this->LogDebug("Generate() started");
   
   // Clear the used derivation names set for fresh generation
   {
@@ -102,9 +109,7 @@ void cmGlobalNixGenerator::Generate()
     this->cmGlobalGenerator::Generate();
   }
   
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
-  }
+  this->LogDebug("Parent Generate() completed");
   
   // Build dependency graph for transitive dependency resolution
   {
@@ -118,9 +123,7 @@ void cmGlobalNixGenerator::Generate()
     this->WriteNixFile();
   }
   
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Generate() completed" << std::endl;
-  }
+  this->LogDebug("Generate() completed");
 }
 
 std::vector<cmGlobalGenerator::GeneratedMakeCommand>
@@ -135,14 +138,14 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   bool isTryCompile = projectDir.find("CMakeScratch") != std::string::npos;
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
-              << " GenerateBuildCommand() called for projectDir: " << projectDir
-              << " isTryCompile: " << (isTryCompile ? "true" : "false")
-              << " targetNames: ";
+    std::ostringstream msg;
+    msg << "GenerateBuildCommand() called for projectDir: " << projectDir
+        << " isTryCompile: " << (isTryCompile ? "true" : "false")
+        << " targetNames: ";
     for (const auto& t : targetNames) {
-      std::cerr << t << " ";
+      msg << t << " ";
     }
-    std::cerr << std::endl;
+    this->LogDebug(msg.str());
   }
   
   GeneratedMakeCommand makeCommand;

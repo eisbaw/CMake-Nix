@@ -8,6 +8,13 @@
 - ✅ CMake Nix backend is production-ready
 - ⚠️ test_zephyr_rtos fails as expected (known limitation - Zephyr requires mutable environment)
 
+### FIXES COMPLETED (2025-01-27):
+- ✅ Issue #85: Raw new without smart pointers - Already using std::make_unique
+- ✅ Issue #86: Static variables without synchronization - Already const static (thread-safe)
+- ✅ Issue #26: File descriptor leaks - RAII handles closing automatically
+- ✅ Issue #29: Thread safety PackageMapper - Converted to thread-safe singleton pattern
+- ✅ Added LogDebug() helper method to cmGlobalNixGenerator for consistent debug output
+
 ## CURRENT ISSUES (2025-01-27)
 
 ### Potential Improvements Found (2025-01-27):
@@ -17,6 +24,7 @@
 1. **Thread Safety Verified**: All shared state (caches, derivation names) is properly protected with mutexes
    - LibraryDependencyCache, DerivationNameCache, UsedDerivationNames all use std::lock_guard
    - No race conditions detected
+   - PackageMapper converted to thread-safe singleton
    - Status: ✅ Good
 
 2. **Error Handling Consistent**: Error handling follows documented policy
@@ -1261,10 +1269,11 @@ DONE 13. **Magic Constants**:
 
 ### RESOURCE MANAGEMENT:
 
-26. **File Descriptor Leaks**:
+DONE 26. **File Descriptor Leaks**:
     - Location: cmNixTargetGenerator.cxx:321-344
     - Issue: ifstream not checked for close errors
     - Impact: Potential fd exhaustion in large projects
+    - FIXED (2025-01-27): RAII handles file closing automatically, removed redundant close() calls
 
 27. **Memory Growth in Caches**:
     - Issue: All caches grow without bound
@@ -1278,10 +1287,11 @@ DONE 13. **Magic Constants**:
     - Issue: Check-then-act pattern not atomic
     - Impact: Race conditions under parallel execution
 
-29. **Shared State Without Synchronization**:
+DONE 29. **Shared State Without Synchronization**:
     - Location: PackageMapper in cmNixTargetGenerator
     - Issue: No mutex protection for concurrent access
     - Impact: Data corruption in parallel builds
+    - FIXED (2025-01-27): Converted PackageMapper to thread-safe singleton pattern with mutex protection
 
 ### HARDCODED ASSUMPTIONS:
 
@@ -1490,18 +1500,20 @@ DONE 84. **Mixed Debug Prefixes**:
     - Fix: Standardize on [NIX-DEBUG] for debug, [NIX-WARNING] for warnings
 
 ### Resource Management:
-85. **Raw new Without Smart Pointers**:
+DONE 85. **Raw new Without Smart Pointers**:
     - Location: cmLocalNixGenerator.cxx:41, cmNixTargetGenerator.cxx:35
     - Issue: Using raw new for cmRulePlaceholderExpander and cmNixTargetGenerator
     - Impact: Potential memory leaks if exceptions thrown
     - Fix: Use std::unique_ptr or std::make_unique
+    - FIXED (2025-01-27): Already using std::make_unique in both locations
 
 ### Thread Safety:
-86. **Static Variables Without Synchronization**:
+DONE 86. **Static Variables Without Synchronization**:
     - Location: cmNixWriter.cxx:308 (reservedWords), cmNixPathUtils.cxx:106 (dangerousChars)
     - Issue: Static variables accessed without mutex protection
     - Impact: Potential race conditions in multi-threaded builds
     - Fix: Use std::once_flag or make const static
+    - FIXED (2025-01-27): Both are already const static, which is thread-safe
 
 ### Error Handling:
 87. **Inconsistent Error Reporting**:

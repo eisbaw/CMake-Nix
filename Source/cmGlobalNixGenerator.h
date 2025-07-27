@@ -241,6 +241,10 @@ private:
     const std::string& config,
     std::vector<std::string>& linkFlagsList,
     std::set<std::string>& transitiveDeps) const;
+  
+  // Debug output helper - centralizes debug logging
+  void LogDebug(const std::string& message) const;
+  
 protected:
   // Platform abstraction helpers
   // Note: These methods return Unix-specific conventions since Nix only supports Unix/Linux platforms

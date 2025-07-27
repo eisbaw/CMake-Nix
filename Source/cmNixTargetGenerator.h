@@ -46,7 +46,7 @@ public:
   /// Pure Nix library support - public for global generator access
   std::vector<std::string> GetTargetLibraryDependencies(std::string const& config) const;
   std::string FindOrCreateNixPackage(std::string const& libName) const;
-  const cmNixPackageMapper& GetPackageMapper() const { return PackageMapper; }
+  const cmNixPackageMapper& GetPackageMapper() const { return cmNixPackageMapper::GetInstance(); }
 
   // Pure virtual methods from cmCommonTargetGenerator
   void AddIncludeFlags(std::string& flags, std::string const& lang,
@@ -113,7 +113,6 @@ private:
   static constexpr size_t MAX_DEPENDENCY_CACHE_SIZE = 10000; // Maximum entries in dependency cache
   
   cmLocalNixGenerator* LocalGenerator;
-  cmNixPackageMapper PackageMapper;
   
   // Cache for transitive dependencies to avoid exponential complexity
   // Using mutable to allow caching in const methods

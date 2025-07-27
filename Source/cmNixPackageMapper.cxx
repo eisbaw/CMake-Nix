@@ -10,6 +10,19 @@
 
 #include "cmSystemTools.h"
 
+// Static member definitions
+std::unique_ptr<cmNixPackageMapper> cmNixPackageMapper::Instance;
+std::mutex cmNixPackageMapper::InstanceMutex;
+
+const cmNixPackageMapper& cmNixPackageMapper::GetInstance()
+{
+  std::lock_guard<std::mutex> lock(InstanceMutex);
+  if (!Instance) {
+    Instance = std::unique_ptr<cmNixPackageMapper>(new cmNixPackageMapper());
+  }
+  return *Instance;
+}
+
 cmNixPackageMapper::cmNixPackageMapper()
 {
   this->InitializeMappings();

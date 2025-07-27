@@ -426,7 +426,7 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithRegex(
     }
   }
   
-  sourceFile.close();
+  // No need to explicitly close - RAII handles it
   return dependencies;
 }
 
@@ -653,7 +653,7 @@ std::vector<std::string> cmNixTargetGenerator::GetTargetLibraryDependencies(
       if (item.Target->IsImported()) {
         // Handle imported targets with package mapping
         std::string targetName = item.Target->GetName();
-        std::string nixPackage = this->PackageMapper.GetNixPackageForTarget(targetName);
+        std::string nixPackage = cmNixPackageMapper::GetInstance().GetNixPackageForTarget(targetName);
         if (!nixPackage.empty()) {
           nixPackages.push_back("__NIXPKG__" + nixPackage);
         }
@@ -693,7 +693,7 @@ std::string cmNixTargetGenerator::FindOrCreateNixPackage(
   }
   
   // Try to find existing pkg_<name>.nix file
-  std::string nixFile = this->PackageMapper.GetNixPackageForTarget(libName);
+  std::string nixFile = cmNixPackageMapper::GetInstance().GetNixPackageForTarget(libName);
   if (nixFile.empty()) {
     return "";
   }
@@ -784,7 +784,7 @@ bool cmNixTargetGenerator::CreateNixPackageFile(
   }
   
   // Try to map to known Nix package first
-  std::string nixPackage = this->PackageMapper.GetNixPackageForTarget(libName);
+  std::string nixPackage = cmNixPackageMapper::GetInstance().GetNixPackageForTarget(libName);
   
   if (nixPackage.empty()) {
     // Can't auto-generate for unknown library
@@ -993,7 +993,7 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
           }
         }
       }
-      headerFile.close();
+      // No need to explicitly close - RAII handles it
     }
   }
   

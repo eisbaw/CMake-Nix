@@ -308,7 +308,7 @@ std::string cmNixWriter::MakeValidNixIdentifier(const std::string& str)
     result = "_" + result;
   }
   
-  // Handle reserved words
+  // Handle reserved words (const static is thread-safe)
   static const std::vector<std::string> reservedWords = {
     "let", "in", "if", "then", "else", "assert", "with", "rec", "inherit"
   };
