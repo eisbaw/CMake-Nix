@@ -62,7 +62,7 @@ void cmNixTargetGenerator::Generate()
   this->WriteLinkDerivation();
 }
 
-std::string cmNixTargetGenerator::GetTargetName() const
+std::string const& cmNixTargetGenerator::GetTargetName() const
 {
   return this->GeneratorTarget->GetName();
 }

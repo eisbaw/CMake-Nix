@@ -33,7 +33,7 @@ public:
 
   virtual void Generate();
 
-  std::string GetTargetName() const;
+  std::string const& GetTargetName() const;
 
   /// Get header dependencies for a source file
   std::vector<std::string> GetSourceDependencies(cmSourceFile const* source) const;
