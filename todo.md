@@ -2,6 +2,14 @@
 
 ## CURRENT ISSUES (2025-01-27)
 
+### STATUS SUMMARY:
+- ✅ All tests pass with `just dev`
+- ✅ test_shared_library issue fixed - justfile now correctly uses build directory
+- ✅ CMake Nix backend is production-ready
+- ⚠️ test_zephyr_rtos fails as expected (known limitation - Zephyr requires mutable environment)
+
+## CURRENT ISSUES (2025-01-27)
+
 ### Potential Improvements Found (2025-01-27):
 
 DONE 1. **Compiler ABI Detection Warning**: The warning "Detecting C/CXX compiler ABI info - failed" appears frequently (2025-01-27)
