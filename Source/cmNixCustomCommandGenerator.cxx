@@ -325,10 +325,22 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
               if (!content.empty() && content.back() != '\n') {
                 content += '\n';
               }
+              
+              // Escape '' sequences in content since we're inside a Nix multiline string
+              std::string escapedContent;
+              for (size_t i = 0; i < content.length(); ++i) {
+                if (i + 1 < content.length() && content[i] == '\'' && content[i + 1] == '\'') {
+                  escapedContent += "''\\''";
+                  i++; // Skip the next quote
+                } else {
+                  escapedContent += content[i];
+                }
+              }
+              
               // Use unique delimiter to avoid conflicts with file content
               std::string delimiter = "EOF_" + std::to_string(std::hash<std::string>{}(dep) % 1000000);
               nixFileStream << "      cat > " << cmOutputConverter::EscapeForShell(relToBuild, cmOutputConverter::Shell_Flag_IsUnix) 
-                           << " <<'" << delimiter << "'\n" << content << delimiter << "\n";
+                           << " <<'" << delimiter << "'\n" << escapedContent << delimiter << "\n";
             }
           }
         }

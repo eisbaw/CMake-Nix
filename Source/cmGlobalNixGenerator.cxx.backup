@@ -1342,20 +1342,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           // Write the file content directly using a here-doc with a unique delimiter
           std::string delimiter = "NIXEOF_" + std::to_string(std::hash<std::string>{}(genFile)) + "_END";
           nixFileStream << "      cat > $out/" << relPath << " <<'" << delimiter << "'\n";
-          
-          // Escape '' sequences in content since we're inside a Nix multiline string
-          std::string contentStr = contents.str();
-          for (size_t i = 0; i < contentStr.length(); ++i) {
-            if (i + 1 < contentStr.length() && contentStr[i] == '\'' && contentStr[i + 1] == '\'') {
-              nixFileStream << "''\\''";
-              i++; // Skip the next quote
-            } else {
-              nixFileStream << contentStr[i];
-            }
-          }
-          
+          nixFileStream << contents.str();
           // Ensure we end with a newline before the delimiter
-          if (!contentStr.empty() && contentStr.back() != '\n') {
+          if (!contents.str().empty() && contents.str().back() != '\n') {
             nixFileStream << "\n";
           }
           nixFileStream << delimiter << "\n";
@@ -3500,20 +3489,10 @@ void cmGlobalNixGenerator::WriteCompositeSource(
       // Use a complex delimiter to avoid conflicts with file contents
       std::string delimiter = "NIXEOF_" + std::to_string(std::hash<std::string>{}(genFile)) + "_END";
       nixFileStream << "      cat > $out/" << relPath << " <<'" << delimiter << "'\n";
-      
-      // Escape '' sequences in content since we're inside a Nix multiline string
-      std::string contentStr = contents.str();
-      for (size_t i = 0; i < contentStr.length(); ++i) {
-        if (i + 1 < contentStr.length() && contentStr[i] == '\'' && contentStr[i + 1] == '\'') {
-          nixFileStream << "''\\''";
-          i++; // Skip the next quote
-        } else {
-          nixFileStream << contentStr[i];
-        }
-      }
-      
+      // Write the entire file content without line-by-line processing to preserve exact content
+      nixFileStream << contents.str();
       // Ensure we end with a newline before the delimiter
-      if (!contentStr.empty() && contentStr.back() != '\n') {
+      if (!contents.str().empty() && contents.str().back() != '\n') {
         nixFileStream << "\n";
       }
       nixFileStream << delimiter << "\n";

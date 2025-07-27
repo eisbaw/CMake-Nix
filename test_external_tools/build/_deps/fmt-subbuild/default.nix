@@ -158,7 +158,7 @@ let
       echo "Looking for cmake/gen_version_h.cmake:"
       ls -la cmake/gen_version_h.cmake || echo "File not found"
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
-      cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-gitinfo.txt <<'EOF'
+      cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-gitinfo.txt <<'EOF_679690'
 # This is a generated file and its contents are an internal implementation detail.
 # The download step will be re-executed if anything in this file changes.
 # No other meaning or use of this file is supported.
@@ -174,7 +174,7 @@ recurse_submodules=--recursive
 submodules=
 CMP0097=NEW
       
-EOF
+EOF_679690
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
       ${pkgs.cmake}/bin/cmake -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P fmt-populate-prefix/tmp/fmt-populate-gitclone.cmake
@@ -202,7 +202,7 @@ EOF
       echo "Looking for cmake/gen_version_h.cmake:"
       ls -la cmake/gen_version_h.cmake || echo "File not found"
       mkdir -p fmt-populate-prefix/tmp
-      cat > fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake <<'EOF'
+      cat > fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake <<'EOF_150309'
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
 # file LICENSE.rst or https://cmake.org/licensing for details.
 
@@ -520,9 +520,9 @@ if(init_submodules)
     ${maybe_show_command}
   )
 endif()
-EOF
+EOF_150309
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
-      cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update-info.txt <<'EOF'
+      cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update-info.txt <<'EOF_738107'
 # This is a generated file and its contents are an internal implementation detail.
 # The patch step will be re-executed if anything in this file changes.
 # No other meaning or use of this file is supported.
@@ -530,7 +530,7 @@ EOF
 command (connected)=/home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake;-Dcan_fetch=YES;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake
 command (disconnected)=/home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake;-Dcan_fetch=NO;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake
 work_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-src
-EOF
+EOF_738107
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
       ${pkgs.cmake}/bin/cmake -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake
@@ -550,14 +550,14 @@ EOF
     buildPhase = ''
       mkdir -p $out
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
-      cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch-info.txt <<'EOF'
+      cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch-info.txt <<'EOF_900226'
 # This is a generated file and its contents are an internal implementation detail.
 # The update step will be re-executed if anything in this file changes.
 # No other meaning or use of this file is supported.
 
 command=
 work_dir=
-EOF
+EOF_900226
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_update_7392}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update
       ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch
@@ -577,9 +577,9 @@ EOF
     buildPhase = ''
       mkdir -p $out
       mkdir -p fmt-populate-prefix/tmp
-      cat > fmt-populate-prefix/tmp/fmt-populate-cfgcmd.txt <<'EOF'
-cmd=''
-EOF
+      cat > fmt-populate-prefix/tmp/fmt-populate-cfgcmd.txt <<'EOF_988356'
+cmd=''\''
+EOF_988356
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch_9560}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch
       ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
@@ -630,7 +630,7 @@ EOF
 
   custom_CMakeFiles_fmt_populate_complete_7965 = stdenv.mkDerivation {
     name = "custom_CMakeFiles_fmt_populate_complete_7965";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_install_6269 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_update_7392 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch_9560 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_build_2588 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_test_7704 ];
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_build_2588 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_install_6269 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch_9560 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_test_7704 custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_update_7392 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
