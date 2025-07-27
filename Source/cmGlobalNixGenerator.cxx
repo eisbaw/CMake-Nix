@@ -1550,29 +1550,29 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
       nixFileStream << "    src = " << rootPath << ";\n";
     } else {
-      // Check if we're using explicit sources
-      if (!this->UseExplicitSources()) {
-        // When not using explicit sources, we don't have header dependencies
-        // so we should use the whole directory to include headers
-        // Calculate relative path from build directory to source directory for out-of-source builds
-        std::string srcDirLocal3 = this->GetCMakeInstance()->GetHomeDirectory();
-        std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-        std::string rootPath = "./.";
-        if (srcDirLocal3 != bldDir) {
-          rootPath = cmSystemTools::RelativePath(bldDir, srcDirLocal3);
-          if (!rootPath.empty()) {
-            rootPath = "./" + rootPath;
-            // Remove any trailing slash to avoid Nix errors
-            if (rootPath.back() == '/') {
-              rootPath.pop_back();
-            }
+      // Always use fileset union for minimal source sets to avoid unnecessary rebuilds
+      // Note: When CMAKE_NIX_EXPLICIT_SOURCES is OFF, we include the source file only
+      // (no header dependencies) but still use a fileset to minimize rebuilds
+      if (!this->UseExplicitSources() && existingFiles.size() + generatedFiles.size() > 0) {
+        // When not using explicit sources, only include the source file itself
+        // Clear any header dependencies to simplify the fileset
+        existingFiles.clear();
+        generatedFiles.clear();
+        
+        // Re-add just the main source file
+        std::string relSource = cmSystemTools::RelativePath(
+          this->GetCMakeInstance()->GetHomeDirectory(), sourceFile);
+        if (!relSource.empty() && relSource.find("../") != 0) {
+          if (source->GetIsGenerated()) {
+            generatedFiles.push_back(relSource);
           } else {
-            rootPath = "./.";
+            existingFiles.push_back(relSource);
           }
         }
-        nixFileStream << "    src = " << rootPath << ";\n";
-      } else {
-        // Use fileset union for minimal source sets with maybeMissing for generated files
+      }
+      
+      // Always use fileset union for better caching
+      if (existingFiles.size() + generatedFiles.size() > 0) {
         // Calculate relative path from build directory to source directory for out-of-source builds
         std::string srcDirLocal4 = this->GetCMakeInstance()->GetHomeDirectory();
         std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
@@ -1592,6 +1592,25 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         
         // Use fileset union helper
         this->WriteFilesetUnion(nixFileStream, existingFiles, generatedFiles, rootPath);
+      } else {
+        // Fallback to whole directory if no files were collected
+        // Calculate relative path from build directory to source directory for out-of-source builds
+        std::string srcDirLocal5 = this->GetCMakeInstance()->GetHomeDirectory();
+        std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+        std::string rootPath = "./.";
+        if (srcDirLocal5 != bldDir) {
+          rootPath = cmSystemTools::RelativePath(bldDir, srcDirLocal5);
+          if (!rootPath.empty()) {
+            rootPath = "./" + rootPath;
+            // Remove any trailing slash to avoid Nix errors
+            if (rootPath.back() == '/') {
+              rootPath.pop_back();
+            }
+          } else {
+            rootPath = "./.";
+          }
+        }
+        nixFileStream << "    src = " << rootPath << ";\n";
       }
     }
   }
