@@ -37,13 +37,12 @@ cmLocalNixGenerator::CreateRulePlaceholderExpander(cmBuildStep buildStep) const
   std::map<std::string, std::string> compilers;
   std::map<std::string, std::string> variableMappings;
   
-  return std::unique_ptr<cmRulePlaceholderExpander>(
-    new cmRulePlaceholderExpander(
+  return std::make_unique<cmRulePlaceholderExpander>(
       buildStep,
       compilers,
       variableMappings,
       "", // compiler sysroot
-      "")); // linker sysroot
+      ""); // linker sysroot
 }
 
 cmGlobalNixGenerator const* cmLocalNixGenerator::GetGlobalNixGenerator() const

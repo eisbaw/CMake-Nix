@@ -134,12 +134,12 @@ let
 
   custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965 = stdenv.mkDerivation {
     name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965";
-    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_gitinfo_txt custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir ];
+    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_gitinfo_txt custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_gitinfo_txt}/simple_external-gitinfo.txt .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir}/simple_external-mkdir .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_gitinfo_txt}/simple_external-prefix/src/simple_external-stamp/simple_external-gitinfo.txt .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664}/simple_external-prefix/src/simple_external-stamp/simple_external-mkdir .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/tmp/simple_external-gitclone.cmake
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-download
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
@@ -149,13 +149,13 @@ let
 
   custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843 = stdenv.mkDerivation {
     name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843";
-    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_tmp_simpleexternal_gitupdate_cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_update_info_txt custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download ];
+    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_tmp_simpleexternal_gitupdate_cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_update_info_txt custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      cp ${custom_build_simpleexternal_prefix_tmp_simpleexternal_gitupdate_cmake}/simple_external-gitupdate.cmake .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_update_info_txt}/simple_external-update-info.txt .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download}/simple_external-download .
+      cp ${custom_build_simpleexternal_prefix_tmp_simpleexternal_gitupdate_cmake}/simple_external-prefix/tmp/simple_external-gitupdate.cmake .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_update_info_txt}/simple_external-prefix/src/simple_external-stamp/simple_external-update-info.txt .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965}/simple_external-prefix/src/simple_external-stamp/simple_external-download .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -Dcan_fetch=NO -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/tmp/simple_external-gitupdate.cmake
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
@@ -165,12 +165,12 @@ let
 
   custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302 = stdenv.mkDerivation {
     name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302";
-    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patch_info_txt custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected ];
+    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patch_info_txt custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patch_info_txt}/simple_external-patch-info.txt .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected}/simple_external-update_disconnected .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patch_info_txt}/simple_external-prefix/src/simple_external-stamp/simple_external-patch-info.txt .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843}/simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
@@ -180,12 +180,12 @@ let
 
   custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528 = stdenv.mkDerivation {
     name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528";
-    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_tmp_simpleexternal_cfgcmd_txt custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected ];
+    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_tmp_simpleexternal_cfgcmd_txt custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      cp ${custom_build_simpleexternal_prefix_tmp_simpleexternal_cfgcmd_txt}/simple_external-cfgcmd.txt .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected}/simple_external-patch_disconnected .
+      cp ${custom_build_simpleexternal_prefix_tmp_simpleexternal_cfgcmd_txt}/simple_external-prefix/tmp/simple_external-cfgcmd.txt .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302}/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-configure
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
@@ -195,11 +195,11 @@ let
 
   custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533 = stdenv.mkDerivation {
     name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533";
-    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure ];
+    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure}/simple_external-configure .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528}/simple_external-prefix/src/simple_external-stamp/simple_external-configure .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-build
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
@@ -209,11 +209,11 @@ let
 
   custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install_6277 = stdenv.mkDerivation {
     name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install_6277";
-    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build ];
+    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build}/simple_external-build .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533}/simple_external-prefix/src/simple_external-stamp/simple_external-build .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-install
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
@@ -223,18 +223,18 @@ let
 
   custom_build_CMakeFiles_simpleexternal_complete_9877 = stdenv.mkDerivation {
     name = "custom_build_CMakeFiles_simpleexternal_complete_9877";
-    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build ];
+    buildInputs = [ pkgs.coreutils custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install_6277 custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664 custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965 custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843 custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302 custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528 custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install}/simple_external-install .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir}/simple_external-mkdir .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download}/simple_external-download .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected}/simple_external-update_disconnected .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected}/simple_external-patch_disconnected .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure}/simple_external-configure .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build}/simple_external-build .
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install}/simple_external-install .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install_6277}/simple_external-prefix/src/simple_external-stamp/simple_external-install .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664}/simple_external-prefix/src/simple_external-stamp/simple_external-mkdir .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965}/simple_external-prefix/src/simple_external-stamp/simple_external-download .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843}/simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302}/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528}/simple_external-prefix/src/simple_external-stamp/simple_external-configure .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533}/simple_external-prefix/src/simple_external-stamp/simple_external-build .
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install_6277}/simple_external-prefix/src/simple_external-stamp/simple_external-install .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E make_directory /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/CMakeFiles
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch CMakeFiles/simple_external-complete
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external-stamp/simple_external-done
@@ -245,7 +245,7 @@ let
 
   custom_build_CMakeFiles_simpleexternal = stdenv.mkDerivation {
     name = "custom_build_CMakeFiles_simpleexternal";
-    buildInputs = [ custom_build_CMakeFiles_simpleexternal_complete ];
+    buildInputs = [ custom_build_CMakeFiles_simpleexternal_complete_9877 ];
     phases = [ "installPhase" ];
     installPhase = ''
       mkdir -p $out

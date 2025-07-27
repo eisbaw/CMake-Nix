@@ -103,7 +103,7 @@ bool cmNixPathUtils::ValidatePathSecurity(const std::string& path,
   }
   
   // Check for shell metacharacters that could be dangerous
-  static const char* dangerousChars = ";|&`$(){}[]<>\\\"'";
+  static const char* const dangerousChars = ";|&`$(){}[]<>\\\"'";
   for (const char* p = dangerousChars; *p; ++p) {
     if (path.find(*p) != std::string::npos) {
       errorMsg = "Path contains potentially dangerous character: ";

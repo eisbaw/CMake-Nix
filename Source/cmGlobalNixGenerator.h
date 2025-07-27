@@ -28,6 +28,15 @@ class cmNixCompilerResolver;
  * \class cmGlobalNixGenerator
  * \brief Write Nix expressions for building C/C++ projects.
  *
+ * Error Handling Policy:
+ * - FATAL_ERROR (IssueMessage): Use for configuration errors that prevent generation
+ *   (e.g., missing required files, invalid configuration)
+ * - WARNING (IssueMessage): Use for recoverable issues that users should know about
+ *   (e.g., unsupported features, external file warnings, fallback behaviors)
+ * - Debug output (std::cerr with [NIX-DEBUG]): Use only when GetDebugOutput() is true
+ *   for diagnostic information during development
+ * - Never use raw std::cerr for user-facing messages
+ *
  * The Nix generator produces fine-grained Nix derivations that maximize
  * build parallelism and caching efficiency. It generates one derivation
  * per translation unit and separate derivations for linking.

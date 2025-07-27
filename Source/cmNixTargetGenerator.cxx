@@ -31,8 +31,7 @@
 std::unique_ptr<cmNixTargetGenerator> cmNixTargetGenerator::New(
   cmGeneratorTarget* target)
 {
-  return std::unique_ptr<cmNixTargetGenerator>(
-    new cmNixTargetGenerator(target));
+  return std::make_unique<cmNixTargetGenerator>(target);
 }
 
 cmNixTargetGenerator::cmNixTargetGenerator(cmGeneratorTarget* target)
