@@ -3,6 +3,12 @@
 #include "cmNixPackageMapper.h"
 
 #include <algorithm>
+#include <fstream>
+#include <sstream>
+
+#include <cm3p/json/json.h>
+
+#include "cmSystemTools.h"
 
 cmNixPackageMapper::cmNixPackageMapper()
 {
@@ -11,7 +17,63 @@ cmNixPackageMapper::cmNixPackageMapper()
 
 void cmNixPackageMapper::InitializeMappings()
 {
-  // Map common CMake imported targets to Nix packages
+  // First try to load from JSON file
+  // Try installed location first
+  std::string dataRoot = cmSystemTools::GetCMakeRoot();
+  std::string jsonPath = dataRoot + "/" + CMAKE_NIX_PACKAGE_MAPPINGS_FILE;
+  
+  if (!this->LoadMappingsFromFile(jsonPath)) {
+    // Try source location for development builds
+    jsonPath = dataRoot + "/Source/" + CMAKE_NIX_PACKAGE_MAPPINGS_FILE;
+    
+    if (!this->LoadMappingsFromFile(jsonPath)) {
+      // Fall back to default mappings if file doesn't exist or fails to load
+      this->InitializeDefaultMappings();
+    }
+  }
+}
+
+bool cmNixPackageMapper::LoadMappingsFromFile(const std::string& filePath)
+{
+  if (!cmSystemTools::FileExists(filePath)) {
+    return false;
+  }
+  
+  std::ifstream file(filePath);
+  if (!file.is_open()) {
+    return false;
+  }
+  
+  Json::Value root;
+  Json::CharReaderBuilder builder;
+  std::string errors;
+  
+  if (!Json::parseFromStream(builder, file, &root, &errors)) {
+    return false;
+  }
+  
+  // Load package mappings
+  if (root.isMember("packageMappings") && root["packageMappings"].isObject()) {
+    const Json::Value& packageMappings = root["packageMappings"];
+    for (const auto& key : packageMappings.getMemberNames()) {
+      this->TargetToNixPackage[key] = packageMappings[key].asString();
+    }
+  }
+  
+  // Load link flag mappings
+  if (root.isMember("linkFlagMappings") && root["linkFlagMappings"].isObject()) {
+    const Json::Value& linkFlagMappings = root["linkFlagMappings"];
+    for (const auto& key : linkFlagMappings.getMemberNames()) {
+      this->TargetToLinkFlags[key] = linkFlagMappings[key].asString();
+    }
+  }
+  
+  return true;
+}
+
+void cmNixPackageMapper::InitializeDefaultMappings()
+{
+  // Default mappings as fallback
   this->TargetToNixPackage = {
     // Built into compiler - no package needed
     {"Threads::Threads", ""},

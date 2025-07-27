@@ -7,6 +7,9 @@
 #include <string>
 #include <map>
 
+// Configuration file path for package mappings
+#define CMAKE_NIX_PACKAGE_MAPPINGS_FILE "cmake-nix-package-mappings.json"
+
 class cmNixPackageMapper
 {
 public:
@@ -17,6 +20,8 @@ public:
 
 private:
   void InitializeMappings();
+  bool LoadMappingsFromFile(const std::string& filePath);
+  void InitializeDefaultMappings();
 
   std::map<std::string, std::string> TargetToNixPackage;
   std::map<std::string, std::string> TargetToLinkFlags;

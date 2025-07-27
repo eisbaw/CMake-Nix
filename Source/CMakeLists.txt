@@ -1408,3 +1408,8 @@ endforeach()
 
 # Unset temporary variables
 unset(_tools)
+
+# Install Nix package mappings configuration file
+install(FILES cmake-nix-package-mappings.json
+  DESTINATION ${CMAKE_DATA_DIR}
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
