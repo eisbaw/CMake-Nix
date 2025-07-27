@@ -923,7 +923,7 @@ let
     objects = [ lib_L1_N0_test_deep_dependencies_lib_L1_N0_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L0_N0} ${link_lib_L0_N1} ${link_lib_L0_N2} ${link_lib_L0_N3} ${link_lib_L0_N4}";
+    libraries = ["${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L1_N1 = cmakeNixLD {
@@ -933,7 +933,7 @@ let
     objects = [ lib_L1_N1_test_deep_dependencies_lib_L1_N1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L0_N0} ${link_lib_L0_N1} ${link_lib_L0_N2} ${link_lib_L0_N3} ${link_lib_L0_N4}";
+    libraries = ["${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L1_N2 = cmakeNixLD {
@@ -943,7 +943,7 @@ let
     objects = [ lib_L1_N2_test_deep_dependencies_lib_L1_N2_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L0_N0} ${link_lib_L0_N1} ${link_lib_L0_N2} ${link_lib_L0_N3} ${link_lib_L0_N4}";
+    libraries = ["${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L1_N3 = cmakeNixLD {
@@ -953,7 +953,7 @@ let
     objects = [ lib_L1_N3_test_deep_dependencies_lib_L1_N3_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L0_N0} ${link_lib_L0_N1} ${link_lib_L0_N2} ${link_lib_L0_N3} ${link_lib_L0_N4}";
+    libraries = ["${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L1_N4 = cmakeNixLD {
@@ -963,7 +963,7 @@ let
     objects = [ lib_L1_N4_test_deep_dependencies_lib_L1_N4_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L0_N0} ${link_lib_L0_N1} ${link_lib_L0_N2} ${link_lib_L0_N3} ${link_lib_L0_N4}";
+    libraries = ["${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L2_N0 = cmakeNixLD {
@@ -973,7 +973,7 @@ let
     objects = [ lib_L2_N0_test_deep_dependencies_lib_L2_N0_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L1_N0} ${link_lib_L1_N1} ${link_lib_L1_N2} ${link_lib_L1_N3} ${link_lib_L1_N4}";
+    libraries = ["${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L2_N1 = cmakeNixLD {
@@ -983,7 +983,7 @@ let
     objects = [ lib_L2_N1_test_deep_dependencies_lib_L2_N1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L1_N0} ${link_lib_L1_N1} ${link_lib_L1_N2} ${link_lib_L1_N3} ${link_lib_L1_N4}";
+    libraries = ["${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L2_N2 = cmakeNixLD {
@@ -993,7 +993,7 @@ let
     objects = [ lib_L2_N2_test_deep_dependencies_lib_L2_N2_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L1_N0} ${link_lib_L1_N1} ${link_lib_L1_N2} ${link_lib_L1_N3} ${link_lib_L1_N4}";
+    libraries = ["${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L2_N3 = cmakeNixLD {
@@ -1003,7 +1003,7 @@ let
     objects = [ lib_L2_N3_test_deep_dependencies_lib_L2_N3_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L1_N0} ${link_lib_L1_N1} ${link_lib_L1_N2} ${link_lib_L1_N3} ${link_lib_L1_N4}";
+    libraries = ["${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L2_N4 = cmakeNixLD {
@@ -1013,7 +1013,7 @@ let
     objects = [ lib_L2_N4_test_deep_dependencies_lib_L2_N4_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L1_N0} ${link_lib_L1_N1} ${link_lib_L1_N2} ${link_lib_L1_N3} ${link_lib_L1_N4}";
+    libraries = ["${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" ];
   };
 
   link_lib_L3_N0 = cmakeNixLD {
@@ -1023,7 +1023,7 @@ let
     objects = [ lib_L3_N0_test_deep_dependencies_lib_L3_N0_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L2_N0} ${link_lib_L2_N1} ${link_lib_L2_N2} ${link_lib_L2_N3} ${link_lib_L2_N4}";
+    libraries = ["${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" ];
   };
 
   link_lib_L3_N1 = cmakeNixLD {
@@ -1033,7 +1033,7 @@ let
     objects = [ lib_L3_N1_test_deep_dependencies_lib_L3_N1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L2_N0} ${link_lib_L2_N1} ${link_lib_L2_N2} ${link_lib_L2_N3} ${link_lib_L2_N4}";
+    libraries = ["${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" ];
   };
 
   link_lib_L3_N2 = cmakeNixLD {
@@ -1043,7 +1043,7 @@ let
     objects = [ lib_L3_N2_test_deep_dependencies_lib_L3_N2_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L2_N0} ${link_lib_L2_N1} ${link_lib_L2_N2} ${link_lib_L2_N3} ${link_lib_L2_N4}";
+    libraries = ["${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" ];
   };
 
   link_lib_L3_N3 = cmakeNixLD {
@@ -1053,7 +1053,7 @@ let
     objects = [ lib_L3_N3_test_deep_dependencies_lib_L3_N3_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L2_N0} ${link_lib_L2_N1} ${link_lib_L2_N2} ${link_lib_L2_N3} ${link_lib_L2_N4}";
+    libraries = ["${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" ];
   };
 
   link_lib_L3_N4 = cmakeNixLD {
@@ -1063,7 +1063,7 @@ let
     objects = [ lib_L3_N4_test_deep_dependencies_lib_L3_N4_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L2_N0} ${link_lib_L2_N1} ${link_lib_L2_N2} ${link_lib_L2_N3} ${link_lib_L2_N4}";
+    libraries = ["${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" ];
   };
 
   link_lib_L4_N0 = cmakeNixLD {
@@ -1073,7 +1073,7 @@ let
     objects = [ lib_L4_N0_test_deep_dependencies_lib_L4_N0_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L3_N0} ${link_lib_L3_N1} ${link_lib_L3_N2} ${link_lib_L3_N3} ${link_lib_L3_N4}";
+    libraries = ["${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" ];
   };
 
   link_lib_L4_N1 = cmakeNixLD {
@@ -1083,7 +1083,7 @@ let
     objects = [ lib_L4_N1_test_deep_dependencies_lib_L4_N1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L3_N0} ${link_lib_L3_N1} ${link_lib_L3_N2} ${link_lib_L3_N3} ${link_lib_L3_N4}";
+    libraries = ["${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" ];
   };
 
   link_lib_L4_N2 = cmakeNixLD {
@@ -1093,7 +1093,7 @@ let
     objects = [ lib_L4_N2_test_deep_dependencies_lib_L4_N2_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L3_N0} ${link_lib_L3_N1} ${link_lib_L3_N2} ${link_lib_L3_N3} ${link_lib_L3_N4}";
+    libraries = ["${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" ];
   };
 
   link_lib_L4_N3 = cmakeNixLD {
@@ -1103,7 +1103,7 @@ let
     objects = [ lib_L4_N3_test_deep_dependencies_lib_L4_N3_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L3_N0} ${link_lib_L3_N1} ${link_lib_L3_N2} ${link_lib_L3_N3} ${link_lib_L3_N4}";
+    libraries = ["${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" ];
   };
 
   link_lib_L4_N4 = cmakeNixLD {
@@ -1113,7 +1113,7 @@ let
     objects = [ lib_L4_N4_test_deep_dependencies_lib_L4_N4_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L3_N0} ${link_lib_L3_N1} ${link_lib_L3_N2} ${link_lib_L3_N3} ${link_lib_L3_N4}";
+    libraries = ["${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" ];
   };
 
   link_lib_L5_N0 = cmakeNixLD {
@@ -1123,7 +1123,7 @@ let
     objects = [ lib_L5_N0_test_deep_dependencies_lib_L5_N0_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L4_N0} ${link_lib_L4_N1} ${link_lib_L4_N2} ${link_lib_L4_N3} ${link_lib_L4_N4}";
+    libraries = ["${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" ];
   };
 
   link_lib_L5_N1 = cmakeNixLD {
@@ -1133,7 +1133,7 @@ let
     objects = [ lib_L5_N1_test_deep_dependencies_lib_L5_N1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L4_N0} ${link_lib_L4_N1} ${link_lib_L4_N2} ${link_lib_L4_N3} ${link_lib_L4_N4}";
+    libraries = ["${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" ];
   };
 
   link_lib_L5_N2 = cmakeNixLD {
@@ -1143,7 +1143,7 @@ let
     objects = [ lib_L5_N2_test_deep_dependencies_lib_L5_N2_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L4_N0} ${link_lib_L4_N1} ${link_lib_L4_N2} ${link_lib_L4_N3} ${link_lib_L4_N4}";
+    libraries = ["${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" ];
   };
 
   link_lib_L5_N3 = cmakeNixLD {
@@ -1153,7 +1153,7 @@ let
     objects = [ lib_L5_N3_test_deep_dependencies_lib_L5_N3_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L4_N0} ${link_lib_L4_N1} ${link_lib_L4_N2} ${link_lib_L4_N3} ${link_lib_L4_N4}";
+    libraries = ["${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" ];
   };
 
   link_lib_L5_N4 = cmakeNixLD {
@@ -1163,7 +1163,7 @@ let
     objects = [ lib_L5_N4_test_deep_dependencies_lib_L5_N4_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L4_N0} ${link_lib_L4_N1} ${link_lib_L4_N2} ${link_lib_L4_N3} ${link_lib_L4_N4}";
+    libraries = ["${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" ];
   };
 
   link_lib_L6_N0 = cmakeNixLD {
@@ -1173,7 +1173,7 @@ let
     objects = [ lib_L6_N0_test_deep_dependencies_lib_L6_N0_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L5_N0} ${link_lib_L5_N1} ${link_lib_L5_N2} ${link_lib_L5_N3} ${link_lib_L5_N4}";
+    libraries = ["${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" ];
   };
 
   link_lib_L6_N1 = cmakeNixLD {
@@ -1183,7 +1183,7 @@ let
     objects = [ lib_L6_N1_test_deep_dependencies_lib_L6_N1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L5_N0} ${link_lib_L5_N1} ${link_lib_L5_N2} ${link_lib_L5_N3} ${link_lib_L5_N4}";
+    libraries = ["${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" ];
   };
 
   link_lib_L6_N2 = cmakeNixLD {
@@ -1193,7 +1193,7 @@ let
     objects = [ lib_L6_N2_test_deep_dependencies_lib_L6_N2_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L5_N0} ${link_lib_L5_N1} ${link_lib_L5_N2} ${link_lib_L5_N3} ${link_lib_L5_N4}";
+    libraries = ["${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" ];
   };
 
   link_lib_L6_N3 = cmakeNixLD {
@@ -1203,7 +1203,7 @@ let
     objects = [ lib_L6_N3_test_deep_dependencies_lib_L6_N3_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L5_N0} ${link_lib_L5_N1} ${link_lib_L5_N2} ${link_lib_L5_N3} ${link_lib_L5_N4}";
+    libraries = ["${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" ];
   };
 
   link_lib_L6_N4 = cmakeNixLD {
@@ -1213,7 +1213,7 @@ let
     objects = [ lib_L6_N4_test_deep_dependencies_lib_L6_N4_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L5_N0} ${link_lib_L5_N1} ${link_lib_L5_N2} ${link_lib_L5_N3} ${link_lib_L5_N4}";
+    libraries = ["${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" ];
   };
 
   link_lib_L7_N0 = cmakeNixLD {
@@ -1223,7 +1223,7 @@ let
     objects = [ lib_L7_N0_test_deep_dependencies_lib_L7_N0_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L6_N0} ${link_lib_L6_N1} ${link_lib_L6_N2} ${link_lib_L6_N3} ${link_lib_L6_N4}";
+    libraries = ["${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" ];
   };
 
   link_lib_L7_N1 = cmakeNixLD {
@@ -1233,7 +1233,7 @@ let
     objects = [ lib_L7_N1_test_deep_dependencies_lib_L7_N1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L6_N0} ${link_lib_L6_N1} ${link_lib_L6_N2} ${link_lib_L6_N3} ${link_lib_L6_N4}";
+    libraries = ["${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" ];
   };
 
   link_lib_L7_N2 = cmakeNixLD {
@@ -1243,7 +1243,7 @@ let
     objects = [ lib_L7_N2_test_deep_dependencies_lib_L7_N2_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L6_N0} ${link_lib_L6_N1} ${link_lib_L6_N2} ${link_lib_L6_N3} ${link_lib_L6_N4}";
+    libraries = ["${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" ];
   };
 
   link_lib_L7_N3 = cmakeNixLD {
@@ -1253,7 +1253,7 @@ let
     objects = [ lib_L7_N3_test_deep_dependencies_lib_L7_N3_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L6_N0} ${link_lib_L6_N1} ${link_lib_L6_N2} ${link_lib_L6_N3} ${link_lib_L6_N4}";
+    libraries = ["${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" ];
   };
 
   link_lib_L7_N4 = cmakeNixLD {
@@ -1263,7 +1263,7 @@ let
     objects = [ lib_L7_N4_test_deep_dependencies_lib_L7_N4_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L6_N0} ${link_lib_L6_N1} ${link_lib_L6_N2} ${link_lib_L6_N3} ${link_lib_L6_N4}";
+    libraries = ["${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" ];
   };
 
   link_lib_L8_N0 = cmakeNixLD {
@@ -1273,7 +1273,7 @@ let
     objects = [ lib_L8_N0_test_deep_dependencies_lib_L8_N0_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L7_N0} ${link_lib_L7_N1} ${link_lib_L7_N2} ${link_lib_L7_N3} ${link_lib_L7_N4}";
+    libraries = ["${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" ];
   };
 
   link_lib_L8_N1 = cmakeNixLD {
@@ -1283,7 +1283,7 @@ let
     objects = [ lib_L8_N1_test_deep_dependencies_lib_L8_N1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L7_N0} ${link_lib_L7_N1} ${link_lib_L7_N2} ${link_lib_L7_N3} ${link_lib_L7_N4}";
+    libraries = ["${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" ];
   };
 
   link_lib_L8_N2 = cmakeNixLD {
@@ -1293,7 +1293,7 @@ let
     objects = [ lib_L8_N2_test_deep_dependencies_lib_L8_N2_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L7_N0} ${link_lib_L7_N1} ${link_lib_L7_N2} ${link_lib_L7_N3} ${link_lib_L7_N4}";
+    libraries = ["${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" ];
   };
 
   link_lib_L8_N3 = cmakeNixLD {
@@ -1303,7 +1303,7 @@ let
     objects = [ lib_L8_N3_test_deep_dependencies_lib_L8_N3_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L7_N0} ${link_lib_L7_N1} ${link_lib_L7_N2} ${link_lib_L7_N3} ${link_lib_L7_N4}";
+    libraries = ["${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" ];
   };
 
   link_lib_L8_N4 = cmakeNixLD {
@@ -1313,7 +1313,7 @@ let
     objects = [ lib_L8_N4_test_deep_dependencies_lib_L8_N4_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L7_N0} ${link_lib_L7_N1} ${link_lib_L7_N2} ${link_lib_L7_N3} ${link_lib_L7_N4}";
+    libraries = ["${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" ];
   };
 
   link_lib_L9_N0 = cmakeNixLD {
@@ -1323,7 +1323,7 @@ let
     objects = [ lib_L9_N0_test_deep_dependencies_lib_L9_N0_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L8_N0} ${link_lib_L8_N1} ${link_lib_L8_N2} ${link_lib_L8_N3} ${link_lib_L8_N4}";
+    libraries = ["${link_lib_L8_N0}" "${link_lib_L8_N1}" "${link_lib_L8_N2}" "${link_lib_L8_N3}" "${link_lib_L8_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" ];
   };
 
   link_lib_L9_N1 = cmakeNixLD {
@@ -1333,7 +1333,7 @@ let
     objects = [ lib_L9_N1_test_deep_dependencies_lib_L9_N1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L8_N0} ${link_lib_L8_N1} ${link_lib_L8_N2} ${link_lib_L8_N3} ${link_lib_L8_N4}";
+    libraries = ["${link_lib_L8_N0}" "${link_lib_L8_N1}" "${link_lib_L8_N2}" "${link_lib_L8_N3}" "${link_lib_L8_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" ];
   };
 
   link_lib_L9_N2 = cmakeNixLD {
@@ -1343,7 +1343,7 @@ let
     objects = [ lib_L9_N2_test_deep_dependencies_lib_L9_N2_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L8_N0} ${link_lib_L8_N1} ${link_lib_L8_N2} ${link_lib_L8_N3} ${link_lib_L8_N4}";
+    libraries = ["${link_lib_L8_N0}" "${link_lib_L8_N1}" "${link_lib_L8_N2}" "${link_lib_L8_N3}" "${link_lib_L8_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" ];
   };
 
   link_lib_L9_N3 = cmakeNixLD {
@@ -1353,7 +1353,7 @@ let
     objects = [ lib_L9_N3_test_deep_dependencies_lib_L9_N3_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L8_N0} ${link_lib_L8_N1} ${link_lib_L8_N2} ${link_lib_L8_N3} ${link_lib_L8_N4}";
+    libraries = ["${link_lib_L8_N0}" "${link_lib_L8_N1}" "${link_lib_L8_N2}" "${link_lib_L8_N3}" "${link_lib_L8_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" ];
   };
 
   link_lib_L9_N4 = cmakeNixLD {
@@ -1363,7 +1363,7 @@ let
     objects = [ lib_L9_N4_test_deep_dependencies_lib_L9_N4_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L8_N0} ${link_lib_L8_N1} ${link_lib_L8_N2} ${link_lib_L8_N3} ${link_lib_L8_N4}";
+    libraries = ["${link_lib_L8_N0}" "${link_lib_L8_N1}" "${link_lib_L8_N2}" "${link_lib_L8_N3}" "${link_lib_L8_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" ];
   };
 
   link_deep_test = cmakeNixLD {
@@ -1373,7 +1373,7 @@ let
     objects = [ deep_test_test_deep_dependencies_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_lib_L9_N0} ${link_lib_L9_N1} ${link_lib_L9_N2} ${link_lib_L9_N3} ${link_lib_L9_N4}";
+    libraries = ["${link_lib_L9_N0}" "${link_lib_L9_N1}" "${link_lib_L9_N2}" "${link_lib_L9_N3}" "${link_lib_L9_N4}" "${link_lib_L0_N0}" "${link_lib_L0_N1}" "${link_lib_L0_N2}" "${link_lib_L0_N3}" "${link_lib_L0_N4}" "${link_lib_L1_N0}" "${link_lib_L1_N1}" "${link_lib_L1_N2}" "${link_lib_L1_N3}" "${link_lib_L1_N4}" "${link_lib_L2_N0}" "${link_lib_L2_N1}" "${link_lib_L2_N2}" "${link_lib_L2_N3}" "${link_lib_L2_N4}" "${link_lib_L3_N0}" "${link_lib_L3_N1}" "${link_lib_L3_N2}" "${link_lib_L3_N3}" "${link_lib_L3_N4}" "${link_lib_L4_N0}" "${link_lib_L4_N1}" "${link_lib_L4_N2}" "${link_lib_L4_N3}" "${link_lib_L4_N4}" "${link_lib_L5_N0}" "${link_lib_L5_N1}" "${link_lib_L5_N2}" "${link_lib_L5_N3}" "${link_lib_L5_N4}" "${link_lib_L6_N0}" "${link_lib_L6_N1}" "${link_lib_L6_N2}" "${link_lib_L6_N3}" "${link_lib_L6_N4}" "${link_lib_L7_N0}" "${link_lib_L7_N1}" "${link_lib_L7_N2}" "${link_lib_L7_N3}" "${link_lib_L7_N4}" "${link_lib_L8_N0}" "${link_lib_L8_N1}" "${link_lib_L8_N2}" "${link_lib_L8_N3}" "${link_lib_L8_N4}" ];
   };
 
 in

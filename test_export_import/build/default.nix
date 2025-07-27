@@ -203,7 +203,7 @@ let
     objects = [ myapp_src_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_mylib}";
+    libraries = ["${link_mylib}" ];
   };
 
 

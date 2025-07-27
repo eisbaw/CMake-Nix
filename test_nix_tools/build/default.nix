@@ -259,7 +259,7 @@ let
     objects = [ simple_app_test_nix_tools_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_simple_lib}";
+    libraries = ["${link_simple_lib}" ];
   };
 
   link_shared_lib = cmakeNixLD {
@@ -280,7 +280,7 @@ let
     objects = [ shared_app_test_nix_tools_shared_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_shared_lib}/libshared_lib.so";
+    libraries = ["${link_shared_lib}/libshared_lib.so" ];
   };
 
   link_custom_app = cmakeNixLD {

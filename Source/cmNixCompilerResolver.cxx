@@ -9,14 +9,15 @@
 #include "cmSystemTools.h"
 #include "cmValue.h"
 #include "cmake.h"
+#include "cmNixConstants.h"
 
 #include <algorithm>
 
 // Initialize static compiler mappings
 const std::unordered_map<std::string, std::string> cmNixCompilerResolver::CompilerIdToPackage = {
-  {"GNU", "gcc"},
-  {"Clang", "clang"}, 
-  {"AppleClang", "clang"},
+  {"GNU", cmNix::Compilers::GCC},
+  {"Clang", cmNix::Compilers::CLANG}, 
+  {"AppleClang", cmNix::Compilers::CLANG},
   {"Intel", "intel-compiler"},
   {"IntelLLVM", "intel-compiler"}, 
   {"MSVC", "msvc"},
@@ -29,20 +30,20 @@ const std::unordered_map<std::string, std::string> cmNixCompilerResolver::Compil
 };
 
 const std::unordered_map<std::string, std::string> cmNixCompilerResolver::DefaultCommands = {
-  {"C_gcc", "gcc"},
-  {"C_clang", "clang"},
-  {"CXX_gcc", "g++"},
-  {"CXX_clang", "clang++"},
-  {"Fortran_gcc", "gfortran"},
-  {"Fortran_gfortran", "gfortran"},
+  {"C_gcc", cmNix::Compilers::GCC},
+  {"C_clang", cmNix::Compilers::CLANG},
+  {"CXX_gcc", cmNix::CompilerCommands::GPP},
+  {"CXX_clang", cmNix::CompilerCommands::CLANGPP},
+  {"Fortran_gcc", cmNix::CompilerCommands::GFORTRAN},
+  {"Fortran_gfortran", cmNix::CompilerCommands::GFORTRAN},
   {"Fortran_intel-compiler", "ifort"},
-  {"CUDA_cudatoolkit", "nvcc"},
+  {"CUDA_cudatoolkit", cmNix::CompilerCommands::NVCC},
   {"Swift_swift", "swiftc"},
-  {"ASM_gcc", "gcc"},
-  {"ASM_clang", "clang"},
-  {"ASM-ATT_gcc", "gcc"},
-  {"ASM-ATT_clang", "clang"},
-  {"ASM_NASM_nasm", "nasm"},
+  {"ASM_gcc", cmNix::Compilers::GCC},
+  {"ASM_clang", cmNix::Compilers::CLANG},
+  {"ASM-ATT_gcc", cmNix::Compilers::GCC},
+  {"ASM-ATT_clang", cmNix::Compilers::CLANG},
+  {"ASM_NASM_nasm", cmNix::CompilerCommands::NASM},
   {"ASM_MASM_masm", "ml"}
 };
 

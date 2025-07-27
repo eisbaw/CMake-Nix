@@ -279,7 +279,7 @@ let
     buildInputs = [ gcc link_mylib ];
     objects = [ app_test_shared_library_main_c_o ];
     compiler = gcc;
-    flags = "${link_mylib}/libmylib.so";
+    libraries = ["${link_mylib}/libmylib.so" ];
   };
 
   link_static_helper = cmakeNixLD {
@@ -296,7 +296,7 @@ let
     buildInputs = [ gcc link_mylib ];
     objects = [ mixed_app_test_shared_library_mixed_c_o ];
     compiler = gcc;
-    flags = "${link_mylib}/libmylib.so ${link_static_helper}";
+    libraries = ["${link_mylib}/libmylib.so" "${link_static_helper}" ];
   };
 
   link_version_test = cmakeNixLD {
