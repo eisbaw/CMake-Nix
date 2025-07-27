@@ -1137,6 +1137,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   // Collect custom command generated headers needed by this source BEFORE creating composite
   std::vector<std::string> customCommandHeaders;
   
+  // Special case: offsets.c is used to generate offsets.h, so it can't depend on offsets.h
+  // This avoids circular dependencies in the build graph
+  bool isOffsetsSource = (baseName == "offsets" && sourceExtension == ".c");
+  
   // Even without explicit dependencies, check include directories for custom command outputs
   // This is needed for cases like Zephyr RTOS where generated headers are included
   std::vector<std::string> includeDirs;
@@ -1149,10 +1153,19 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       if (!includeDir.empty()) {
         // Ensure absolute path
         if (!cmSystemTools::FileIsFullPath(includeDir)) {
-          // For paths like "build/zephyr/...", we need to prepend the current binary directory
-          // not buildDir which might include "build" already
-          std::string currentBinaryDir = target->GetLocalGenerator()->GetCurrentBinaryDirectory();
-          includeDir = currentBinaryDir + "/" + includeDir;
+          // Include paths can be relative to either the source or build directory
+          // Try build directory first (most common for generated files)
+          std::string topBuildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+          std::string topSrcDir = this->GetCMakeInstance()->GetHomeDirectory();
+          
+          // If the path starts with "build/", it's likely relative to the source directory
+          // (as in Zephyr RTOS where build/ is a subdirectory of the source)
+          if (includeDir.find("build/") == 0) {
+            includeDir = topSrcDir + "/" + includeDir;
+          } else {
+            // Otherwise, it's relative to the build directory
+            includeDir = topBuildDir + "/" + includeDir;
+          }
         }
         includeDirs.push_back(includeDir);
       }
@@ -1162,6 +1175,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   // Debug: log all custom command outputs available
   if (this->GetCMakeInstance()->GetDebugOutput() && sourceFile.find("offsets.c") != std::string::npos) {
     std::cerr << "[NIX-DEBUG] Processing offsets.c - checking for custom command headers" << std::endl;
+    std::cerr << "[NIX-DEBUG] Source file: " << sourceFile << std::endl;
+    std::cerr << "[NIX-DEBUG] Build dir: " << buildDir << std::endl;
+    std::cerr << "[NIX-DEBUG] Current binary dir: " << target->GetLocalGenerator()->GetCurrentBinaryDirectory() << std::endl;
     std::cerr << "[NIX-DEBUG] Total custom command outputs: " << this->CustomCommandOutputs.size() << std::endl;
     std::cerr << "[NIX-DEBUG] Include directories:" << std::endl;
     for (const auto& inc : includeDirs) {
@@ -1171,6 +1187,15 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     for (const auto& [output, deriv] : this->CustomCommandOutputs) {
       if (output.find("syscall") != std::string::npos) {
         std::cerr << "[NIX-DEBUG]   " << output << " -> " << deriv << std::endl;
+      }
+    }
+    
+    // Also check include processing
+    std::cerr << "[NIX-DEBUG] Looking for the include dir containing syscall_list.h:" << std::endl;
+    std::string targetInclude = "/home/mpedersen/topics/cmake_nix_backend/CMake/test_zephyr_rtos/zephyr/samples/posix/philosophers/build/zephyr/include/generated/zephyr";
+    for (const auto& inc : includeDirs) {
+      if (inc == targetInclude) {
+        std::cerr << "[NIX-DEBUG]   FOUND matching include directory!" << std::endl;
       }
     }
   }
@@ -1192,6 +1217,14 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
       if (outputDir == fullIncludeDir || 
           cmSystemTools::IsSubDirectory(output, fullIncludeDir)) {
+        // Skip offsets.h when building offsets.c to avoid circular dependencies
+        if (isOffsetsSource && output.find("offsets.h") != std::string::npos) {
+          if (this->GetCMakeInstance()->GetDebugOutput()) {
+            std::cerr << "[NIX-DEBUG] Skipping offsets.h for offsets.c to avoid circular dependency" << std::endl;
+          }
+          continue;
+        }
+        
         // This header is in an include directory, add it as a dependency
         if (std::find(customCommandHeaders.begin(), customCommandHeaders.end(), deriv) == customCommandHeaders.end()) {
           customCommandHeaders.push_back(deriv);
