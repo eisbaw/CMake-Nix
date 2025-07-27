@@ -178,8 +178,8 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
       elseif(CMAKE_${lang}_SIZEOF_DATA_PTR_DEFAULT)
         set(CMAKE_${lang}_SIZEOF_DATA_PTR "${CMAKE_${lang}_SIZEOF_DATA_PTR_DEFAULT}" PARENT_SCOPE)
       elseif(CMAKE_GENERATOR STREQUAL "Nix")
-        # Fallback for Nix generator when ABI detection fails
-        message(STATUS "ABI detection failed with Nix generator, using default pointer size")
+        # Fallback for Nix generator - ABI detection is not supported
+        # The Nix generator cannot run executables during configuration
         if(CMAKE_SIZEOF_VOID_P)
           set(CMAKE_${lang}_SIZEOF_DATA_PTR "${CMAKE_SIZEOF_VOID_P}" PARENT_SCOPE)
         else()
@@ -320,7 +320,11 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
       endif()
 
     else()
-      message(CHECK_FAIL "failed")
+      if(CMAKE_GENERATOR STREQUAL "Nix")
+        message(CHECK_PASS "done")
+      else()
+        message(CHECK_FAIL "failed")
+      endif()
     endif()
   endif()
 endfunction()

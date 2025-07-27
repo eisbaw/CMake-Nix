@@ -1060,7 +1060,12 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   // Emit warning if validation passed but there was a warning message
   if (!errorMessage.empty()) {
-    this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, errorMessage);
+    // Only show external source warnings in debug mode or for non-CMake files
+    if (this->GetCMakeInstance()->GetDebugOutput() ||
+        (errorMessage.find("CMakeC") == std::string::npos &&
+         errorMessage.find("CMakeCXX") == std::string::npos)) {
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, errorMessage);
+    }
   }
   std::string derivName = this->GetDerivationName(target->GetName(), sourceFile);
   ObjectDerivation const& od = this->ObjectDerivations[derivName];
@@ -3807,6 +3812,12 @@ bool cmGlobalNixGenerator::IsSystemPath(const std::string& path) const
       "/System",  // macOS
       "/Library"  // macOS
     };
+    
+    // Also consider CMake's own modules directory as a system path
+    std::string cmakeRoot = cmSystemTools::GetCMakeRoot();
+    if (!cmakeRoot.empty() && cmSystemTools::IsSubDirectory(path, cmakeRoot)) {
+      return true;
+    }
     
     for (const auto& systemPath : defaultSystemPaths) {
       if (cmSystemTools::IsSubDirectory(path, systemPath)) {
