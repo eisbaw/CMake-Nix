@@ -6,52 +6,52 @@ configure:
 
 # Build shared library
 build-lib: configure
-    nix-build --no-out-link -A mylib
+    cd build && nix-build --no-out-link -A mylib
 
 # Build versioned library
 build-versioned: configure
-    nix-build --no-out-link -A versioned_lib
+    cd build && nix-build --no-out-link -A versioned_lib
 
 # Build executable linking shared library
 build-app: configure
-    nix-build --no-out-link -A app
+    cd build && nix-build --no-out-link -A app
 
 # Build mixed linking executable
 build-mixed: configure
-    nix-build --no-out-link -A mixed_app
+    cd build && nix-build --no-out-link -A mixed_app
 
 # Build all targets
 build: configure
-    nix-build --no-out-link -A mylib
-    nix-build --no-out-link -A versioned_lib
-    nix-build --no-out-link -A app
-    nix-build --no-out-link -A mixed_app
-    nix-build --no-out-link -A version_test
-    nix-build --no-out-link -A version_test2
+    cd build && nix-build --no-out-link -A mylib
+    cd build && nix-build --no-out-link -A versioned_lib
+    cd build && nix-build --no-out-link -A app
+    cd build && nix-build --no-out-link -A mixed_app
+    cd build && nix-build --no-out-link -A version_test
+    cd build && nix-build --no-out-link -A version_test2
 
 # Run executable tests
 run: build
     @echo "=== Testing app with shared library ==="
-    nix-build -A app && ./result && rm ./result
+    cd build && nix-build -A app && ./result && rm ./result
     @echo "\n=== Testing mixed app ==="
-    nix-build -A mixed_app && ./result && rm ./result
+    cd build && nix-build -A mixed_app && ./result && rm ./result
     @echo "\n=== Testing library versioning ==="
     @echo "Versioned library (VERSION 1.2.3, SOVERSION 1):"
-    nix-build -A versioned_lib && ls -la result/ && rm ./result
+    cd build && nix-build -A versioned_lib && ls -la result/ && rm ./result
     @echo "\nVersion test library (VERSION 2.0.0, SOVERSION 2):"
-    nix-build -A version_test && ls -la result/ && rm ./result
+    cd build && nix-build -A version_test && ls -la result/ && rm ./result
     @echo "\nVersion test2 library (VERSION 3.4.5, no SOVERSION):"
-    nix-build -A version_test2 && ls -la result/ && rm ./result
+    cd build && nix-build -A version_test2 && ls -la result/ && rm ./result
 
 # Check generated Nix for shared library flags
 check-flags: configure
     @echo "=== Checking for -fPIC and -shared flags ==="
-    @grep -E "(fPIC|shared)" default.nix || echo "No PIC or shared flags found"
+    @grep -E "(fPIC|shared)" build/default.nix || echo "No PIC or shared flags found"
 
 # Check library naming
 check-names: configure
     @echo "=== Checking library naming ==="
-    @grep -E "lib.*\.so" default.nix || echo "No .so naming found"
+    @grep -E "lib.*\.so" build/default.nix || echo "No .so naming found"
 
 # Clean build directory
 clean:
