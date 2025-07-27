@@ -248,11 +248,11 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("      mkdir -p \"$(dirname \"$out\")\"");
   writer.WriteLine("      # Determine compiler binary name based on the compiler derivation");
   writer.WriteLine("      compilerBin=\"${");
-  writer.WriteLine("        if compiler == gcc then");
+  writer.WriteLine("        if compiler == gcc || compiler == pkgsi686Linux.gcc then");
   writer.WriteLine("          \"gcc\"");
-  writer.WriteLine("        else if compiler == clang then");  
+  writer.WriteLine("        else if compiler == clang || compiler == pkgsi686Linux.clang then");  
   writer.WriteLine("          \"clang\"");
-  writer.WriteLine("        else if compiler == gfortran then");
+  writer.WriteLine("        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then");
   writer.WriteLine("          \"gfortran\"");
   writer.WriteLine("        else");
   writer.WriteLine("          compiler.pname or \"cc\"");
@@ -309,11 +309,11 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        mkdir -p $out");
   writer.WriteLine("        compilerBin=\"${if compilerCommand != null then");
   writer.WriteLine("          compilerCommand");
-  writer.WriteLine("        else if compiler == gcc then");
+  writer.WriteLine("        else if compiler == gcc || compiler == pkgsi686Linux.gcc then");
   writer.WriteLine("          \"gcc\"");
-  writer.WriteLine("        else if compiler == clang then");
+  writer.WriteLine("        else if compiler == clang || compiler == pkgsi686Linux.clang then");
   writer.WriteLine("          \"clang\"");
-  writer.WriteLine("        else if compiler == gfortran then");
+  writer.WriteLine("        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then");
   writer.WriteLine("          \"gfortran\"");
   writer.WriteLine("        else");
   writer.WriteLine("          compiler.pname or \"cc\"");
@@ -335,11 +335,11 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        mkdir -p \"$(dirname \"$out\")\"");
   writer.WriteLine("        compilerBin=\"${if compilerCommand != null then");
   writer.WriteLine("          compilerCommand");
-  writer.WriteLine("        else if compiler == gcc then");
+  writer.WriteLine("        else if compiler == gcc || compiler == pkgsi686Linux.gcc then");
   writer.WriteLine("          \"gcc\"");
-  writer.WriteLine("        else if compiler == clang then");
+  writer.WriteLine("        else if compiler == clang || compiler == pkgsi686Linux.clang then");
   writer.WriteLine("          \"clang\"");
-  writer.WriteLine("        else if compiler == gfortran then");
+  writer.WriteLine("        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then");
   writer.WriteLine("          \"gfortran\"");
   writer.WriteLine("        else");
   writer.WriteLine("          compiler.pname or \"cc\"");
@@ -1197,8 +1197,25 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
     }
     
-    // Handle configuration-time generated files (like Zephyr's autoconf.h)
-    if (!configTimeGeneratedFiles.empty()) {
+    // Check if we need a composite source (for config-time generated files or external includes)
+    bool hasExternalIncludes = false;
+    cmLocalGenerator* lg = target->GetLocalGenerator();
+    std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, lang, config);
+    for (const auto& inc : includes) {
+      if (!inc.Value.empty()) {
+        std::string incPath = inc.Value;
+        if (cmSystemTools::FileIsFullPath(incPath)) {
+          std::string relPath = cmSystemTools::RelativePath(srcDir, incPath);
+          if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
+            hasExternalIncludes = true;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Handle configuration-time generated files or external includes
+    if (!configTimeGeneratedFiles.empty() || hasExternalIncludes) {
       this->WriteCompositeSource(nixFileStream, configTimeGeneratedFiles, srcDir, buildDir, target, lang, config);
       
       // Update compile flags to use relative paths for embedded config-time generated files
@@ -1215,6 +1232,36 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         
         if (this->GetCMakeInstance()->GetDebugOutput()) {
           std::cerr << "[NIX-DEBUG] Replaced " << absPath << " with " << relPath << " in compile flags" << std::endl;
+        }
+      }
+      
+      // Also update compile flags for external include directories
+      if (hasExternalIncludes) {
+        for (const auto& inc : includes) {
+          if (!inc.Value.empty()) {
+            std::string incPath = inc.Value;
+            if (cmSystemTools::FileIsFullPath(incPath)) {
+              std::string relPath = cmSystemTools::RelativePath(srcDir, incPath);
+              if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
+                // Normalize the path
+                std::string normalizedPath = cmSystemTools::CollapseFullPath(incPath);
+                
+                // Find and replace -I<absolute_path> with -I<relative_path>
+                std::string searchStr = "-I" + normalizedPath;
+                std::string replaceStr = "-I" + normalizedPath.substr(1); // Remove leading /
+                
+                size_t pos = 0;
+                while ((pos = allCompileFlags.find(searchStr, pos)) != std::string::npos) {
+                  allCompileFlags.replace(pos, searchStr.length(), replaceStr);
+                  pos += replaceStr.length();
+                }
+                
+                if (this->GetCMakeInstance()->GetDebugOutput()) {
+                  std::cerr << "[NIX-DEBUG] Replaced " << searchStr << " with " << replaceStr << " in compile flags" << std::endl;
+                }
+              }
+            }
+          }
         }
       }
     } else if (existingFiles.empty() && generatedFiles.empty()) {
@@ -1612,6 +1659,9 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
       // Make include path relative to source directory if possible
       std::string relativeInclude;
       if (cmSystemTools::FileIsFullPath(incPath)) {
+        // Normalize the path first to resolve any .. segments
+        incPath = cmSystemTools::CollapseFullPath(incPath);
+        
         relativeInclude = cmSystemTools::RelativePath(sourceDir, incPath);
         // If the relative path goes outside the source tree, keep absolute
         if (cmNixPathUtils::IsPathOutsideTree(relativeInclude)) {
@@ -2768,12 +2818,15 @@ void cmGlobalNixGenerator::WriteCompositeSource(
             // This is an external include directory
             nixFileStream << "      # Copy headers from external include directory: " << incPath << "\n";
             
+            // Normalize the path to resolve any .. segments
+            std::string normalizedPath = cmSystemTools::CollapseFullPath(incPath);
+            
             // Create parent directories first
-            std::string parentPath = cmSystemTools::GetFilenamePath(incPath);
+            std::string parentPath = cmSystemTools::GetFilenamePath(normalizedPath);
             nixFileStream << "      mkdir -p $out" << parentPath << "\n";
             
             // Use Nix's path functionality to copy the entire directory
-            nixFileStream << "      cp -rL ${builtins.path { path = \"" << incPath << "\"; }} $out" << incPath << "\n";
+            nixFileStream << "      cp -rL ${builtins.path { path = \"" << normalizedPath << "\"; }} $out" << normalizedPath << "\n";
           }
         }
       }
@@ -2864,12 +2917,33 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
   std::vector<std::string> buildInputs;
   
   // Add compiler package
+  std::string lang = source->GetLanguage();
   std::string compilerPkg = this->DetermineCompilerPackage(target, source);
+  
+  // Check if we need to use 32-bit compiler
+  cmLocalGenerator* lg = target->GetLocalGenerator();
+  std::vector<BT<std::string>> compileFlagsVec = lg->GetTargetCompileFlags(target, config, lang, "");
+  bool needs32Bit = false;
+  for (const auto& flag : compileFlagsVec) {
+    if (flag.Value.find("-m32") != std::string::npos) {
+      needs32Bit = true;
+      break;
+    }
+  }
+  
+  // Use 32-bit compiler if needed
+  if (needs32Bit && compilerPkg == "gcc") {
+    compilerPkg = "pkgsi686Linux.gcc";
+  } else if (needs32Bit && compilerPkg == "clang") {
+    compilerPkg = "pkgsi686Linux.clang";
+  }
+  
   buildInputs.push_back(compilerPkg);
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] Language: " << source->GetLanguage() 
-              << ", Compiler package: " << compilerPkg << std::endl;
+    std::cerr << "[NIX-DEBUG] Language: " << lang
+              << ", Compiler package: " << compilerPkg 
+              << (needs32Bit ? " (32-bit)" : "") << std::endl;
   }
   
   // Get external library dependencies
