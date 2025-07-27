@@ -437,6 +437,10 @@ void cmGlobalNixGenerator::WriteNixFile()
                 if (this->GetCMakeInstance()->GetDebugOutput()) {
                   std::cerr << "[NIX-DEBUG] Registering custom command output: " 
                             << output << " -> " << info.DerivationName << std::endl;
+                  // Also check if this is syscall_list.h
+                  if (output.find("syscall_list.h") != std::string::npos) {
+                    std::cerr << "[NIX-DEBUG] !!! Found syscall_list.h output: " << output << std::endl;
+                  }
                 }
               }
             }
@@ -1227,6 +1231,72 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     // Collect custom command generated headers needed by this source
     std::vector<std::string> customCommandHeaders;
     
+    // Even without explicit dependencies, check include directories for custom command outputs
+    // This is needed for cases like Zephyr RTOS where generated headers are included
+    std::vector<std::string> includeDirs;
+    std::vector<std::string> parsedIncludeFlags;
+    cmSystemTools::ParseUnixCommandLine(allCompileFlags.c_str(), parsedIncludeFlags);
+    for (size_t i = 0; i < parsedIncludeFlags.size(); ++i) {
+      const auto& flag = parsedIncludeFlags[i];
+      if (flag == "-I" && i + 1 < parsedIncludeFlags.size()) {
+        includeDirs.push_back(parsedIncludeFlags[++i]);
+      } else if (flag.find("-I") == 0) {
+        includeDirs.push_back(flag.substr(2));
+      }
+    }
+    
+    // Check if any custom command outputs are in the include directories
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Checking include directories for custom command headers" << std::endl;
+      std::cerr << "[NIX-DEBUG] Include dirs: " << includeDirs.size() << std::endl;
+      for (const auto& dir : includeDirs) {
+        std::cerr << "[NIX-DEBUG]   Include dir: " << dir << std::endl;
+      }
+    }
+    
+    for (const auto& [output, deriv] : this->CustomCommandOutputs) {
+      // Check if this output is a header file
+      std::string ext = cmSystemTools::GetFilenameLastExtension(output);
+      if (ext == ".h" || ext == ".hpp" || ext == ".hxx" || ext == ".H") {
+        // Check if it's in any of the include directories
+        std::string outputDir = cmSystemTools::GetFilenamePath(output);
+        if (this->GetCMakeInstance()->GetDebugOutput() && output.find("syscall") != std::string::npos) {
+          std::cerr << "[NIX-DEBUG] Checking header: " << output << std::endl;
+          std::cerr << "[NIX-DEBUG]   Output dir: " << outputDir << std::endl;
+        }
+        for (const auto& includeDir : includeDirs) {
+          std::string fullIncludeDir = includeDir;
+          if (!cmSystemTools::FileIsFullPath(includeDir)) {
+            // Handle relative paths - they're relative to the source directory, not the build directory
+            if (includeDir.find("build/") == 0) {
+              // This is a build directory relative path
+              // The buildDir already contains the "build" part, so we need to get the parent
+              std::string parentDir = cmSystemTools::GetFilenamePath(buildDir);
+              fullIncludeDir = parentDir + "/" + includeDir;
+            } else {
+              // This is relative to the current build directory
+              fullIncludeDir = buildDir + "/" + includeDir;
+            }
+          }
+          if (this->GetCMakeInstance()->GetDebugOutput() && output.find("syscall") != std::string::npos) {
+            std::cerr << "[NIX-DEBUG]   Checking against include dir: " << fullIncludeDir << std::endl;
+          }
+          if (outputDir == fullIncludeDir || 
+              cmSystemTools::IsSubDirectory(output, fullIncludeDir)) {
+            // This header is in an include directory, add it as a dependency
+            if (std::find(customCommandHeaders.begin(), customCommandHeaders.end(), deriv) == customCommandHeaders.end()) {
+              customCommandHeaders.push_back(deriv);
+              if (this->GetCMakeInstance()->GetDebugOutput()) {
+                std::cerr << "[NIX-DEBUG] Found custom command header in include dir: " 
+                          << output << " -> " << deriv << std::endl;
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+    
     if (this->GetCMakeInstance()->GetDebugOutput() && !dependencies.empty()) {
       std::cerr << "[NIX-DEBUG] Checking headers for custom commands in composite source for " 
                 << sourceFile << std::endl;
@@ -1240,16 +1310,35 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       
       if (cmSystemTools::FileIsFullPath(header)) {
         pathsToCheck.push_back(header);
+        // Also try without leading slash for generated files
+        if (header[0] == '/') {
+          pathsToCheck.push_back(header.substr(1));
+        }
       } else {
         pathsToCheck.push_back(this->GetCMakeInstance()->GetHomeDirectory() + "/" + header);
         pathsToCheck.push_back(this->GetCMakeInstance()->GetHomeOutputDirectory() + "/" + header);
+        pathsToCheck.push_back(buildDir + "/" + header);
       }
       
       // Also check for headers that might include "zephyr/" prefix
-      if (header.find("zephyr/syscall_list.h") != std::string::npos ||
-          header.find("syscall_list.h") != std::string::npos) {
+      if (header.find("syscall_list.h") != std::string::npos) {
+        // Try various path combinations for syscall_list.h
         pathsToCheck.push_back(buildDir + "/zephyr/include/generated/zephyr/syscall_list.h");
         pathsToCheck.push_back(buildDir + "/include/generated/zephyr/syscall_list.h");
+        pathsToCheck.push_back(buildDir + "/zephyr/include/generated/syscall_list.h");
+        pathsToCheck.push_back("zephyr/include/generated/zephyr/syscall_list.h");
+        pathsToCheck.push_back("include/generated/zephyr/syscall_list.h");
+        
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          std::cerr << "[NIX-DEBUG] !!! Looking for syscall_list.h: " << header << std::endl;
+          std::cerr << "[NIX-DEBUG] !!! Build dir: " << buildDir << std::endl;
+          std::cerr << "[NIX-DEBUG] !!! Available custom command outputs:" << std::endl;
+          for (const auto& kv : this->CustomCommandOutputs) {
+            if (kv.first.find("syscall") != std::string::npos) {
+              std::cerr << "[NIX-DEBUG] !!!   " << kv.first << " -> " << kv.second << std::endl;
+            }
+          }
+        }
       }
       
       // Check each possible path
@@ -2973,17 +3062,27 @@ void cmGlobalNixGenerator::WriteCompositeSource(
   // Copy custom command generated headers
   if (!customCommandHeaders.empty()) {
     nixFileStream << "      # Copy custom command generated headers\n";
+    // Use a set to track unique derivation names to avoid duplicates
+    std::set<std::string> processedDerivs;
     for (const auto& headerDeriv : customCommandHeaders) {
-      // Find the output path for this derivation
+      if (processedDerivs.find(headerDeriv) != processedDerivs.end()) {
+        continue; // Already processed this derivation
+      }
+      processedDerivs.insert(headerDeriv);
+      
+      // Find ALL header outputs for this derivation
       for (const auto& [output, deriv] : this->CustomCommandOutputs) {
         if (deriv == headerDeriv) {
-          std::string relPath = cmSystemTools::RelativePath(buildDir, output);
-          std::string destDir = cmSystemTools::GetFilenamePath(relPath);
-          if (!destDir.empty()) {
-            nixFileStream << "      mkdir -p $out/" << destDir << "\n";
+          // Check if this output is a header file
+          std::string ext = cmSystemTools::GetFilenameLastExtension(output);
+          if (ext == ".h" || ext == ".hpp" || ext == ".hxx" || ext == ".H") {
+            std::string relPath = cmSystemTools::RelativePath(buildDir, output);
+            std::string destDir = cmSystemTools::GetFilenamePath(relPath);
+            if (!destDir.empty()) {
+              nixFileStream << "      mkdir -p $out/" << destDir << "\n";
+            }
+            nixFileStream << "      cp ${" << headerDeriv << "}/" << relPath << " $out/" << relPath << "\n";
           }
-          nixFileStream << "      cp ${" << headerDeriv << "}/" << relPath << " $out/" << relPath << "\n";
-          break;
         }
       }
     }
