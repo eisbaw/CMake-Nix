@@ -13,12 +13,13 @@ DONE - Fix Zephyr RTOS custom command cp conflict issue (2025-01-27)
   - Fixed by creating proper directory structure and copying files to their intended relative paths
   - The fix preserves the expected directory hierarchy for custom command dependencies
 
-IN PROGRESS - test_zephyr_rtos: CMake module path issue in custom commands
+DONE - test_zephyr_rtos: CMake module path issue in custom commands (KNOWN LIMITATION)
   - Zephyr's gen_version_h.cmake script tries to include(git) but can't find the module
   - This is because CMake -P script execution doesn't have access to CMAKE_MODULE_PATH
   - Zephyr's build system assumes a mutable environment which conflicts with Nix's isolation
   - This is a fundamental incompatibility between Zephyr's build approach and Nix
   - Workaround: Users can build Zephyr projects using traditional generators (Make/Ninja)
+  - Status: Marked as known limitation - Zephyr RTOS requires mutable environment features incompatible with Nix
 
 DONE - test_zephyr_rtos: Kconfig directory issue
   - The test creates a Kconfig directory in philosophers sample instead of having a Kconfig file

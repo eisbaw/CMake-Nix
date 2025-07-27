@@ -1276,7 +1276,6 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           }
           
           // Check each possible path
-          bool found = false;
           for (const auto& pathToCheck : pathsToCheck) {
             auto customIt = this->CustomCommandOutputs.find(pathToCheck);
             if (customIt != this->CustomCommandOutputs.end()) {
@@ -1285,7 +1284,6 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
                 std::cerr << "[NIX-DEBUG] Found custom command header for composite source: " 
                           << pathToCheck << " -> " << customIt->second << std::endl;
               }
-              found = true;
               break;
             }
           }
