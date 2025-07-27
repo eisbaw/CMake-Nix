@@ -7,6 +7,12 @@ DONE - Fix Zephyr RTOS custom command output path issue (2025-01-27)
   - Fixed by using top-level build directory for consistent path calculation
   - The fix ensures custom command outputs and dependencies use the same base directory
 
+DONE - Fix Zephyr RTOS custom command cp conflict issue (2025-01-27)
+  - Custom commands were copying dependency files to current directory (.) causing conflicts
+  - Files named 'include' conflicted with existing 'include' directories
+  - Fixed by creating proper directory structure and copying files to their intended relative paths
+  - The fix preserves the expected directory hierarchy for custom command dependencies
+
 IN PROGRESS - test_zephyr_rtos: CMake module path issue in custom commands
   - Zephyr's gen_version_h.cmake script tries to include(git) but can't find the module
   - This is because CMake -P script execution doesn't have access to CMAKE_MODULE_PATH
