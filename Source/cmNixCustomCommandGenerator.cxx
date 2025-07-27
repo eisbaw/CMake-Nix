@@ -120,6 +120,10 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   std::vector<std::string> depends = ccGen.GetDepends();
   std::set<std::string> uniqueDepends;
   
+  // Also need to track dependencies that will be referenced in the build phase
+  // to ensure they're in buildInputs when we use ${derivationName}
+  std::set<std::string> referencedDerivations;
+  
   // Debug: log dependencies if CMAKE_NIX_DEBUG is set
   if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
     std::cout << "[DEBUG] Custom command " << this->GetDerivationName() 
@@ -129,21 +133,18 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     }
   }
   
+  // First pass: collect all derivations that will be referenced
   for (const std::string& dep : depends) {
-    // First check if it's a custom command output
+    // Check if it's a custom command output
     if (this->CustomCommandOutputs) {
       auto it = this->CustomCommandOutputs->find(dep);
       if (it != this->CustomCommandOutputs->end()) {
-        if (uniqueDepends.insert(it->second).second) {
-          nixFileStream << " " << it->second;
-        }
-        continue;
+        referencedDerivations.insert(it->second);
       }
     }
     
-    // Then check if it's an object file
+    // Check if it's an object file
     if (this->ObjectFileOutputs) {
-      // The dependency might be a relative or absolute path
       std::string depPath = dep;
       
       // Check if it's already a full path
@@ -158,41 +159,16 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         }
       }
       
-      // Also try without the .c.obj extension - Nix generator uses .o
-      if (this->ObjectFileOutputs->find(depPath) == this->ObjectFileOutputs->end()) {
-        // Replace .c.obj with .o
-        std::string altPath = depPath;
-        size_t pos = altPath.rfind(".c.obj");
-        if (pos != std::string::npos) {
-          altPath = altPath.substr(0, pos) + ".o";
-          // Also try just the basename
-          std::string basename = cmSystemTools::GetFilenameName(altPath);
-          // Look for this basename in all object files
-          for (const auto& obj : *this->ObjectFileOutputs) {
-            if (cmSystemTools::GetFilenameName(obj.first) == basename) {
-              depPath = obj.first;
-              break;
-            }
-          }
-        }
-      }
-      
       auto it = this->ObjectFileOutputs->find(depPath);
       if (it != this->ObjectFileOutputs->end()) {
-        if (uniqueDepends.insert(it->second).second) {
-          nixFileStream << " " << it->second;
-        }
-      } else if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
-        std::cout << "[DEBUG] Object file dependency '" << dep 
-                  << "' (full path: '" << depPath << "') not found in ObjectFileOutputs" << std::endl;
-        std::cout << "[DEBUG] Available object files:" << std::endl;
-        for (const auto& obj : *this->ObjectFileOutputs) {
-          std::cout << "[DEBUG]   - " << obj.first << " -> " << obj.second << std::endl;
-        }
+        referencedDerivations.insert(it->second);
       }
     }
-    // If it's neither, it's likely a configuration-time file
-    // and doesn't need to be in buildInputs
+  }
+  
+  // Second pass: add all referenced derivations to buildInputs
+  for (const std::string& derivName : referencedDerivations) {
+    nixFileStream << " " << derivName;
   }
   
   nixFileStream << " ];\n";
