@@ -4,15 +4,17 @@
 
 ### Potential Improvements Found (2025-01-27):
 
-1. **Compiler ABI Detection Warning**: The warning "Detecting C/CXX compiler ABI info - failed" appears frequently
+DONE 1. **Compiler ABI Detection Warning**: The warning "Detecting C/CXX compiler ABI info - failed" appears frequently (2025-01-27)
    - This is because the Nix generator doesn't support running executables during configuration
    - A fallback mechanism exists but the warning could be suppressed or made more informative
    - Low priority - doesn't affect functionality
+   - FIXED: ABI detection now shows "done" instead of "failed" for Nix generator
 
-2. **External Source Path Warnings**: Many "Source file path is outside project directory" warnings
+DONE 2. **External Source Path Warnings**: Many "Source file path is outside project directory" warnings (2025-01-27)
    - These are informational warnings for external dependencies (Zephyr, system modules)
    - Could be suppressed for known system paths or made less verbose
    - Low priority - helps identify potential issues
+   - FIXED: CMake's own modules are now considered system paths, ABI file warnings suppressed
 
 3. **Python Module Dependencies in Custom Commands**: test_zephyr_rtos fails with "ModuleNotFoundError: No module named 'elftools'"
    - Custom commands that run Python scripts don't have access to Python packages from shell environment
@@ -775,12 +777,14 @@ After thorough review of the CMake Nix generator source code:
 
 ### Minor Issues Found:
 
-1. **Magic Numbers in cmNixWriter.cxx**:
+DONE 1. **Magic Numbers in cmNixWriter.cxx** (2025-01-27):
    - Line 251: `result.reserve(str.size() + 10);` - Magic number 10 should be named constant
    - Line 244: `std::string(level * 2, ' ')` - Magic number 2 should be SPACES_PER_INDENT constant
+   - FIXED: Added SPACES_PER_INDENT = 2 and STRING_ESCAPE_RESERVE = 10 named constants
 
-2. **Code Duplication in cmNixTargetGenerator.cxx**:
+DONE 2. **Code Duplication in cmNixTargetGenerator.cxx** (2025-01-27):
    - Lines 79 and 109: Identical language checks should be extracted to `IsCompilableLanguage(lang)` helper
+   - FIXED: Created IsCompilableLanguage() private helper method
 
 3. **Large Hardcoded Mapping in cmNixPackageMapper**:
    - InitializeMappings() contains 100+ hardcoded entries
@@ -904,8 +908,12 @@ DONE 13. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetG
 
 ### Medium Priority Missing Tests:
 11. DONE: **File Edge Cases**: test_file_edge_cases exists for spaces, unicode, symlinks
-12. **Multi-Config**: RelWithDebInfo, MinSizeRel configurations not tested
-13. **Library Versioning**: VERSION/SOVERSION partially tested
+DONE 12. **Multi-Config**: RelWithDebInfo, MinSizeRel configurations not tested (2025-01-27)
+   - FIXED: Updated test_multiconfig to test all four configurations
+   - All configurations working correctly with proper optimization flags
+DONE 13. **Library Versioning**: VERSION/SOVERSION partially tested (2025-01-27)
+   - FIXED: Enhanced test_shared_library with comprehensive versioning tests
+   - Tests VERSION with and without SOVERSION, all symlinks created correctly
 14. **Performance**: No benchmarks for large projects or caching effectiveness
 15. **Platform Features**: RPATH handling has limited tests
 
