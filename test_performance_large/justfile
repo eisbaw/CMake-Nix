@@ -1,0 +1,133 @@
+#!/usr/bin/env -S just --justfile
+
+# Performance test for large projects
+# Tests CMake Nix backend with 1000+ files
+
+cmake_binary := "../../bin/cmake"
+
+# Default target
+default: run
+
+# Run the performance test
+run: clean generate_files configure build benchmark
+
+# Clean build directory
+clean:
+    rm -rf build
+    rm -rf src/*.cpp src/*.h
+    rm -rf CMakeLists.txt
+
+# Generate 1000+ source files
+generate_files:
+    @echo "=== Generating 1000+ source files ==="
+    mkdir -p src
+    # Generate header files
+    for i in {1..500}; do \
+        echo "#pragma once" > src/module_$i.h; \
+        echo "#include <string>" >> src/module_$i.h; \
+        echo "namespace module$i {" >> src/module_$i.h; \
+        echo "  std::string getName();" >> src/module_$i.h; \
+        echo "  int calculate(int a, int b);" >> src/module_$i.h; \
+        echo "}" >> src/module_$i.h; \
+    done
+    # Generate source files
+    for i in {1..500}; do \
+        echo "#include \"module_$i.h\"" > src/module_$i.cpp; \
+        echo "#include <sstream>" >> src/module_$i.cpp; \
+        echo "namespace module$i {" >> src/module_$i.cpp; \
+        echo "  std::string getName() { return \"Module $i\"; }" >> src/module_$i.cpp; \
+        echo "  int calculate(int a, int b) { return a + b + $i; }" >> src/module_$i.cpp; \
+        echo "}" >> src/module_$i.cpp; \
+    done
+    # Generate main file
+    echo "#include <iostream>" > src/main.cpp
+    echo "#include <chrono>" >> src/main.cpp
+    for i in {1..10}; do \
+        echo "#include \"module_$i.h\"" >> src/main.cpp; \
+    done
+    echo "int main() {" >> src/main.cpp
+    echo "  auto start = std::chrono::high_resolution_clock::now();" >> src/main.cpp
+    echo "  int sum = 0;" >> src/main.cpp
+    for i in {1..10}; do \
+        echo "  sum += module$i::calculate($i, $i * 2);" >> src/main.cpp; \
+    done
+    echo "  auto end = std::chrono::high_resolution_clock::now();" >> src/main.cpp
+    echo "  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);" >> src/main.cpp
+    echo "  std::cout << \"Performance test completed. Sum: \" << sum << std::endl;" >> src/main.cpp
+    echo "  std::cout << \"Execution time: \" << duration.count() << \" microseconds\" << std::endl;" >> src/main.cpp
+    echo "  return 0;" >> src/main.cpp
+    echo "}" >> src/main.cpp
+    # Generate CMakeLists.txt
+    echo "cmake_minimum_required(VERSION 3.20)" > CMakeLists.txt
+    echo "project(performance_test_large CXX)" >> CMakeLists.txt
+    echo "" >> CMakeLists.txt
+    echo "set(CMAKE_CXX_STANDARD 11)" >> CMakeLists.txt
+    echo "" >> CMakeLists.txt
+    echo "# Create a static library with all modules" >> CMakeLists.txt
+    echo "add_library(modules STATIC" >> CMakeLists.txt
+    for i in {1..500}; do \
+        echo "  src/module_$i.cpp" >> CMakeLists.txt; \
+    done
+    echo ")" >> CMakeLists.txt
+    echo "" >> CMakeLists.txt
+    echo "# Main executable" >> CMakeLists.txt
+    echo "add_executable(perf_test src/main.cpp)" >> CMakeLists.txt
+    echo "target_link_libraries(perf_test PRIVATE modules)" >> CMakeLists.txt
+    echo "target_include_directories(perf_test PRIVATE src)" >> CMakeLists.txt
+    echo "target_include_directories(modules PUBLIC src)" >> CMakeLists.txt
+    @echo "Generated 501 source files and 500 header files"
+
+# Configure with CMake Nix backend
+configure:
+    @echo "=== Configuring with CMake Nix backend ==="
+    mkdir -p build
+    cd build && time {{cmake_binary}} -G Nix -DCMAKE_BUILD_TYPE=Release ..
+
+# Build using Nix
+build:
+    @echo "=== Building with Nix ==="
+    cd build && time nix-build -A perf_test
+
+# Run benchmark and compare with other generators
+benchmark:
+    @echo "=== Running performance comparison ==="
+    @echo ""
+    @echo "1. Nix Generator Performance:"
+    @echo "------------------------------"
+    @echo "Configuration time:"
+    cd build && time {{cmake_binary}} -G Nix -DCMAKE_BUILD_TYPE=Release .. 2>&1 | grep real
+    @echo ""
+    @echo "Build time (parallel):"
+    cd build && time nix-build -A perf_test --max-jobs auto 2>&1 | grep real || true
+    @echo ""
+    @echo "2. Unix Makefiles Generator Performance (for comparison):"
+    @echo "---------------------------------------------------------"
+    rm -rf build_make
+    mkdir -p build_make
+    @echo "Configuration time:"
+    cd build_make && time {{cmake_binary}} -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. 2>&1 | grep real
+    @echo ""
+    @echo "Build time (parallel):"
+    cd build_make && time make -j$(nproc) 2>&1 | grep real
+    @echo ""
+    @echo "3. File Statistics:"
+    @echo "-------------------"
+    @echo "Total source files: $(find src -name '*.cpp' | wc -l)"
+    @echo "Total header files: $(find src -name '*.h' | wc -l)"
+    @echo "Total lines of code: $(find src -name '*.[ch]pp' -o -name '*.h' | xargs wc -l | tail -1)"
+    @echo ""
+    @echo "4. Generated Nix file size:"
+    @echo "---------------------------"
+    @echo "default.nix size: $(ls -lh build/default.nix | awk '{print $5}')"
+    @echo "Lines in default.nix: $(wc -l < build/default.nix)"
+
+# Clean everything including generated files
+clean-all: clean
+    rm -rf src
+    rm -f CMakeLists.txt
+    rm -rf build_make
+
+# Run the built executable
+test: build
+    @echo "=== Running the executable ==="
+    cd build && ./result

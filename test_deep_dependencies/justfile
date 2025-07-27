@@ -1,0 +1,57 @@
+#!/usr/bin/env -S just --justfile
+
+# Stress test for deep dependency trees
+# Tests CMake Nix backend with complex dependency chains
+
+cmake_binary := "../../bin/cmake"
+
+# Default target
+default: run
+
+# Run the stress test
+run: clean generate configure build test
+
+# Clean build directory
+clean:
+    rm -rf build CMakeLists.txt lib*.cpp main.cpp
+
+# Generate a deep dependency tree
+generate:
+    @echo "=== Generating deep dependency tree ==="
+    python3 generate_deps.py
+
+# Configure with CMake Nix backend
+configure:
+    @echo "=== Configuring with CMake Nix backend ==="
+    mkdir -p build
+    cd build && {{cmake_binary}} -G Nix -DCMAKE_BUILD_TYPE=Release ..
+
+# Build using Nix
+build:
+    @echo "=== Building with Nix ==="
+    cd build && nix-build -A deep_test
+
+# Test the executable
+test:
+    @echo "=== Testing the executable ==="
+    cd build && ./result
+
+# Analyze the dependency graph
+analyze:
+    @echo "=== Analyzing dependency graph ==="
+    @echo "Generated Nix file size: $(ls -lh build/default.nix 2>/dev/null | awk '{print $5}' || echo 'N/A')"
+    @echo "Number of derivations: $(grep -c 'mkDerivation' build/default.nix 2>/dev/null || echo '0')"
+    @echo ""
+    @echo "Dependency tree visualization:"
+    @echo "Level 9 (top):"
+    @echo "  └─> Level 8 (5 libs each)"
+    @echo "      └─> Level 7 (5 libs each)"
+    @echo "          └─> Level 6 (5 libs each)"
+    @echo "              └─> Level 5 (5 libs each)"
+    @echo "                  └─> Level 4 (5 libs each)"
+    @echo "                      └─> Level 3 (5 libs each)"
+    @echo "                          └─> Level 2 (5 libs each)"
+    @echo "                              └─> Level 1 (5 libs each)"
+    @echo "                                  └─> Level 0 (5 libs, no deps)"
+    @echo ""
+    @echo "Each library in level N depends on ALL libraries in level N-1"
