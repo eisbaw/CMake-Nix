@@ -1174,9 +1174,49 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     
     // Note: PCH header file handling is now done in GetCompileFlags helper
     
+    // Also process files referenced by -imacros and -include flags
+    // These files (like Zephyr's autoconf.h) need to be embedded if they are configuration-time generated
+    std::vector<std::string> parsedFlags;
+    cmSystemTools::ParseUnixCommandLine(allCompileFlags.c_str(), parsedFlags);
+    for (size_t i = 0; i < parsedFlags.size(); ++i) {
+      const auto& flag = parsedFlags[i];
+      if ((flag == "-imacros" || flag == "-include") && i + 1 < parsedFlags.size()) {
+        std::string filePath = parsedFlags[++i];
+        
+        // Check if it's a build directory file (configuration-time generated)
+        if (cmSystemTools::FileIsFullPath(filePath)) {
+          std::string relToBuild = cmSystemTools::RelativePath(buildDir, filePath);
+          if (!cmNixPathUtils::IsPathOutsideTree(relToBuild) && cmSystemTools::FileExists(filePath)) {
+            // This is a configuration-time generated file that needs to be embedded
+            configTimeGeneratedFiles.push_back(filePath);
+            if (this->GetCMakeInstance()->GetDebugOutput()) {
+              std::cerr << "[NIX-DEBUG] Added " << flag << " file to config-time generated: " << filePath << std::endl;
+            }
+          }
+        }
+      }
+    }
+    
     // Handle configuration-time generated files (like Zephyr's autoconf.h)
     if (!configTimeGeneratedFiles.empty()) {
       this->WriteCompositeSource(nixFileStream, configTimeGeneratedFiles, srcDir, buildDir);
+      
+      // Update compile flags to use relative paths for embedded config-time generated files
+      for (const auto& genFile : configTimeGeneratedFiles) {
+        std::string absPath = genFile;
+        std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
+        
+        // Replace absolute path with relative path in compile flags
+        size_t pos = 0;
+        while ((pos = allCompileFlags.find(absPath, pos)) != std::string::npos) {
+          allCompileFlags.replace(pos, absPath.length(), relPath);
+          pos += relPath.length();
+        }
+        
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          std::cerr << "[NIX-DEBUG] Replaced " << absPath << " with " << relPath << " in compile flags" << std::endl;
+        }
+      }
     } else if (existingFiles.empty() && generatedFiles.empty()) {
       // No files detected, use whole directory
       // Calculate relative path from build directory to source directory for out-of-source builds
@@ -1460,6 +1500,11 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
   std::ostringstream compileFlagsStream;
   bool firstFlag = true;
   
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-DEBUG] GetCompileFlags called for " << objectName << std::endl;
+    std::cerr << "[NIX-DEBUG] Number of compile flags: " << compileFlagsVec.size() << std::endl;
+  }
+  
   for (const auto& flag : compileFlagsVec) {
     if (!flag.Value.empty()) {
       std::string trimmedFlag = cmTrimWhitespace(flag.Value);
@@ -1494,14 +1539,21 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
           
           if (this->GetCMakeInstance()->GetDebugOutput()) {
             std::cerr << "[NIX-DEBUG] Processing " << pFlag << " flag with file: " << filePath << std::endl;
+            std::cerr << "[NIX-DEBUG] buildDir: " << buildDir << std::endl;
+            std::cerr << "[NIX-DEBUG] sourceDir: " << sourceDir << std::endl;
           }
           
           // Check if it's an absolute path that needs to be made relative
           if (cmSystemTools::FileIsFullPath(filePath)) {
             // Check if it's in the build directory (configuration-time generated)
             std::string relToBuild = cmSystemTools::RelativePath(buildDir, filePath);
+            if (this->GetCMakeInstance()->GetDebugOutput()) {
+              std::cerr << "[NIX-DEBUG] relToBuild: " << relToBuild << std::endl;
+              std::cerr << "[NIX-DEBUG] IsPathOutsideTree: " << cmNixPathUtils::IsPathOutsideTree(relToBuild) << std::endl;
+            }
             if (!cmNixPathUtils::IsPathOutsideTree(relToBuild)) {
-              // This is a build directory file - use relative path
+              // This is a build directory file - for configuration-time generated files
+              // that will be embedded, just use the relative path from build dir
               filePath = relToBuild;
               if (this->GetCMakeInstance()->GetDebugOutput()) {
                 std::cerr << "[NIX-DEBUG] Converted to build-relative path: " << filePath << std::endl;
