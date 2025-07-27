@@ -1004,8 +1004,12 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   cmGeneratedFileStream& nixFileStream, cmGeneratorTarget* target, 
   const cmSourceFile* source)
 {
-  // Don't profile individual object derivations as there can be many
-  // This would create too much output. Only profile if explicitly requested.
+  // Profile only if CMAKE_NIX_PROFILE_DETAILED=1 to avoid too much output
+  const char* detailedProfile = std::getenv("CMAKE_NIX_PROFILE_DETAILED");
+  std::unique_ptr<ProfileTimer> timer;
+  if (detailedProfile && std::string(detailedProfile) == "1") {
+    timer = std::make_unique<ProfileTimer>(this, "WriteObjectDerivation");
+  }
   cmNixWriter writer(nixFileStream);
   
   std::string sourceFile = source->GetFullPath();
@@ -1657,6 +1661,8 @@ void cmGlobalNixGenerator::WriteRegularSourceDerivation(cmGeneratedFileStream& /
 void cmGlobalNixGenerator::WriteLinkDerivation(
   cmGeneratedFileStream& nixFileStream, cmGeneratorTarget* target)
 {
+  ProfileTimer timer(this, "WriteLinkDerivation");
+  
   std::string derivName = this->GetDerivationName(target->GetName());
   std::string targetName = target->GetName();
   
@@ -1997,6 +2003,13 @@ std::string cmGlobalNixGenerator::GetBuildConfiguration(cmGeneratorTarget* targe
 std::vector<std::string> cmGlobalNixGenerator::GetCachedLibraryDependencies(
   cmGeneratorTarget* target, const std::string& config) const
 {
+  // Only profile if CMAKE_NIX_PROFILE_DETAILED=1
+  const char* detailedProfile = std::getenv("CMAKE_NIX_PROFILE_DETAILED");
+  std::unique_ptr<ProfileTimer> timer;
+  if (detailedProfile && std::string(detailedProfile) == "1") {
+    timer = std::make_unique<ProfileTimer>(this, "GetCachedLibraryDependencies");
+  }
+  
   std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
   
   // Double-checked locking pattern to prevent race condition
@@ -2303,6 +2316,8 @@ void cmGlobalNixGenerator::WriteInstallRules(cmGeneratedFileStream& nixFileStrea
 
 // Dependency graph implementation
 void cmGlobalNixGenerator::BuildDependencyGraph() {
+  ProfileTimer timer(this, "BuildDependencyGraph");
+  
   // Clear any existing graph
   this->DependencyGraph.Clear();
   
