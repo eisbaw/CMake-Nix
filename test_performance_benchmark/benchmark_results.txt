@@ -1,3 +1,3 @@
 Generator,Configure Time (s),Files
-Nix,3.390166547,10
-Unix Makefiles,.907463258,10
+Nix,3.343386904,10
+Unix Makefiles,.820467303,10

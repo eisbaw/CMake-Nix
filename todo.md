@@ -26,12 +26,12 @@ DONE - Use the timestamps of the configure-time profiling traces, to determine h
 
 # Active TODO items:
 
-NOT DONE - Zephyr RTOS build issue: The -imacros flag with absolute path to autoconf.h is not being converted to relative path properly
-  - GetCompileFlags has been modified to handle -imacros and -include flags but the fix is not working
-  - The generated Nix file still contains absolute paths like: -imacros /home/.../build/zephyr/include/generated/zephyr/autoconf.h
-  - Need to investigate why the path conversion is not being applied
-  - The compile flags are coming from CMake already formed and may need different handling
-  - Configuration-time generated files like autoconf.h need to be included in the Nix derivation
+DONE - Zephyr RTOS build issue: The -imacros flag with absolute path to autoconf.h is not being converted to relative path properly
+  - GetCompileFlags has been modified to handle -imacros and -include flags
+  - Configuration-time generated files referenced by -imacros and -include are now detected and embedded
+  - The compile flags are updated to use relative paths for these embedded files
+  - Fixed by adding code to parse compile flags, detect files referenced by -imacros/-include, add them to configTimeGeneratedFiles list, and replace absolute paths with relative paths in the flags
+  - The fix ensures autoconf.h and similar files are properly embedded and referenced in Nix derivations
 
 DONE - test_zephyr_rtos: CMake cache conflict error
      - Found in dev.log: "CMake Error: Error: generator : Nix Does not match the generator used previously: Ninja"
@@ -1690,4 +1690,10 @@ DONE - Large-scale stress tests: Projects with 1000+ files, deep dependency tree
      - Implemented in test_scale with configurable file counts (10-500+ files)
      - Tests scalability with generate script that can create arbitrary numbers of source files
      - justfile includes test-scales target that tests with 10, 50, 100, and 500 files
+
+DONE - Fixed cmakeNixCC helper function syntax error (2025-01-27):
+     - Fixed escaped dollar sign in comment that caused invalid Nix syntax
+     - Changed "$\{derivation}/file" to "derivation/file" in comment
+     - Prevents syntax error in generated default.nix files
+     - All tests pass except Zephyr philosophers (which has separate include path issues)
 

@@ -261,7 +261,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("      # We need to find the actual source file");
   writer.WriteLine("      # Store source in a variable to handle paths with spaces");
   writer.WriteLine("      sourceFile=\"${source}\"");
-  writer.WriteLine("      # Check if source is an absolute path or Nix expression (e.g., $\\{derivation}/file)");
+  writer.WriteLine("      # Check if source is an absolute path or Nix expression (e.g., derivation/file)");
   writer.WriteLine("      if [[ \"$sourceFile\" == /* ]] || [[ \"$sourceFile\" == *\"$\"* ]]; then");
   writer.WriteLine("        # Absolute path or Nix expression - use as-is");
   writer.WriteLine("        srcFile=\"$sourceFile\"");

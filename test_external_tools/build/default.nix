@@ -34,7 +34,7 @@ let
       # We need to find the actual source file
       # Store source in a variable to handle paths with spaces
       sourceFile="${source}"
-      # Check if source is an absolute path or Nix expression (e.g., $\{derivation}/file)
+      # Check if source is an absolute path or Nix expression (e.g., derivation/file)
       if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"$"* ]]; then
         # Absolute path or Nix expression - use as-is
         srcFile="$sourceFile"
