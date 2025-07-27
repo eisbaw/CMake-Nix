@@ -2666,16 +2666,81 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   // Get library link flags for build phase - use vector for efficient concatenation
   std::vector<std::string> linkFlagsList;
   
-  // Use helper method to process library dependencies
-  this->ProcessLibraryDependenciesForLinking(target, config, linkFlagsList, transitiveDeps);
-  
   // Get library list for cmakeNixLD helper
   std::vector<std::string> libraries;
-  for (const std::string& depTarget : transitiveDeps) {
-    if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
-      std::string depDerivName = this->GetDerivationName(depTarget);
-      libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
-                         depTarget + this->GetSharedLibraryExtension());
+  
+  // Use helper method to process library dependencies
+  this->ProcessLibraryDependenciesForLinking(target, config, linkFlagsList, libraries, transitiveDeps);
+  
+  // Check if target depends on any static libraries
+  bool hasStaticDependencies = false;
+  if (linkImpl) {
+    for (const cmLinkItem& item : linkImpl->Libraries) {
+      if (item.Target && !item.Target->IsImported() &&
+          item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
+        hasStaticDependencies = true;
+        break;
+      }
+    }
+  }
+  
+  // If we have static library dependencies, we need ALL transitive dependencies
+  if (hasStaticDependencies) {
+    std::set<std::string> allTransitiveDeps = this->DependencyGraph.GetAllTransitiveDependencies(target->GetName());
+    
+    // Add all transitive static libraries that aren't already in the libraries list
+    std::set<std::string> alreadyAdded;
+    for (const std::string& lib : libraries) {
+      // Extract target name from library reference
+      size_t start = lib.find("${link_") + 7;
+      size_t end = lib.find("}");
+      if (start != std::string::npos && end != std::string::npos && start < end) {
+        alreadyAdded.insert(lib.substr(start, end - start));
+      }
+    }
+    
+    // Add missing transitive dependencies in dependency order
+    for (const std::string& depTarget : allTransitiveDeps) {
+      if (alreadyAdded.find(depTarget) == alreadyAdded.end()) {
+        auto depIt = std::find_if(this->LocalGenerators.begin(), this->LocalGenerators.end(),
+          [&depTarget](const std::unique_ptr<cmLocalGenerator>& lg) {
+            auto const& targets = lg->GetGeneratorTargets();
+            return std::any_of(targets.begin(), targets.end(),
+              [&depTarget](const std::unique_ptr<cmGeneratorTarget>& t) {
+                return t->GetName() == depTarget;
+              });
+          });
+        
+        if (depIt != this->LocalGenerators.end()) {
+          auto const& targets = (*depIt)->GetGeneratorTargets();
+          auto targetIt = std::find_if(targets.begin(), targets.end(),
+            [&depTarget](const std::unique_ptr<cmGeneratorTarget>& t) {
+              return t->GetName() == depTarget;
+            });
+          
+          if (targetIt != targets.end()) {
+            std::string depDerivName = this->GetDerivationName(depTarget);
+            if ((*targetIt)->GetType() == cmStateEnums::STATIC_LIBRARY) {
+              libraries.push_back("${" + depDerivName + "}");
+            } else if ((*targetIt)->GetType() == cmStateEnums::SHARED_LIBRARY) {
+              libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                                 depTarget + this->GetSharedLibraryExtension());
+            } else if ((*targetIt)->GetType() == cmStateEnums::MODULE_LIBRARY) {
+              libraries.push_back("${" + depDerivName + "}/" + depTarget + 
+                                 this->GetSharedLibraryExtension());
+            }
+          }
+        }
+      }
+    }
+  } else {
+    // For targets without static dependencies, just add transitive shared library dependencies
+    for (const std::string& depTarget : transitiveDeps) {
+      if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
+        std::string depDerivName = this->GetDerivationName(depTarget);
+        libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                           depTarget + this->GetSharedLibraryExtension());
+      }
     }
   }
   
@@ -2824,6 +2889,7 @@ void cmGlobalNixGenerator::ProcessLibraryDependenciesForLinking(
   cmGeneratorTarget* target,
   const std::string& config,
   std::vector<std::string>& linkFlagsList,
+  std::vector<std::string>& libraries,
   std::set<std::string>& transitiveDeps) const
 {
   // Get link implementation
@@ -2852,15 +2918,15 @@ void cmGlobalNixGenerator::ProcessLibraryDependenciesForLinking(
       // Add appropriate link flags based on target type using direct references
       if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
         // For shared libraries, use Nix string interpolation
-        linkFlagsList.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
-                               depTargetName + this->GetSharedLibraryExtension());
+        libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                           depTargetName + this->GetSharedLibraryExtension());
       } else if (item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
         // For module libraries, use Nix string interpolation (no lib prefix)
-        linkFlagsList.push_back("${" + depDerivName + "}/" + depTargetName + 
-                               this->GetSharedLibraryExtension());
+        libraries.push_back("${" + depDerivName + "}/" + depTargetName + 
+                           this->GetSharedLibraryExtension());
       } else if (item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
         // For static libraries, link the archive directly using string interpolation
-        linkFlagsList.push_back("${" + depDerivName + "}");
+        libraries.push_back("${" + depDerivName + "}");
       }
     } else if (!item.Target) { 
       // External library (not a target)
@@ -3206,6 +3272,48 @@ std::set<std::string> cmGlobalNixGenerator::cmNixDependencyGraph::GetTransitiveS
   // Cache the result
   node.transitiveDependencies = result;
   node.transitiveDepsComputed = true;
+  
+  return result;
+}
+
+std::set<std::string> cmGlobalNixGenerator::cmNixDependencyGraph::GetAllTransitiveDependencies(const std::string& target) const {
+  auto it = nodes.find(target);
+  if (it == nodes.end()) {
+    return {};
+  }
+  
+  // Compute all transitive dependencies (both static and shared) using DFS
+  std::set<std::string> visited;
+  std::set<std::string> result;
+  std::vector<std::string> stack;
+  
+  stack.push_back(target);
+  
+  while (!stack.empty()) {
+    std::string current = stack.back();
+    stack.pop_back();
+    
+    if (visited.count(current)) continue;
+    visited.insert(current);
+    
+    auto currentIt = nodes.find(current);
+    if (currentIt == nodes.end()) continue;
+    
+    // Include all library dependencies (static, shared, and module), but not the starting target
+    if (current != target && 
+        (currentIt->second.type == cmStateEnums::STATIC_LIBRARY ||
+         currentIt->second.type == cmStateEnums::SHARED_LIBRARY || 
+         currentIt->second.type == cmStateEnums::MODULE_LIBRARY)) {
+      result.insert(current);
+    }
+    
+    // Add direct dependencies to stack
+    for (const auto& dep : currentIt->second.directDependencies) {
+      if (!visited.count(dep)) {
+        stack.push_back(dep);
+      }
+    }
+  }
   
   return result;
 }

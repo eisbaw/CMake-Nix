@@ -240,6 +240,7 @@ private:
     cmGeneratorTarget* target,
     const std::string& config,
     std::vector<std::string>& linkFlagsList,
+    std::vector<std::string>& libraries,
     std::set<std::string>& transitiveDeps) const;
   
   // Debug output helper - centralizes debug logging
@@ -345,6 +346,7 @@ private:
     void AddTarget(const std::string& name, cmGeneratorTarget* target);
     void AddDependency(const std::string& from, const std::string& to);
     std::set<std::string> GetTransitiveSharedLibraries(const std::string& target) const;
+    std::set<std::string> GetAllTransitiveDependencies(const std::string& target) const;
     bool HasCircularDependency() const;
     void Clear();
   };
