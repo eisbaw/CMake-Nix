@@ -209,9 +209,6 @@ test-all:
     # just test_error_recovery::test
     # just test_cross_compile::test
     # just test_thread_safety::test
-    # test_zephyr_rtos demonstrates Zephyr's incompatibility with Nix's pure build model
-    # Run it but don't fail the test suite if it fails as expected
-    -just test_zephyr_rtos::run || echo "✅ test_zephyr_rtos failed as expected (Zephyr requires mutable environment incompatible with Nix)"
     # OpenCV test is currently broken due to CMake policy issues in OpenCV itself
     # just test_opencv::configure-core
     @echo "✅ All tests passed!"
@@ -247,9 +244,6 @@ dev: build test-all
 
 # Export/Import test
 mod test_export_import
-
-# Zephyr RTOS simulation test
-mod test_zephyr_rtos
 
 # Special characters in target names test
 mod test_special_characters
