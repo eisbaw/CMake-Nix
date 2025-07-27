@@ -89,8 +89,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       if (cmd.find("cmake") != std::string::npos && fullCmd.find(" -P ") != std::string::npos) {
         needsCMake = true;
         needsSourceAccess = true;  // We'll need the source tree for the script
-        if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
-          std::cout << "[DEBUG] Detected cmake -P in custom command: " << fullCmd << std::endl;
+        if (this->LocalGenerator->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+          std::cerr << "[NIX-DEBUG] Detected cmake -P in custom command: " << fullCmd << std::endl;
         }
       }
       hasNonEchoCommands = true;
@@ -124,12 +124,12 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   // to ensure they're in buildInputs when we use ${derivationName}
   std::set<std::string> referencedDerivations;
   
-  // Debug: log dependencies if CMAKE_NIX_DEBUG is set
-  if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
-    std::cout << "[DEBUG] Custom command " << this->GetDerivationName() 
+  // Debug: log dependencies if debug output is enabled
+  if (this->LocalGenerator->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-DEBUG] Custom command " << this->GetDerivationName() 
               << " has " << depends.size() << " dependencies:" << std::endl;
     for (const std::string& dep : depends) {
-      std::cout << "[DEBUG]   - " << dep << std::endl;
+      std::cerr << "[NIX-DEBUG]   - " << dep << std::endl;
     }
   }
   
@@ -193,8 +193,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         zephyrBase = fullCmd.substr(startPos, endPos - startPos);
         if (!zephyrBase.empty() && cmSystemTools::FileIsDirectory(zephyrBase)) {
           sourceDir = zephyrBase;
-          if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
-            std::cout << "[NIX-DEBUG] Using ZEPHYR_BASE as source directory: " << sourceDir << std::endl;
+          if (this->LocalGenerator->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+            std::cerr << "[NIX-DEBUG] Using ZEPHYR_BASE as source directory: " << sourceDir << std::endl;
           }
           break;
         }
@@ -445,8 +445,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
               // In the Nix build environment, we need to keep the relative path
               // The source tree will be made available via needsSourceAccess
               // Keep the original relative path instead of using the full path
-              if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
-                std::cout << "[DEBUG] Keeping relative script path: " << arg << " (resolved to: " << fullPath << ")" << std::endl;
+              if (this->LocalGenerator->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+                std::cerr << "[NIX-DEBUG] Keeping relative script path: " << arg << " (resolved to: " << fullPath << ")" << std::endl;
               }
               // Don't update arg to fullPath - keep it relative
               // The script will be found when we cd to the source directory
