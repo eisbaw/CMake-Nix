@@ -1816,7 +1816,10 @@ After implementing the -imacros fix for external sources:
    - Add hints about missing dependencies or configuration problems
 
 **Additional Testing Needed**:
-1. [ ] Add specific test for -imacros flag handling with configuration-time generated files
+1. [x] DONE - Add specific test for -imacros flag handling with configuration-time generated files
+   - Created test_imacros_config that tests -imacros with generated_config.h
+   - Verifies that configuration-time generated files are properly embedded in Nix derivations
+   - Test passes successfully and is added to the test suite
 2. [ ] Add test for external source files with config-time generated dependencies
 3. [ ] Test edge cases where multiple external sources share the same config-time files
 

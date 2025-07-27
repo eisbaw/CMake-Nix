@@ -195,6 +195,7 @@ test-all:
     -just test_external_tools::run || echo "✅ test_external_tools failed as expected (demonstrates incompatibility)"
     just test_file_edge_cases::run
     just test_nix_tools::run
+    just test_imacros_config::run
     # Scale and error recovery tests (run separately due to special nature)
     # NOTE: These tests are not included in the standard regression suite due to:
     # - test_scale: Extended runtime with configurable file counts

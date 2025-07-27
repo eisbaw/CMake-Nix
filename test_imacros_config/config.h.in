@@ -1,0 +1,16 @@
+#ifndef GENERATED_CONFIG_H
+#define GENERATED_CONFIG_H
+
+// Configuration values generated at CMake configure time
+#define VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define PROJECT_NAME "@PROJECT_NAME@"
+
+// Test macro that will be automatically included
+#define TEST_VALUE 42
+#define GREETING "Hello from generated config!"
+
+// Function-like macro to test
+#define DOUBLE(x) ((x) * 2)
+
+#endif // GENERATED_CONFIG_H

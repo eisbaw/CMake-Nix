@@ -1,0 +1,22 @@
+# Test -imacros flag with configuration-time generated files
+
+# Configure and build with Nix generator
+configure:
+    rm -rf build default.nix
+    ../bin/cmake -G Nix -S . -B build
+
+# Build the test
+build: configure
+    cd build && nix-build -A test_imacros
+
+# Run the test
+run: build
+    cd build && ./result && rm ./result
+
+# Clean all generated files
+clean:
+    rm -rf build default.nix
+
+# Test the functionality
+test: run
+    @echo "✅ -imacros flag test completed successfully"
