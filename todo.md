@@ -794,9 +794,10 @@ DONE 2. **Code Duplication in cmNixTargetGenerator.cxx** (2025-01-27):
    - Lines 79 and 109: Identical language checks should be extracted to `IsCompilableLanguage(lang)` helper
    - FIXED: Created IsCompilableLanguage() private helper method
 
-3. **Large Hardcoded Mapping in cmNixPackageMapper**:
+DONE 3. **Large Hardcoded Mapping in cmNixPackageMapper**:
    - InitializeMappings() contains 100+ hardcoded entries
    - Should be refactored to load from configuration file
+   - FIXED: Now loads from cmake-nix-package-mappings.json with fallback to defaults
 
 4. **Path Validation Considerations**:
    - dangerousChars check might be too restrictive for legitimate paths with quotes/backslashes
@@ -2076,11 +2077,20 @@ Based on comprehensive code analysis, the following improvements were identified
 
 ### Missing Test Coverage (Nice-to-Have):
 
-5. **Export/Import Targets**: No explicit test for export() command functionality
-6. **Complex Generator Expressions**: While supported, no dedicated test for edge cases
+5. **DONE Export/Import Targets**: No explicit test for export() command functionality
+6. **DONE Complex Generator Expressions**: While supported, no dedicated test for edge cases
 7. **Performance Benchmarks**: No systematic performance testing at scale
 8. **Stress Tests**: Limited testing with very large projects (1000+ files)
 9. **RPATH Handling**: Limited test coverage for runtime path manipulation
+
+### Known Limitations:
+
+10. **C++ Standard Library Headers**: When using C++ code that includes standard library headers 
+    (e.g., `<iostream>`, `<string>`), the generated Nix derivations may fail with "stdlib.h: No such 
+    file or directory". This is because the custom stdenv.mkDerivation doesn't properly inherit the 
+    setup hooks from stdenv.cc that set up the necessary environment variables (NIX_CFLAGS_COMPILE, etc.).
+    Workaround: Use simpler C++ code without standard library dependencies, or use stdenv.mkDerivation
+    directly with proper setup hooks. This is a known limitation of the fine-grained derivation approach.
 
 ### Positive Findings:
 - ✅ Proper exception handling with specific catch blocks

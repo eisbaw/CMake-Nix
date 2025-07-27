@@ -247,21 +247,41 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("    dontFixup = true;");
   writer.WriteLine("    buildPhase = ''");
   writer.WriteLine("      mkdir -p \"$(dirname \"$out\")\"");
-  writer.WriteLine("      # Determine compiler binary name based on the compiler derivation");
-  writer.WriteLine("      compilerBin=\"${");
-  writer.WriteLine("        if compiler == gcc || compiler == pkgsi686Linux.gcc then");
-  writer.WriteLine("          \"gcc\"");
-  writer.WriteLine("        else if compiler == clang || compiler == pkgsi686Linux.clang then");  
-  writer.WriteLine("          \"clang\"");
-  writer.WriteLine("        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then");
-  writer.WriteLine("          \"gfortran\"");
-  writer.WriteLine("        else");
-  writer.WriteLine("          compiler.pname or \"cc\"");
-  writer.WriteLine("      }\"");
-  writer.WriteLine("      # When src is a directory, Nix unpacks it into a subdirectory");
-  writer.WriteLine("      # We need to find the actual source file");
   writer.WriteLine("      # Store source in a variable to handle paths with spaces");
   writer.WriteLine("      sourceFile=\"${source}\"");
+  writer.WriteLine("      # Determine how to invoke the compiler based on the compiler derivation");
+  writer.WriteLine("      # When using stdenv.cc, we use the wrapped compiler directly");
+  writer.WriteLine("      # For other compilers, we use the binary directly");
+  writer.WriteLine("      if [ \"${compiler}\" = \"${stdenv.cc}\" ] || [ \"${compiler}\" = \"${pkgsi686Linux.stdenv.cc}\" ]; then");
+  writer.WriteLine("        # stdenv.cc is a wrapped compiler - use it directly");
+  writer.WriteLine("        if [[ \"$sourceFile\" == *.cpp ]] || [[ \"$sourceFile\" == *.cxx ]] || [[ \"$sourceFile\" == *.cc ]] || [[ \"$sourceFile\" == *.C ]]; then");
+  writer.WriteLine("          compilerCmd=\"${compiler}/bin/g++\"");
+  writer.WriteLine("        else");
+  writer.WriteLine("          compilerCmd=\"${compiler}/bin/gcc\"");
+  writer.WriteLine("        fi");
+  writer.WriteLine("      else");
+  writer.WriteLine("        # For other compilers, determine the binary name");
+  writer.WriteLine("        if [ \"${compiler}\" = \"${gcc}\" ] || [ \"${compiler}\" = \"${pkgsi686Linux.gcc}\" ]; then");
+  writer.WriteLine("          if [[ \"$sourceFile\" == *.cpp ]] || [[ \"$sourceFile\" == *.cxx ]] || [[ \"$sourceFile\" == *.cc ]] || [[ \"$sourceFile\" == *.C ]]; then");
+  writer.WriteLine("            compilerBin=\"g++\"");
+  writer.WriteLine("          else");
+  writer.WriteLine("            compilerBin=\"gcc\"");
+  writer.WriteLine("          fi");
+  writer.WriteLine("        elif [ \"${compiler}\" = \"${clang}\" ] || [ \"${compiler}\" = \"${pkgsi686Linux.clang}\" ]; then");
+  writer.WriteLine("          if [[ \"$sourceFile\" == *.cpp ]] || [[ \"$sourceFile\" == *.cxx ]] || [[ \"$sourceFile\" == *.cc ]] || [[ \"$sourceFile\" == *.C ]]; then");
+  writer.WriteLine("            compilerBin=\"clang++\"");
+  writer.WriteLine("          else");
+  writer.WriteLine("            compilerBin=\"clang\"");
+  writer.WriteLine("          fi");
+  writer.WriteLine("        elif [ \"${compiler}\" = \"${gfortran}\" ] || [ \"${compiler}\" = \"${pkgsi686Linux.gfortran}\" ]; then");
+  writer.WriteLine("          compilerBin=\"gfortran\"");
+  writer.WriteLine("        else");
+  writer.WriteLine("          compilerBin=\"${compiler.pname or \"cc\"}\"");
+  writer.WriteLine("        fi");
+  writer.WriteLine("        compilerCmd=\"${compiler}/bin/$compilerBin\"");
+  writer.WriteLine("      fi");
+  writer.WriteLine("      # When src is a directory, Nix unpacks it into a subdirectory");
+  writer.WriteLine("      # We need to find the actual source file");
   writer.WriteLine("      # Check if source is an absolute path or Nix expression (e.g., derivation/file)");
   writer.WriteLine("      if [[ \"$sourceFile\" == /* ]] || [[ \"$sourceFile\" == *\"\\$\"* ]]; then");
   writer.WriteLine("        # Absolute path or Nix expression - use as-is");
@@ -274,7 +294,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        echo \"Error: Cannot find source file $sourceFile\"");
   writer.WriteLine("        exit 1");
   writer.WriteLine("      fi");
-  writer.WriteLine("      ${compiler}/bin/$compilerBin -c ${flags} \"$srcFile\" -o \"$out\"");
+  writer.WriteLine("      $compilerCmd -c ${flags} \"$srcFile\" -o \"$out\"");
   writer.WriteLine("    '';");
   writer.WriteLine("    installPhase = \"true\";");
   writer.WriteLine("  };");
@@ -308,23 +328,31 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        ar rcs \"$out\" $objects");
   writer.WriteLine("      '' else if type == \"shared\" || type == \"module\" then ''");
   writer.WriteLine("        mkdir -p $out");
-  writer.WriteLine("        compilerBin=\"${if compilerCommand != null then");
-  writer.WriteLine("          compilerCommand");
-  writer.WriteLine("        else if compiler == gcc || compiler == pkgsi686Linux.gcc then");
-  writer.WriteLine("          \"gcc\"");
-  writer.WriteLine("        else if compiler == clang || compiler == pkgsi686Linux.clang then");
-  writer.WriteLine("          \"clang\"");
-  writer.WriteLine("        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then");
-  writer.WriteLine("          \"gfortran\"");
+  writer.WriteLine("        # Determine compiler command - use stdenv.cc's wrapped compiler when available");
+  writer.WriteLine("        if [ \"${compiler}\" = \"${stdenv.cc}\" ] || [ \"${compiler}\" = \"${pkgsi686Linux.stdenv.cc}\" ]; then");
+  writer.WriteLine("          # Use compilerCommand override if provided, otherwise use the wrapped compiler");
+  writer.WriteLine("          compilerCmd=\"${if compilerCommand != null then compilerCommand else \"${compiler}/bin/gcc\"}\"");
   writer.WriteLine("        else");
-  writer.WriteLine("          compiler.pname or \"cc\"");
-  writer.WriteLine("        }\";");
+  writer.WriteLine("          # For other compilers, use the binary directly");
+  writer.WriteLine("          compilerBin=\"${if compilerCommand != null then");
+  writer.WriteLine("            compilerCommand");
+  writer.WriteLine("          else if compiler == gcc || compiler == pkgsi686Linux.gcc then");
+  writer.WriteLine("            \"gcc\"");
+  writer.WriteLine("          else if compiler == clang || compiler == pkgsi686Linux.clang then");
+  writer.WriteLine("            \"clang\"");
+  writer.WriteLine("          else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then");
+  writer.WriteLine("            \"gfortran\"");
+  writer.WriteLine("          else");
+  writer.WriteLine("            compiler.pname or \"cc\"");
+  writer.WriteLine("          }\";");
+  writer.WriteLine("          compilerCmd=\"${compiler}/bin/$compilerBin\"");
+  writer.WriteLine("        fi");
   writer.WriteLine("        # Unix library naming: static=lib*.a, shared=lib*.so, module=*.so");
   writer.WriteLine("        libname=\"${if type == \"module\" then name else \"lib\" + name}.so\"");
   writer.WriteLine("        ${if version != null && type != \"module\" then ''");
   writer.WriteLine("          libname=\"lib${name}.so.${version}\"");
   writer.WriteLine("        '' else \"\"}");
-  writer.WriteLine("        ${compiler}/bin/$compilerBin -shared $objects ${flags} ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out/$libname\"");
+  writer.WriteLine("        $compilerCmd -shared $objects ${flags} ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out/$libname\"");
   writer.WriteLine("        # Create version symlinks if needed (only for shared libraries, not modules)");
   writer.WriteLine("        ${if version != null && type != \"module\" then ''");
   writer.WriteLine("          ln -sf \"$libname\" \"$out/lib${name}.so\"");
@@ -334,18 +362,26 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        '' else \"\"}");
   writer.WriteLine("      '' else ''");
   writer.WriteLine("        mkdir -p \"$(dirname \"$out\")\"");
-  writer.WriteLine("        compilerBin=\"${if compilerCommand != null then");
-  writer.WriteLine("          compilerCommand");
-  writer.WriteLine("        else if compiler == gcc || compiler == pkgsi686Linux.gcc then");
-  writer.WriteLine("          \"gcc\"");
-  writer.WriteLine("        else if compiler == clang || compiler == pkgsi686Linux.clang then");
-  writer.WriteLine("          \"clang\"");
-  writer.WriteLine("        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then");
-  writer.WriteLine("          \"gfortran\"");
+  writer.WriteLine("        # Determine compiler command - use stdenv.cc's wrapped compiler when available");
+  writer.WriteLine("        if [ \"${compiler}\" = \"${stdenv.cc}\" ] || [ \"${compiler}\" = \"${pkgsi686Linux.stdenv.cc}\" ]; then");
+  writer.WriteLine("          # Use compilerCommand override if provided, otherwise use the wrapped compiler");
+  writer.WriteLine("          compilerCmd=\"${if compilerCommand != null then compilerCommand else \"${compiler}/bin/gcc\"}\"");
   writer.WriteLine("        else");
-  writer.WriteLine("          compiler.pname or \"cc\"");
-  writer.WriteLine("        }\";");
-  writer.WriteLine("        ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out\"");
+  writer.WriteLine("          # For other compilers, use the binary directly");
+  writer.WriteLine("          compilerBin=\"${if compilerCommand != null then");
+  writer.WriteLine("            compilerCommand");
+  writer.WriteLine("          else if compiler == gcc || compiler == pkgsi686Linux.gcc then");
+  writer.WriteLine("            \"gcc\"");
+  writer.WriteLine("          else if compiler == clang || compiler == pkgsi686Linux.clang then");
+  writer.WriteLine("            \"clang\"");
+  writer.WriteLine("          else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then");
+  writer.WriteLine("            \"gfortran\"");
+  writer.WriteLine("          else");
+  writer.WriteLine("            compiler.pname or \"cc\"");
+  writer.WriteLine("          }\";");
+  writer.WriteLine("          compilerCmd=\"${compiler}/bin/$compilerBin\"");
+  writer.WriteLine("        fi");
+  writer.WriteLine("        $compilerCmd $objects ${flags} ${lib.concatMapStringsSep \" \" (l: l) libraries} -o \"$out\"");
   writer.WriteLine("      '';");
   writer.WriteLine("    inherit postBuildPhase;");
   writer.WriteLine("    installPhase = \"true\";");
@@ -3641,11 +3677,20 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
     }
   }
   
-  // Use 32-bit compiler if needed
-  if (needs32Bit && compilerPkg == "gcc") {
-    compilerPkg = "pkgsi686Linux.gcc";
-  } else if (needs32Bit && compilerPkg == "clang") {
-    compilerPkg = "pkgsi686Linux.clang";
+  // For C++ code, we should use the wrapped stdenv.cc instead of raw gcc
+  if (lang == "CXX") {
+    if (needs32Bit) {
+      compilerPkg = "pkgsi686Linux.stdenv.cc";
+    } else {
+      compilerPkg = "stdenv.cc";
+    }
+  } else {
+    // Use the regular compiler packages for non-C++ code
+    if (needs32Bit && compilerPkg == "gcc") {
+      compilerPkg = "pkgsi686Linux.gcc";
+    } else if (needs32Bit && compilerPkg == "clang") {
+      compilerPkg = "pkgsi686Linux.clang";
+    }
   }
   
   buildInputs.push_back(compilerPkg);

@@ -190,6 +190,7 @@ test-all:
     just test_unity_build::run
     just test_fortran_language::run
     just test_fmt_library::run
+    just test_export_import::run
     # test_external_tools is designed to fail - it demonstrates incompatibility
     # Run it but don't fail the test suite if it fails as expected
     -just test_external_tools::run || echo "✅ test_external_tools failed as expected (demonstrates incompatibility)"
@@ -243,6 +244,9 @@ test-nice-to-have:
 # Quick development cycle: build, test, and show results
 dev: build test-all
     @echo "🚀 Development cycle complete"
+
+# Export/Import test
+mod test_export_import
 
 # Zephyr RTOS simulation test
 mod test_zephyr_rtos

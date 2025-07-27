@@ -1,0 +1,39 @@
+project_name := "test_export_import"
+cmake_bin := "../../bin/cmake"
+build_dir := "build"
+
+# Clean build directory
+clean:
+    rm -rf {{build_dir}}
+
+# Configure the project with Nix generator
+configure: clean
+    mkdir -p {{build_dir}}
+    cd {{build_dir}} && {{cmake_bin}} -G Nix ..
+
+# Build with nix
+build: configure
+    cd {{build_dir}} && nix-build -A myapp
+
+# Test export functionality
+test-export: build
+    @echo "=== Testing export() functionality ==="
+    @echo "Checking if export file was created..."
+    @if [ -f "{{build_dir}}/ExportImportTestTargets.cmake" ]; then \
+        echo "✅ Export file created successfully"; \
+    else \
+        echo "❌ Export file not found"; \
+        exit 1; \
+    fi
+    @echo "Checking export file contents..."
+    @grep -q "ExportImportTest::mylib" {{build_dir}}/ExportImportTestTargets.cmake && echo "✅ Library target exported" || (echo "❌ Library target not found in export"; exit 1)
+    @grep -q "ExportImportTest::myapp" {{build_dir}}/ExportImportTestTargets.cmake && echo "✅ Executable target exported" || (echo "❌ Executable target not found in export"; exit 1)
+
+# Run all tests
+run: test-export
+    @echo "=== Running executable ==="
+    cd {{build_dir}} && ./result
+    @echo "✅ All export/import tests passed!"
+
+# Default target
+default: run

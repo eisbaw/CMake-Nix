@@ -12,28 +12,47 @@ let
     compiler ? gcc,
     flags ? "",
     source,  # Source file path relative to src
-    buildInputs ? [],
-    propagatedInputs ? []
+    buildInputs ? []
   }: stdenv.mkDerivation {
-    inherit name src buildInputs propagatedInputs;
+    inherit name src buildInputs;
     dontFixup = true;
     buildPhase = ''
       mkdir -p "$(dirname "$out")"
-      # Determine compiler binary name based on the compiler derivation
-      compilerBin="${
-        if compiler == gcc || compiler == pkgsi686Linux.gcc then
-          "gcc"
-        else if compiler == clang || compiler == pkgsi686Linux.clang then
-          "clang"
-        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
-          "gfortran"
-        else
-          compiler.pname or "cc"
-      }"
-      # When src is a directory, Nix unpacks it into a subdirectory
-      # We need to find the actual source file
       # Store source in a variable to handle paths with spaces
       sourceFile="${source}"
+      # Determine how to invoke the compiler based on the compiler derivation
+      # When using stdenv.cc, we use the wrapped compiler directly
+      # For other compilers, we use the binary directly
+      if [ "${compiler}" = "${stdenv.cc}" ] || [ "${compiler}" = "${pkgsi686Linux.stdenv.cc}" ]; then
+        # stdenv.cc is a wrapped compiler - use it directly
+        if [[ "$sourceFile" == *.cpp ]] || [[ "$sourceFile" == *.cxx ]] || [[ "$sourceFile" == *.cc ]] || [[ "$sourceFile" == *.C ]]; then
+          compilerCmd="${compiler}/bin/g++"
+        else
+          compilerCmd="${compiler}/bin/gcc"
+        fi
+      else
+        # For other compilers, determine the binary name
+        if [ "${compiler}" = "${gcc}" ] || [ "${compiler}" = "${pkgsi686Linux.gcc}" ]; then
+          if [[ "$sourceFile" == *.cpp ]] || [[ "$sourceFile" == *.cxx ]] || [[ "$sourceFile" == *.cc ]] || [[ "$sourceFile" == *.C ]]; then
+            compilerBin="g++"
+          else
+            compilerBin="gcc"
+          fi
+        elif [ "${compiler}" = "${clang}" ] || [ "${compiler}" = "${pkgsi686Linux.clang}" ]; then
+          if [[ "$sourceFile" == *.cpp ]] || [[ "$sourceFile" == *.cxx ]] || [[ "$sourceFile" == *.cc ]] || [[ "$sourceFile" == *.C ]]; then
+            compilerBin="clang++"
+          else
+            compilerBin="clang"
+          fi
+        elif [ "${compiler}" = "${gfortran}" ] || [ "${compiler}" = "${pkgsi686Linux.gfortran}" ]; then
+          compilerBin="gfortran"
+        else
+          compilerBin="${compiler.pname or "cc"}"
+        fi
+        compilerCmd="${compiler}/bin/$compilerBin"
+      fi
+      # When src is a directory, Nix unpacks it into a subdirectory
+      # We need to find the actual source file
       # Check if source is an absolute path or Nix expression (e.g., derivation/file)
       if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"\$"* ]]; then
         # Absolute path or Nix expression - use as-is
@@ -46,7 +65,7 @@ let
         echo "Error: Cannot find source file $sourceFile"
         exit 1
       fi
-      ${compiler}/bin/$compilerBin -c ${flags} "$srcFile" -o "$out"
+      $compilerCmd -c ${flags} "$srcFile" -o "$out"
     '';
     installPhase = "true";
   };
@@ -76,23 +95,31 @@ let
         ar rcs "$out" $objects
       '' else if type == "shared" || type == "module" then ''
         mkdir -p $out
-        compilerBin="${if compilerCommand != null then
-          compilerCommand
-        else if compiler == gcc || compiler == pkgsi686Linux.gcc then
-          "gcc"
-        else if compiler == clang || compiler == pkgsi686Linux.clang then
-          "clang"
-        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
-          "gfortran"
+        # Determine compiler command - use stdenv.cc's wrapped compiler when available
+        if [ "${compiler}" = "${stdenv.cc}" ] || [ "${compiler}" = "${pkgsi686Linux.stdenv.cc}" ]; then
+          # Use compilerCommand override if provided, otherwise use the wrapped compiler
+          compilerCmd="${if compilerCommand != null then compilerCommand else "${compiler}/bin/gcc"}"
         else
-          compiler.pname or "cc"
-        }";
+          # For other compilers, use the binary directly
+          compilerBin="${if compilerCommand != null then
+            compilerCommand
+          else if compiler == gcc || compiler == pkgsi686Linux.gcc then
+            "gcc"
+          else if compiler == clang || compiler == pkgsi686Linux.clang then
+            "clang"
+          else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
+            "gfortran"
+          else
+            compiler.pname or "cc"
+          }";
+          compilerCmd="${compiler}/bin/$compilerBin"
+        fi
         # Unix library naming: static=lib*.a, shared=lib*.so, module=*.so
         libname="${if type == "module" then name else "lib" + name}.so"
         ${if version != null && type != "module" then ''
           libname="lib${name}.so.${version}"
         '' else ""}
-        ${compiler}/bin/$compilerBin -shared $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out/$libname"
+        $compilerCmd -shared $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out/$libname"
         # Create version symlinks if needed (only for shared libraries, not modules)
         ${if version != null && type != "module" then ''
           ln -sf "$libname" "$out/lib${name}.so"
@@ -102,18 +129,26 @@ let
         '' else ""}
       '' else ''
         mkdir -p "$(dirname "$out")"
-        compilerBin="${if compilerCommand != null then
-          compilerCommand
-        else if compiler == gcc || compiler == pkgsi686Linux.gcc then
-          "gcc"
-        else if compiler == clang || compiler == pkgsi686Linux.clang then
-          "clang"
-        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
-          "gfortran"
+        # Determine compiler command - use stdenv.cc's wrapped compiler when available
+        if [ "${compiler}" = "${stdenv.cc}" ] || [ "${compiler}" = "${pkgsi686Linux.stdenv.cc}" ]; then
+          # Use compilerCommand override if provided, otherwise use the wrapped compiler
+          compilerCmd="${if compilerCommand != null then compilerCommand else "${compiler}/bin/gcc"}"
         else
-          compiler.pname or "cc"
-        }";
-        ${compiler}/bin/$compilerBin $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
+          # For other compilers, use the binary directly
+          compilerBin="${if compilerCommand != null then
+            compilerCommand
+          else if compiler == gcc || compiler == pkgsi686Linux.gcc then
+            "gcc"
+          else if compiler == clang || compiler == pkgsi686Linux.clang then
+            "clang"
+          else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
+            "gfortran"
+          else
+            compiler.pname or "cc"
+          }";
+          compilerCmd="${compiler}/bin/$compilerBin"
+        fi
+        $compilerCmd $objects ${flags} ${lib.concatMapStringsSep " " (l: l) libraries} -o "$out"
       '';
     inherit postBuildPhase;
     installPhase = "true";
@@ -142,9 +177,9 @@ let
         ./../main.cpp
       ];
     };
-    buildInputs = [ gcc ];
+    buildInputs = [ stdenv.cc ];
     source = "main.cpp";
-    compiler = gcc;
+    compiler = stdenv.cc;
     flags = "-O3 -DNDEBUG";
   };
 
@@ -170,9 +205,9 @@ let
         ./../helper.cpp
       ];
     };
-    buildInputs = [ gcc ];
+    buildInputs = [ stdenv.cc ];
     source = "helper.cpp";
-    compiler = gcc;
+    compiler = stdenv.cc;
     flags = "-O3 -DNDEBUG";
   };
 

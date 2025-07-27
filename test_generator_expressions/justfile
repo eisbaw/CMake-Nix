@@ -1,0 +1,51 @@
+project_name := "test_generator_expressions"
+cmake_bin := "../../bin/cmake"
+build_dir := "build"
+
+# Clean build directory
+clean:
+    rm -rf {{build_dir}}
+
+# Configure with Debug
+configure-debug: clean
+    mkdir -p {{build_dir}}
+    cd {{build_dir}} && {{cmake_bin}} -G Nix -DCMAKE_BUILD_TYPE=Debug ..
+
+# Configure with Release
+configure-release: clean
+    mkdir -p {{build_dir}}
+    cd {{build_dir}} && {{cmake_bin}} -G Nix -DCMAKE_BUILD_TYPE=Release ..
+
+# Build Debug configuration
+build-debug: configure-debug
+    cd {{build_dir}} && nix-build -A myapp
+
+# Build Release configuration  
+build-release: configure-release
+    cd {{build_dir}} && nix-build -A myapp
+
+# Test Debug build
+test-debug: build-debug
+    @echo "=== Testing Debug Build ==="
+    cd {{build_dir}} && ./result | grep "DEBUG_MODE" && echo "✅ Debug mode detected"
+    cd {{build_dir}} && ./result | grep "DEBUG utilities" && echo "✅ Debug utilities included"
+    @echo "Checking generated config header..."
+    @grep "BUILD_TYPE \"Debug\"" {{build_dir}}/config_Debug.h && echo "✅ Config header generated correctly"
+
+# Test Release build
+test-release: build-release
+    @echo "=== Testing Release Build ==="
+    cd {{build_dir}} && ./result | grep "RELEASE_MODE" && echo "✅ Release mode detected"
+    cd {{build_dir}} && ./result | grep "RELEASE utilities" && echo "✅ Release utilities included"
+    @echo "Checking generated config header..."
+    @grep "BUILD_TYPE \"Release\"" {{build_dir}}/config_Release.h && echo "✅ Config header generated correctly"
+
+# Run all tests
+run:
+    @echo "=== Testing Generator Expressions ==="
+    just test-debug
+    just test-release
+    @echo "✅ All generator expression tests passed!"
+
+# Default target
+default: run

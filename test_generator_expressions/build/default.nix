@@ -155,176 +155,102 @@ let
   };
 
 # Per-translation-unit derivations
-  mylib_test_shared_library_lib_c_o = cmakeNixCC {
-    name = "lib.o";
+  mylib_src_mylib_cpp_o = cmakeNixCC {
+    name = "mylib.o";
     src = fileset.toSource {
       root = ./..;
       fileset = fileset.unions [
-        ./../lib.c
+        ./../src/mylib.cpp
+        ./../include
       ];
     };
-    buildInputs = [ gcc ];
-    source = "lib.c";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -fPIC -Dmylib_EXPORTS";
+    buildInputs = [ stdenv.cc ];
+    source = "src/mylib.cpp";
+    compiler = stdenv.cc;
+    flags = "-O3 -DNDEBUG -std=c++17 -O3 -DRELEASE_MODE -Iinclude";
   };
 
-  versioned_lib_test_shared_library_versioned_c_o = cmakeNixCC {
-    name = "versioned.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../versioned.c
-      ];
-    };
-    buildInputs = [ gcc ];
-    source = "versioned.c";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -fPIC -Dversioned_lib_EXPORTS";
-  };
-
-  app_test_shared_library_main_c_o = cmakeNixCC {
+  myapp_src_main_cpp_o = cmakeNixCC {
     name = "main.o";
     src = fileset.toSource {
       root = ./..;
       fileset = fileset.unions [
-        ./../main.c
+        ./../src/main.cpp
+        ./../include
       ];
     };
-    buildInputs = [ gcc ];
-    source = "main.c";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG";
+    buildInputs = [ stdenv.cc (import ./../pkg_glibc.nix { inherit pkgs; }) ];
+    source = "src/main.cpp";
+    compiler = stdenv.cc;
+    flags = "-O3 -DNDEBUG -Iinclude";
   };
 
-  static_helper_test_shared_library_helper_c_o = cmakeNixCC {
-    name = "helper.o";
+  myapp_src_default_utils_cpp_o = cmakeNixCC {
+    name = "default_utils.o";
     src = fileset.toSource {
       root = ./..;
       fileset = fileset.unions [
-        ./../helper.c
+        ./../src/default_utils.cpp
+        ./../include
       ];
     };
-    buildInputs = [ gcc ];
-    source = "helper.c";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG";
-  };
-
-  mixed_app_test_shared_library_mixed_c_o = cmakeNixCC {
-    name = "mixed.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../mixed.c
-      ];
-    };
-    buildInputs = [ gcc ];
-    source = "mixed.c";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG";
-  };
-
-  version_test_test_shared_library_test_versioning_c_o = cmakeNixCC {
-    name = "test_versioning.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../test_versioning.c
-      ];
-    };
-    buildInputs = [ gcc ];
-    source = "test_versioning.c";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -fPIC -Dversion_test_EXPORTS";
-  };
-
-  version_test2_test_shared_library_test_versioning_c_o = cmakeNixCC {
-    name = "test_versioning.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../test_versioning.c
-      ];
-    };
-    buildInputs = [ gcc ];
-    source = "test_versioning.c";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -fPIC -Dversion_test2_EXPORTS";
+    buildInputs = [ stdenv.cc (import ./../pkg_glibc.nix { inherit pkgs; }) ];
+    source = "src/default_utils.cpp";
+    compiler = stdenv.cc;
+    flags = "-O3 -DNDEBUG -Iinclude";
   };
 
 
   # Linking derivations
   link_mylib = cmakeNixLD {
     name = "mylib";
-    type = "shared";
-    buildInputs = [ gcc ];
-    objects = [ mylib_test_shared_library_lib_c_o ];
-    compiler = gcc;
-  };
-
-  link_versioned_lib = cmakeNixLD {
-    name = "versioned_lib";
-    type = "shared";
-    buildInputs = [ gcc ];
-    objects = [ versioned_lib_test_shared_library_versioned_c_o ];
-    compiler = gcc;
-    version = "1.2.3";
-    soversion = "1";
-  };
-
-  link_app = cmakeNixLD {
-    name = "app";
-    type = "executable";
-    buildInputs = [ gcc link_mylib ];
-    objects = [ app_test_shared_library_main_c_o ];
-    compiler = gcc;
-    flags = "${link_mylib}/libmylib.so";
-  };
-
-  link_static_helper = cmakeNixLD {
-    name = "static_helper";
     type = "static";
     buildInputs = [ gcc ];
-    objects = [ static_helper_test_shared_library_helper_c_o ];
+    objects = [ mylib_src_mylib_cpp_o ];
     compiler = gcc;
+    compilerCommand = "g++";
   };
 
-  link_mixed_app = cmakeNixLD {
-    name = "mixed_app";
+  link_myapp = cmakeNixLD {
+    name = "myapp";
     type = "executable";
-    buildInputs = [ gcc link_mylib ];
-    objects = [ mixed_app_test_shared_library_mixed_c_o ];
+    buildInputs = [ gcc (import ../pkg_glibc.nix { inherit pkgs; }) ];
+    objects = [ myapp_src_main_cpp_o myapp_src_default_utils_cpp_o ];
     compiler = gcc;
-    flags = "${link_mylib}/libmylib.so ${link_static_helper}";
+    compilerCommand = "g++";
+    flags = "${link_mylib} -lpthread";
   };
 
-  link_version_test = cmakeNixLD {
-    name = "version_test";
-    type = "shared";
-    buildInputs = [ gcc ];
-    objects = [ version_test_test_shared_library_test_versioning_c_o ];
-    compiler = gcc;
-    version = "2.0.0";
-    soversion = "2";
+
+  # Install derivations
+  link_mylib_install = stdenv.mkDerivation {
+    name = "mylib-install";
+    src = link_mylib;
+    dontUnpack = true;
+    dontBuild = true;
+    dontConfigure = true;
+    installPhase = ''
+      mkdir -p $out/lib
+      cp $src $out/lib/libmylib.a
+    '';
   };
 
-  link_version_test2 = cmakeNixLD {
-    name = "version_test2";
-    type = "shared";
-    buildInputs = [ gcc ];
-    objects = [ version_test2_test_shared_library_test_versioning_c_o ];
-    compiler = gcc;
-    version = "3.4.5";
+  link_myapp_install = stdenv.mkDerivation {
+    name = "myapp-install";
+    src = link_myapp;
+    dontUnpack = true;
+    dontBuild = true;
+    dontConfigure = true;
+    installPhase = ''
+      mkdir -p $out/bin
+      cp $src $out/bin/myapp
+    '';
   };
 
 in
 {
   "mylib" = link_mylib;
-  "versioned_lib" = link_versioned_lib;
-  "app" = link_app;
-  "static_helper" = link_static_helper;
-  "mixed_app" = link_mixed_app;
-  "version_test" = link_version_test;
-  "version_test2" = link_version_test2;
+  "myapp" = link_myapp;
+  "mylib_install" = link_mylib_install;
+  "myapp_install" = link_myapp_install;
 }
