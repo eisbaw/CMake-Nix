@@ -3077,21 +3077,9 @@ void cmGlobalNixGenerator::WriteCompositeSource(
   const std::string& config,
   const std::vector<std::string>& customCommandHeaders)
 {
-  // Build buildInputs for runCommand
-  std::string buildInputsStr;
-  if (!customCommandHeaders.empty()) {
-    buildInputsStr = " { buildInputs = [ ";
-    std::set<std::string> uniqueHeaders(customCommandHeaders.begin(), customCommandHeaders.end());
-    for (const auto& header : uniqueHeaders) {
-      buildInputsStr += header + " ";
-    }
-    buildInputsStr += "]; }";
-  } else {
-    buildInputsStr = " {}";
-  }
-  
   // Create a composite source that includes both source files and config-time generated files
-  nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\"" << buildInputsStr << " ''\n";
+  // Don't use buildInputs or arguments - they can cause issues with Nix's setup scripts
+  nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\" {} ''\n";
   nixFileStream << "      mkdir -p $out\n";
   
   // Copy the source directory structure
@@ -3212,7 +3200,7 @@ void cmGlobalNixGenerator::WriteCompositeSource(
             if (!destDir.empty()) {
               nixFileStream << "      mkdir -p $out/" << destDir << "\n";
             }
-            nixFileStream << "      cp ${" << headerDeriv << "}/" << relPath << " $out/" << relPath << "\n";
+            nixFileStream << "      cp $" << headerDeriv << "/" << relPath << " $out/" << relPath << "\n";
           }
         }
       }
