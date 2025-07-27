@@ -1152,6 +1152,13 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     auto targetGen = cmNixTargetGenerator::New(target);
     std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
     
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Source dependencies for " << sourceFile << ": " << dependencies.size() << std::endl;
+      for (const auto& dep : dependencies) {
+        std::cerr << "[NIX-DEBUG]   Dependency: " << dep << std::endl;
+      }
+    }
+    
     // Create lists for existing and generated files
     std::vector<std::string> existingFiles;
     std::vector<std::string> generatedFiles;
@@ -1169,7 +1176,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
     
     // Process header dependencies using helper method
-    this->ProcessHeaderDependencies(headers, buildDir, srcDir, 
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Processing headers for " << sourceFile << ": " << dependencies.size() << " headers" << std::endl;
+    }
+    this->ProcessHeaderDependencies(dependencies, buildDir, srcDir, 
                                    existingFiles, generatedFiles, configTimeGeneratedFiles);
     
     // Note: PCH header file handling is now done in GetCompileFlags helper
@@ -1216,7 +1226,15 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     
     // Collect custom command generated headers needed by this source
     std::vector<std::string> customCommandHeaders;
-    for (const auto& header : headers) {
+    
+    if (this->GetCMakeInstance()->GetDebugOutput() && !dependencies.empty()) {
+      std::cerr << "[NIX-DEBUG] Checking headers for custom commands in composite source for " 
+                << sourceFile << std::endl;
+      std::cerr << "[NIX-DEBUG] Headers count: " << dependencies.size() << std::endl;
+      std::cerr << "[NIX-DEBUG] CustomCommandOutputs count: " << this->CustomCommandOutputs.size() << std::endl;
+    }
+    
+    for (const auto& header : dependencies) {
       // Check multiple possible paths for the header
       std::vector<std::string> pathsToCheck;
       
@@ -1235,6 +1253,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
       
       // Check each possible path
+      bool found = false;
       for (const auto& pathToCheck : pathsToCheck) {
         auto customIt = this->CustomCommandOutputs.find(pathToCheck);
         if (customIt != this->CustomCommandOutputs.end()) {
@@ -1243,7 +1262,18 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
             std::cerr << "[NIX-DEBUG] Found custom command header for composite source: " 
                       << pathToCheck << " -> " << customIt->second << std::endl;
           }
+          found = true;
           break;
+        }
+      }
+      
+      if (this->GetCMakeInstance()->GetDebugOutput() && !found) {
+        std::cerr << "[NIX-DEBUG] Header " << header << " not found in custom commands" << std::endl;
+        if (!pathsToCheck.empty()) {
+          std::cerr << "[NIX-DEBUG] Checked paths:" << std::endl;
+          for (const auto& p : pathsToCheck) {
+            std::cerr << "[NIX-DEBUG]   " << p << std::endl;
+          }
         }
       }
     }
