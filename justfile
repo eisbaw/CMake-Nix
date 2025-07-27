@@ -274,6 +274,9 @@ mod test_file_edge_cases
 # Nix tools integration test
 mod test_nix_tools
 
+# Test for -imacros flag with config-time generated files
+mod test_imacros_config
+
 # Circular dependency test
 mod test_circular_deps
 

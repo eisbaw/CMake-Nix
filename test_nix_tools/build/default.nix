@@ -122,7 +122,12 @@ let
 # Per-translation-unit derivations
   simple_lib_test_nix_tools_lib_cpp_o = cmakeNixCC {
     name = "lib.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../lib.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "lib.cpp";
     compiler = gcc;
@@ -131,7 +136,12 @@ let
 
   simple_app_test_nix_tools_main_cpp_o = cmakeNixCC {
     name = "main.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../main.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "main.cpp";
     compiler = gcc;
@@ -140,7 +150,12 @@ let
 
   shared_lib_test_nix_tools_shared_cpp_o = cmakeNixCC {
     name = "shared.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../shared.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "shared.cpp";
     compiler = gcc;
@@ -149,7 +164,12 @@ let
 
   shared_app_test_nix_tools_shared_main_cpp_o = cmakeNixCC {
     name = "shared_main.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../shared_main.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "shared_main.cpp";
     compiler = gcc;
@@ -158,7 +178,13 @@ let
 
   custom_app_test_nix_tools_custom_main_cpp_o = cmakeNixCC {
     name = "custom_main.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../custom_main.cpp
+        ./../build
+      ];
+    };
     buildInputs = [ gcc ];
     source = "custom_main.cpp";
     compiler = gcc;

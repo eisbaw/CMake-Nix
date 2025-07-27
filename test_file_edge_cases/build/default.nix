@@ -122,7 +122,13 @@ let
 # Per-translation-unit derivations
   test_spaces_test_file_edge_cases_source_with_spaces_cpp_o = cmakeNixCC {
     name = "source with spaces.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../source with spaces.cpp
+        ./../include with spaces
+      ];
+    };
     buildInputs = [ gcc ];
     source = "source with spaces.cpp";
     compiler = gcc;
@@ -131,7 +137,12 @@ let
 
   test-with-dashes_test_file_edge_cases_special_chars_cpp_o = cmakeNixCC {
     name = "special_chars.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../special_chars.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "special_chars.cpp";
     compiler = gcc;
@@ -140,7 +151,12 @@ let
 
   test_with_underscores_test_file_edge_cases_special_chars_cpp_o = cmakeNixCC {
     name = "special_chars.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../special_chars.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "special_chars.cpp";
     compiler = gcc;
@@ -149,7 +165,12 @@ let
 
   test_with_dots_test_file_edge_cases_special_chars_cpp_o = cmakeNixCC {
     name = "special_chars.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../special_chars.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "special_chars.cpp";
     compiler = gcc;
@@ -158,7 +179,12 @@ let
 
   test_unicode_test_file_edge_cases_unicode________cpp_o = cmakeNixCC {
     name = "unicode_文件.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../unicode_文件.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "unicode_文件.cpp";
     compiler = gcc;
@@ -167,7 +193,12 @@ let
 
   test_long_names_test_file_edge_cases_this_is_a_very_long_filename_that_might_cause_issues_with_some_build_systems_but_should_work_fine_cpp_o = cmakeNixCC {
     name = "this_is_a_very_long_filename_that_might_cause_issues_with_some_build_systems_but_should_work_fine.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../this_is_a_very_long_filename_that_might_cause_issues_with_some_build_systems_but_should_work_fine.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "this_is_a_very_long_filename_that_might_cause_issues_with_some_build_systems_but_should_work_fine.cpp";
     compiler = gcc;
@@ -176,7 +207,12 @@ let
 
   test_symlinks_test_file_edge_cases_special_chars_cpp_o = cmakeNixCC {
     name = "symlinked_source.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../special_chars.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "special_chars.cpp";
     compiler = gcc;
@@ -185,7 +221,12 @@ let
 
   TestMixedCase_test_file_edge_cases_MixedCase_cpp_o = cmakeNixCC {
     name = "MixedCase.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../MixedCase.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "MixedCase.cpp";
     compiler = gcc;
@@ -194,7 +235,12 @@ let
 
   test_nested_structure_nested_cpp_o = cmakeNixCC {
     name = "nested.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../very/deeply/nested/directory/structure/nested.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "very/deeply/nested/directory/structure/nested.cpp";
     compiler = gcc;
@@ -203,7 +249,13 @@ let
 
   test_dir_spaces_dir_with_spaces_file_cpp_o = cmakeNixCC {
     name = "file.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../dir with spaces/file.cpp
+        ./../include with spaces
+      ];
+    };
     buildInputs = [ gcc ];
     source = "dir with spaces/file.cpp";
     compiler = gcc;

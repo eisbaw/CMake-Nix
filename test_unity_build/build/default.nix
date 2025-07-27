@@ -122,7 +122,12 @@ let
 # Per-translation-unit derivations
   unity_app_src_file1_cpp_o = cmakeNixCC {
     name = "file1.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../src/file1.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "src/file1.cpp";
     compiler = gcc;
@@ -131,7 +136,12 @@ let
 
   unity_app_src_file2_cpp_o = cmakeNixCC {
     name = "file2.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../src/file2.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "src/file2.cpp";
     compiler = gcc;
@@ -140,7 +150,12 @@ let
 
   unity_app_src_file3_cpp_o = cmakeNixCC {
     name = "file3.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../src/file3.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "src/file3.cpp";
     compiler = gcc;
@@ -149,7 +164,12 @@ let
 
   unity_app_test_unity_build_main_cpp_o = cmakeNixCC {
     name = "main.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../main.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "main.cpp";
     compiler = gcc;
@@ -158,7 +178,12 @@ let
 
   normal_app_src_file1_cpp_o = cmakeNixCC {
     name = "file1.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../src/file1.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "src/file1.cpp";
     compiler = gcc;
@@ -167,7 +192,12 @@ let
 
   normal_app_src_file2_cpp_o = cmakeNixCC {
     name = "file2.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../src/file2.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "src/file2.cpp";
     compiler = gcc;
@@ -176,7 +206,12 @@ let
 
   normal_app_src_file3_cpp_o = cmakeNixCC {
     name = "file3.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../src/file3.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "src/file3.cpp";
     compiler = gcc;
@@ -185,7 +220,12 @@ let
 
   normal_app_test_unity_build_main_cpp_o = cmakeNixCC {
     name = "main.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../main.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "main.cpp";
     compiler = gcc;

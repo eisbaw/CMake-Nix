@@ -1116,15 +1116,18 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     if ((flag == "-imacros" || flag == "-include") && i + 1 < parsedFlags.size()) {
       std::string filePath = parsedFlags[++i];
       
+      // Convert relative path to absolute if needed
+      if (!cmSystemTools::FileIsFullPath(filePath)) {
+        filePath = buildDir + "/" + filePath;
+      }
+      
       // Check if it's a build directory file (configuration-time generated)
-      if (cmSystemTools::FileIsFullPath(filePath)) {
-        std::string relToBuild = cmSystemTools::RelativePath(buildDir, filePath);
-        if (!cmNixPathUtils::IsPathOutsideTree(relToBuild) && cmSystemTools::FileExists(filePath)) {
-          // This is a configuration-time generated file that needs to be embedded
-          configTimeGeneratedFiles.push_back(filePath);
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Added " << flag << " file to config-time generated: " << filePath << std::endl;
-          }
+      std::string relToBuild = cmSystemTools::RelativePath(buildDir, filePath);
+      if (!cmNixPathUtils::IsPathOutsideTree(relToBuild) && cmSystemTools::FileExists(filePath)) {
+        // This is a configuration-time generated file that needs to be embedded
+        configTimeGeneratedFiles.push_back(filePath);
+        if (this->GetCMakeInstance()->GetDebugOutput()) {
+          std::cerr << "[NIX-DEBUG] Added " << flag << " file to config-time generated: " << filePath << std::endl;
         }
       }
     }
@@ -1150,9 +1153,6 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         // Calculate the relative path within the build directory
         std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
         std::string destDir = cmSystemTools::GetFilenamePath(relPath);
-        if (!destDir.empty()) {
-          nixFileStream << "      mkdir -p $out/" << destDir << "\n";
-        }
         
         // Read the file content and embed it directly
         cmsys::ifstream inFile(genFile.c_str(), std::ios::in | std::ios::binary);
@@ -1160,6 +1160,11 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           std::ostringstream contents;
           contents << inFile.rdbuf();
           inFile.close();
+          
+          // Create parent directory if needed
+          if (!destDir.empty()) {
+            nixFileStream << "      mkdir -p $out/" << destDir << "\n";
+          }
           
           // Write the file content directly using a here-doc with a unique delimiter
           std::string delimiter = "NIXEOF_" + std::to_string(std::hash<std::string>{}(genFile)) + "_END";
@@ -3235,9 +3240,6 @@ void cmGlobalNixGenerator::WriteCompositeSource(
     // Calculate the relative path within the build directory
     std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
     std::string destDir = cmSystemTools::GetFilenamePath(relPath);
-    if (!destDir.empty()) {
-      nixFileStream << "      mkdir -p $out/" << destDir << "\n";
-    }
     
     // Read the file content and embed it directly
     cmsys::ifstream inFile(genFile.c_str(), std::ios::in | std::ios::binary);
@@ -3247,9 +3249,8 @@ void cmGlobalNixGenerator::WriteCompositeSource(
       inFile.close();
       
       // Create parent directory if needed
-      std::string parentDir = cmSystemTools::GetFilenamePath(relPath);
-      if (!parentDir.empty()) {
-        nixFileStream << "      mkdir -p $out/" << parentDir << "\n";
+      if (!destDir.empty()) {
+        nixFileStream << "      mkdir -p $out/" << destDir << "\n";
       }
       
       // Write the file content directly using a here-doc with a unique delimiter
