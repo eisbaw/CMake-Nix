@@ -1,9 +1,17 @@
 # CMake Nix Backend - TODO Status
 
 
-Run just dev but log stdout and stderr to a file, dev.log. Run grep -C10 on this dev.log file for errors and warnings and failures. Add found issues to todo.md . 
+DONE - Run just dev but log stdout and stderr to a file, dev.log. Run grep -C10 on this dev.log file for errors and warnings and failures. Add found issues to todo.md . 
 
-Add profiling timing traces to Nix backend C++ source code. Only emit when a debug profiling flag is provided to cmake.
+DONE - Add profiling timing traces to Nix backend C++ source code. Only emit when a debug profiling flag is provided to cmake.
+     - Profiling is controlled by CMAKE_NIX_PROFILE=1 environment variable
+     - Detailed profiling (per-derivation) controlled by CMAKE_NIX_PROFILE_DETAILED=1
+     - Added profiling to WriteObjectDerivation, WriteLinkDerivation, GetCachedLibraryDependencies, BuildDependencyGraph
+     - Profiling output shows operation names and durations in milliseconds
+
+DONE - Fix test_zephyr_rtos: pykwalify module missing error
+     - Updated test_zephyr_rtos/justfile to use shell-zephyr.nix environment
+     - The shell provides all required Python dependencies including pykwalify
 
 DONE - Use the timestamps of the configure-time profiling traces, to determine hotspots. Then seek to optimize the C++ code of our Nix generator.
      - Profiling shows the Nix generator is already highly optimized:
