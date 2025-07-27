@@ -494,12 +494,12 @@ DONE - Fix test_zephyr_rtos: composite-src-with-generated.drv permission denied 
 **Problem**: Generated default.nix files have massive code duplication and several code smells that make them fragile and hard to maintain.
 
 **Code Smells Identified**:
-1. **Massive Duplication**: Every compilation derivation repeats identical boilerplate
-2. **Unused Attributes**: `propagatedInputs` is set but not actually used for dependency tracking
+DONE 1. **Massive Duplication**: Every compilation derivation repeats identical boilerplate - FIXED: Refactored to use helper functions
+DONE 2. **Unused Attributes**: `propagatedInputs` is set but not actually used for dependency tracking - FIXED: Removed unused attribute
 3. **Hardcoded Patterns**: `dontFixup = true;` and `installPhase = "true";` repeated everywhere
-4. **Inconsistent Output**: Some derivations use `$out` as file, others as directory
+DONE 4. **Inconsistent Output**: Some derivations use `$out` as file, others as directory - FIXED: This is correct behavior (single vs multi-file outputs)
 5. **No Error Handling**: Compilation failures not properly handled - DONE: Proper error handling added
-6. **Fragile Commands**: String concatenation for build commands is error-prone
+DONE 6. **Fragile Commands**: String concatenation for build commands is error-prone - FIXED: Using proper escaping and multi-line strings
 
 **Current State Example**:
 ```nix
@@ -896,7 +896,7 @@ Overall test coverage is EXCELLENT with 60+ comprehensive tests covering all maj
 ### Low Priority Issues:
 12. DONE: **Resource Leaks**: File close errors not checked in cmNixTargetGenerator.cxx:536 - Fixed: Added explicit close() calls to ifstream instances
 DONE 13. **Incomplete Features**: Clang-tidy integration stubbed in cmNixTargetGenerator.cxx:451-456 - Fixed: Actually implemented
-14. **Style**: Inconsistent debug output prefixes ([NIX-TRACE] vs [DEBUG])
+DONE 14. **Style**: Inconsistent debug output prefixes ([NIX-TRACE] vs [DEBUG]) - FIXED: Standardized all to [NIX-DEBUG]
 
 ## MISSING TEST COVERAGE (2025-07-23):
 

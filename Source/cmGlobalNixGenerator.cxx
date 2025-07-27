@@ -241,10 +241,9 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("    compiler ? gcc,");
   writer.WriteLine("    flags ? \"\",");
   writer.WriteLine("    source,  # Source file path relative to src");
-  writer.WriteLine("    buildInputs ? [],");
-  writer.WriteLine("    propagatedInputs ? []");
+  writer.WriteLine("    buildInputs ? []");
   writer.WriteLine("  }: stdenv.mkDerivation {");
-  writer.WriteLine("    inherit name src buildInputs propagatedInputs;");
+  writer.WriteLine("    inherit name src buildInputs;");
   writer.WriteLine("    dontFixup = true;");
   writer.WriteLine("    buildPhase = ''");
   writer.WriteLine("      mkdir -p \"$(dirname \"$out\")\"");

@@ -216,7 +216,7 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   // This method replicates the logic from cmMakefile::TryCompile
   // but is thread-safe and works with unique binary directories
   
-  std::cerr << "[DEBUG] ExecuteTryCompile STARTED: " << job->ProjectName << " / " << job->TargetName << std::endl;
+  std::cerr << "[NIX-DEBUG] ExecuteTryCompile STARTED: " << job->ProjectName << " / " << job->TargetName << std::endl;
   
   // Ensure binary directory exists
   if (!cmSystemTools::FileIsDirectory(job->BinaryDir)) {
@@ -318,22 +318,22 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   }
 
   // Configure
-  std::cerr << "[DEBUG] Starting configure..." << std::endl;
+  std::cerr << "[NIX-DEBUG] Starting configure..." << std::endl;
   if (cm.Configure() != 0) {
     job->Output = "Failed to configure test project build system.";
-    std::cerr << "[DEBUG] Configure failed!" << std::endl;
+    std::cerr << "[NIX-DEBUG] Configure failed!" << std::endl;
     return 1;
   }
-  std::cerr << "[DEBUG] Configure succeeded" << std::endl;
+  std::cerr << "[NIX-DEBUG] Configure succeeded" << std::endl;
 
   // Generate
-  std::cerr << "[DEBUG] Starting generate..." << std::endl;
+  std::cerr << "[NIX-DEBUG] Starting generate..." << std::endl;
   if (cm.Generate() != 0) {
     job->Output = "Failed to generate test project build system.";
-    std::cerr << "[DEBUG] Generate failed!" << std::endl;
+    std::cerr << "[NIX-DEBUG] Generate failed!" << std::endl;
     return 1;
   }
-  std::cerr << "[DEBUG] Generate succeeded" << std::endl;
+  std::cerr << "[NIX-DEBUG] Generate succeeded" << std::endl;
 
   // Build the project
   std::ostringstream buildOutput;
@@ -346,9 +346,9 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   
   job->Output = buildOutput.str();
   
-  std::cerr << "[DEBUG] ExecuteTryCompile COMPLETED: " << job->ProjectName << " (result=" << ret << ")" << std::endl;
+  std::cerr << "[NIX-DEBUG] ExecuteTryCompile COMPLETED: " << job->ProjectName << " (result=" << ret << ")" << std::endl;
   if (ret != 0) {
-    std::cerr << "[DEBUG] Build output: " << job->Output << std::endl;
+    std::cerr << "[NIX-DEBUG] Build output: " << job->Output << std::endl;
   }
   
   return ret;
