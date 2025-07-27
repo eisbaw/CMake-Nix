@@ -12,6 +12,7 @@
 #include "cmOutputConverter.h"
 #include "cmake.h"
 #include "cmNixPathUtils.h"
+#include "cmCustomCommandGenerator.h"
 #include <set>
 #include <cctype>
 #include <fstream>
@@ -27,6 +28,9 @@ cmNixCustomCommandGenerator::cmNixCustomCommandGenerator(cmCustomCommand const* 
 
 void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
 {
+  // Create standard custom command generator to expand generator expressions
+  cmCustomCommandGenerator ccGen(*this->CustomCommand, this->Config, this->LocalGenerator);
+  
   nixFileStream << "  " << this->GetDerivationName() << " = stdenv.mkDerivation {\n";
   nixFileStream << "    name = \"" << this->GetDerivationName() << "\";\n";
   
@@ -34,27 +38,30 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   bool needsCoreutils = false;
   bool hasNonEchoCommands = false;
   bool needsPython = false;
+  bool needsSourceAccess = false;
   
   // Analyze commands to determine what tools we need
-  for (const auto& commandLine : this->CustomCommand->GetCommandLines()) {
-    if (!commandLine.empty()) {
-      const std::string& cmd = commandLine[0];
+  // Use the expanded commands from ccGen
+  for (unsigned int i = 0; i < ccGen.GetNumberOfCommands(); ++i) {
+    std::string cmd = ccGen.GetCommand(i);
+    if (!cmd.empty()) {
       // Check if this command uses Python
       if (cmd.find("/python") != std::string::npos || cmd.find("python3") != std::string::npos) {
         needsPython = true;
       }
-      // Check if this is a cmake -E echo command with redirection
-      if (commandLine.size() >= 3 && cmd.find("cmake") != std::string::npos && 
-          commandLine[1] == "-E" && commandLine[2] == "echo") {
-        // Only skip if there's no shell redirection
-        bool hasRedirection = false;
-        for (const auto& arg : commandLine) {
-          if (arg == ">" || arg == ">>") {
-            hasRedirection = true;
-            break;
-          }
-        }
-        if (!hasRedirection) {
+      // Get full command line with arguments
+      std::string fullCmd = cmd;
+      ccGen.AppendArguments(i, fullCmd);
+      // Check if any part references source files outside build directory
+      if (fullCmd.find("/scripts/") != std::string::npos || 
+          fullCmd.find("/zephyr/") != std::string::npos ||
+          fullCmd.find("/cmake/") != std::string::npos) {
+        needsSourceAccess = true;
+      }
+      // Check if this is a cmake -E echo command
+      if (cmd.find("cmake") != std::string::npos && fullCmd.find(" -E echo") != std::string::npos) {
+        // Check if there's redirection
+        if (fullCmd.find(" >") == std::string::npos && fullCmd.find(" >>") == std::string::npos) {
           continue;
         }
       }
@@ -76,7 +83,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   }
   
   // Add dependencies on other custom commands
-  std::vector<std::string> depends = this->GetDepends();
+  // Use expanded depends from ccGen
+  std::vector<std::string> depends = ccGen.GetDepends();
   std::set<std::string> uniqueDepends;
   for (const std::string& dep : depends) {
     // Only include custom command outputs as buildInputs
@@ -94,12 +102,32 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   
   nixFileStream << " ];\n";
   
+  // If we need source access, add the source directory
+  if (needsSourceAccess) {
+    // For Zephyr RTOS and similar projects, we need to make the source tree available
+    std::string sourceDir = this->LocalGenerator->GetCurrentSourceDirectory();
+    // Find the root source directory (where CMakeLists.txt with project() is)
+    while (!sourceDir.empty() && sourceDir != "/" && 
+           !cmSystemTools::FileExists(sourceDir + "/CMakeLists.txt")) {
+      sourceDir = cmSystemTools::GetParentDirectory(sourceDir);
+    }
+    if (!sourceDir.empty() && sourceDir != "/") {
+      nixFileStream << "    src = " << sourceDir << ";\n";
+    }
+  }
+  
   // For custom commands, we don't need to copy the entire source tree
   // Only include the specific files we need
   if (hasNonEchoCommands) {
     nixFileStream << "    phases = [ \"buildPhase\" ];\n";
     nixFileStream << "    buildPhase = ''\n";
     nixFileStream << "      mkdir -p $out\n";
+    
+    // If we have source access, we need to change to the source directory
+    if (needsSourceAccess) {
+      nixFileStream << "      # Change to the source directory unpacked by Nix\n";
+      nixFileStream << "      cd /build/*\n";
+    }
     
     // Copy dependent files from other custom command outputs or configuration-time files
     for (const std::string& dep : depends) {
@@ -157,81 +185,113 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     }
     
     // Execute commands with proper shell handling
-    for (const auto& commandLine : this->CustomCommand->GetCommandLines()) {
-      if (commandLine.empty()) continue;
+    // Use the expanded commands from ccGen
+    for (unsigned int i = 0; i < ccGen.GetNumberOfCommands(); ++i) {
+      std::string cmd = ccGen.GetCommand(i);
+      if (cmd.empty()) continue;
       
-      // Check if this is a cmake -E echo command with redirection
-      if (commandLine.size() >= 3 && commandLine[0].find("cmake") != std::string::npos && 
-          commandLine[1] == "-E" && commandLine[2] == "echo") {
-        // Only skip if there's no shell redirection
-        bool hasRedirection = false;
-        for (const auto& arg : commandLine) {
-          if (arg == ">" || arg == ">>") {
-            hasRedirection = true;
-            break;
-          }
-        }
-        if (!hasRedirection) {
+      // Get full command with arguments
+      std::string fullCmd = cmd;
+      ccGen.AppendArguments(i, fullCmd);
+      
+      // Check if this is a cmake -E echo command without redirection
+      if (cmd.find("cmake") != std::string::npos && fullCmd.find(" -E echo") != std::string::npos) {
+        if (fullCmd.find(" >") == std::string::npos && fullCmd.find(" >>") == std::string::npos) {
           continue;
         }
       }
       
       nixFileStream << "      ";
-      bool first = true;
-      int skipNext = 0;
-      for (size_t i = 0; i < commandLine.size(); ++i) {
-        const std::string& arg = commandLine[i];
-        
-        // Skip -E and echo arguments after cmake command
-        if (skipNext > 0) {
-          skipNext--;
-          continue;
-        }
-        
-        if (!first) {
-          nixFileStream << " ";
-        }
-        first = false;
-        
-        // Handle shell operators properly
-        if (arg == ">" || arg == ">>" || arg == "<" || arg == "|" || arg == "&&" || arg == "||" || arg == ";" || arg == "&") {
-          nixFileStream << arg;
-        } else if (arg.find("/python") != std::string::npos && arg.find("/bin/python") != std::string::npos) {
-          // Replace absolute python paths with Nix-provided Python
-          nixFileStream << "python3";
-        } else if (arg.find("/cmake") != std::string::npos && arg.find("/bin/cmake") != std::string::npos) {
-          // Replace absolute cmake paths with echo for -E echo commands
-          if (commandLine.size() >= 3 && commandLine[1] == "-E" && commandLine[2] == "echo") {
-            nixFileStream << "echo";
-            skipNext = 2; // Skip -E and echo
-          } else {
-            // For other cmake commands, we might need the actual cmake
-            // Properly escape to prevent shell injection
-            nixFileStream << cmOutputConverter::EscapeForShell(arg, cmOutputConverter::Shell_Flag_IsUnix);
+      
+      // Process the command
+      std::string processedCmd = cmd;
+      
+      // Replace absolute python paths with Nix-provided Python
+      if (cmd.find("/python") != std::string::npos && cmd.find("/bin/python") != std::string::npos) {
+        processedCmd = "python3";
+      } 
+      // Replace absolute cmake paths with echo for -E echo commands
+      else if (cmd.find("/cmake") != std::string::npos && cmd.find("/bin/cmake") != std::string::npos && 
+               fullCmd.find(" -E echo") != std::string::npos) {
+        // Extract everything after "-E echo" from fullCmd
+        size_t echoPos = fullCmd.find(" -E echo");
+        if (echoPos != std::string::npos) {
+          size_t contentStart = fullCmd.find_first_not_of(" ", echoPos + 8);
+          if (contentStart != std::string::npos) {
+            nixFileStream << "echo " << fullCmd.substr(contentStart) << "\n";
+            continue;
           }
-        } else {
-          // Check if this argument is an output file that needs to be made relative
-          bool isOutputPath = false;
-          std::string relativeArg = arg;
-          for (const std::string& output : this->CustomCommand->GetOutputs()) {
-            if (arg == output && cmSystemTools::FileIsFullPath(arg)) {
-              // This is an absolute output path - convert to relative
-              std::string buildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
-              relativeArg = cmSystemTools::RelativePath(buildDir, arg);
-              isOutputPath = true;
-              break;
-            }
+        }
+      }
+      // Handle source paths if needed
+      else if (needsSourceAccess && cmSystemTools::FileIsFullPath(cmd)) {
+        std::string sourceDir = this->LocalGenerator->GetCurrentSourceDirectory();
+        while (!sourceDir.empty() && sourceDir != "/" && 
+               !cmSystemTools::FileExists(sourceDir + "/CMakeLists.txt")) {
+          sourceDir = cmSystemTools::GetParentDirectory(sourceDir);
+        }
+        
+        if (!sourceDir.empty() && cmd.find(sourceDir) == 0) {
+          processedCmd = cmSystemTools::RelativePath(sourceDir, cmd);
+        }
+      }
+      
+      // Write the processed command
+      nixFileStream << processedCmd;
+      
+      // Now handle arguments
+      std::string args;
+      ccGen.AppendArguments(i, args);
+      
+      // Process arguments for output paths and source paths
+      std::vector<std::string> argv;
+      cmSystemTools::ParseUnixCommandLine(fullCmd.c_str(), argv);
+      
+      // Skip the first element (command) and process the rest
+      for (size_t j = 1; j < argv.size(); ++j) {
+        const std::string& arg = argv[j];
+        nixFileStream << " ";
+        
+        bool isOutputPath = false;
+        bool isSourcePath = false;
+        std::string relativeArg = arg;
+        
+        // Check if it's an output path
+        for (const std::string& output : ccGen.GetOutputs()) {
+          if (arg == output && cmSystemTools::FileIsFullPath(arg)) {
+            std::string buildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
+            relativeArg = cmSystemTools::RelativePath(buildDir, arg);
+            isOutputPath = true;
+            break;
+          }
+        }
+        
+        // Check if it's a source path
+        if (!isOutputPath && needsSourceAccess && cmSystemTools::FileIsFullPath(arg)) {
+          std::string sourceDir = this->LocalGenerator->GetCurrentSourceDirectory();
+          while (!sourceDir.empty() && sourceDir != "/" && 
+                 !cmSystemTools::FileExists(sourceDir + "/CMakeLists.txt")) {
+            sourceDir = cmSystemTools::GetParentDirectory(sourceDir);
           }
           
-          // Properly escape arguments for shell
-          nixFileStream << cmOutputConverter::EscapeForShell(isOutputPath ? relativeArg : arg, cmOutputConverter::Shell_Flag_IsUnix);
+          if (!sourceDir.empty() && arg.find(sourceDir) == 0) {
+            relativeArg = cmSystemTools::RelativePath(sourceDir, arg);
+            isSourcePath = true;
+          }
+        }
+        
+        // Shell operators don't need escaping
+        if (arg == ">" || arg == ">>" || arg == "<" || arg == "|" || arg == "&&" || arg == "||" || arg == ";" || arg == "&") {
+          nixFileStream << arg;
+        } else {
+          nixFileStream << cmOutputConverter::EscapeForShell((isOutputPath || isSourcePath) ? relativeArg : arg, cmOutputConverter::Shell_Flag_IsUnix);
         }
       }
       nixFileStream << "\n";
     }
 
     // Copy outputs to derivation output, preserving directory structure
-    for (const std::string& output : this->CustomCommand->GetOutputs()) {
+    for (const std::string& output : ccGen.GetOutputs()) {
       // Get relative path from top-level build directory to preserve structure
       // This ensures consistent paths when files are referenced from other directories
       std::string buildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
@@ -254,7 +314,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     nixFileStream << "    phases = [ \"installPhase\" ];\n";
     nixFileStream << "    installPhase = ''\n";
     nixFileStream << "      mkdir -p $out\n";
-    for (const std::string& output : this->CustomCommand->GetOutputs()) {
+    for (const std::string& output : ccGen.GetOutputs()) {
       // Get relative path from top-level build directory to preserve structure
       // This ensures consistent paths when files are referenced from other directories
       std::string buildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
