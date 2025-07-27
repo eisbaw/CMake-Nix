@@ -142,8 +142,21 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
             nixFileStream << cmOutputConverter::EscapeForShell(arg, cmOutputConverter::Shell_Flag_IsUnix);
           }
         } else {
+          // Check if this argument is an output file that needs to be made relative
+          bool isOutputPath = false;
+          std::string relativeArg = arg;
+          for (const std::string& output : this->CustomCommand->GetOutputs()) {
+            if (arg == output && cmSystemTools::FileIsFullPath(arg)) {
+              // This is an absolute output path - convert to relative
+              std::string buildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
+              relativeArg = cmSystemTools::RelativePath(buildDir, arg);
+              isOutputPath = true;
+              break;
+            }
+          }
+          
           // Properly escape arguments for shell
-          nixFileStream << cmOutputConverter::EscapeForShell(arg, cmOutputConverter::Shell_Flag_IsUnix);
+          nixFileStream << cmOutputConverter::EscapeForShell(isOutputPath ? relativeArg : arg, cmOutputConverter::Shell_Flag_IsUnix);
         }
       }
       nixFileStream << "\n";
@@ -151,9 +164,6 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
 
     // Copy outputs to derivation output, preserving directory structure
     for (const std::string& output : this->CustomCommand->GetOutputs()) {
-      std::string outputFile = cmSystemTools::GetFilenameName(output);
-      std::string escapedOutputFile = cmOutputConverter::EscapeForShell(outputFile, cmOutputConverter::Shell_Flag_IsUnix);
-      
       // Get relative path from top-level build directory to preserve structure
       // This ensures consistent paths when files are referenced from other directories
       std::string buildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
@@ -165,8 +175,9 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         nixFileStream << "      mkdir -p $out/" << cmOutputConverter::EscapeForShell(outputDir, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
       }
       
-      // Copy file to proper location
-      nixFileStream << "      cp " << escapedOutputFile << " $out/" << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
+      // Copy file to proper location - the file should be at the relative path we used in the command
+      nixFileStream << "      cp " << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) 
+                    << " $out/" << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
     }
 
     nixFileStream << "    '';\n";

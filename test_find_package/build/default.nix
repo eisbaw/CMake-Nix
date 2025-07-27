@@ -21,11 +21,11 @@ let
       mkdir -p "$(dirname "$out")"
       # Determine compiler binary name based on the compiler derivation
       compilerBin="${
-        if compiler == gcc then
+        if compiler == gcc || compiler == pkgsi686Linux.gcc then
           "gcc"
-        else if compiler == clang then
+        else if compiler == clang || compiler == pkgsi686Linux.clang then
           "clang"
-        else if compiler == gfortran then
+        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
           "gfortran"
         else
           compiler.pname or "cc"
@@ -35,7 +35,7 @@ let
       # Store source in a variable to handle paths with spaces
       sourceFile="${source}"
       # Check if source is an absolute path or Nix expression (e.g., derivation/file)
-      if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"$"* ]]; then
+      if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"\$"* ]]; then
         # Absolute path or Nix expression - use as-is
         srcFile="$sourceFile"
       elif [[ -f "$sourceFile" ]]; then
@@ -78,11 +78,11 @@ let
         mkdir -p $out
         compilerBin="${if compilerCommand != null then
           compilerCommand
-        else if compiler == gcc then
+        else if compiler == gcc || compiler == pkgsi686Linux.gcc then
           "gcc"
-        else if compiler == clang then
+        else if compiler == clang || compiler == pkgsi686Linux.clang then
           "clang"
-        else if compiler == gfortran then
+        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
           "gfortran"
         else
           compiler.pname or "cc"
@@ -104,11 +104,11 @@ let
         mkdir -p "$(dirname "$out")"
         compilerBin="${if compilerCommand != null then
           compilerCommand
-        else if compiler == gcc then
+        else if compiler == gcc || compiler == pkgsi686Linux.gcc then
           "gcc"
-        else if compiler == clang then
+        else if compiler == clang || compiler == pkgsi686Linux.clang then
           "clang"
-        else if compiler == gfortran then
+        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
           "gfortran"
         else
           compiler.pname or "cc"
@@ -131,7 +131,15 @@ let
 
   compress_app_test_find_package_compress_c_o = cmakeNixCC {
     name = "compress.o";
-    src = ./..;
+    src = pkgs.runCommand "composite-src-with-generated" {} ''
+      mkdir -p $out
+      # Copy source files
+      cp -rL ${./..}/* $out/ 2>/dev/null || true
+      # Copy headers from external include directory: /nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev/include
+      mkdir -p $out/nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev
+      cp -rL ${builtins.path { path = "/nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev/include"; }} $out/nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev/include
+      # Copy configuration-time generated files
+    '';
     buildInputs = [ gcc zlib ];
     source = "compress.c";
     compiler = gcc;
@@ -140,7 +148,15 @@ let
 
   opengl_app_test_find_package_opengl_c_o = cmakeNixCC {
     name = "opengl.o";
-    src = ./..;
+    src = pkgs.runCommand "composite-src-with-generated" {} ''
+      mkdir -p $out
+      # Copy source files
+      cp -rL ${./..}/* $out/ 2>/dev/null || true
+      # Copy headers from external include directory: /nix/store/13fw0scdl9ciz5lpabi9nkxwrnn8555g-libglvnd-1.7.0-dev/include
+      mkdir -p $out/nix/store/13fw0scdl9ciz5lpabi9nkxwrnn8555g-libglvnd-1.7.0-dev
+      cp -rL ${builtins.path { path = "/nix/store/13fw0scdl9ciz5lpabi9nkxwrnn8555g-libglvnd-1.7.0-dev/include"; }} $out/nix/store/13fw0scdl9ciz5lpabi9nkxwrnn8555g-libglvnd-1.7.0-dev/include
+      # Copy configuration-time generated files
+    '';
     buildInputs = [ gcc libGL ];
     source = "opengl.c";
     compiler = gcc;
