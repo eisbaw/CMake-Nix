@@ -59,7 +59,6 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       ccGen.AppendArguments(i, fullCmd);
       // Check if any part references source files outside build directory
       if (fullCmd.find("/scripts/") != std::string::npos || 
-          fullCmd.find("/zephyr/") != std::string::npos ||
           fullCmd.find("/cmake/") != std::string::npos) {
         needsSourceAccess = true;
       }
@@ -175,34 +174,11 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   
   // If we need source access, add the source directory
   if (needsSourceAccess) {
-    // For Zephyr RTOS and similar projects, we need to make the source tree available
+    // For projects that need the source tree available
     std::string sourceDir = this->LocalGenerator->GetCurrentSourceDirectory();
     
-    // Check if we have ZEPHYR_BASE in the command - if so, use that as the source
-    std::string zephyrBase;
-    for (size_t i = 0; i < this->CustomCommand->GetCommandLines().size(); ++i) {
-      std::string fullCmd;
-      ccGen.AppendArguments(i, fullCmd);
-      size_t zephyrPos = fullCmd.find("-DZEPHYR_BASE=");
-      if (zephyrPos != std::string::npos) {
-        size_t startPos = zephyrPos + 14; // Skip "-DZEPHYR_BASE="
-        size_t endPos = fullCmd.find(' ', startPos);
-        if (endPos == std::string::npos) {
-          endPos = fullCmd.length();
-        }
-        zephyrBase = fullCmd.substr(startPos, endPos - startPos);
-        if (!zephyrBase.empty() && cmSystemTools::FileIsDirectory(zephyrBase)) {
-          sourceDir = zephyrBase;
-          if (this->LocalGenerator->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Using ZEPHYR_BASE as source directory: " << sourceDir << std::endl;
-          }
-          break;
-        }
-      }
-    }
-    
-    // If we didn't find ZEPHYR_BASE, find the root source directory (where CMakeLists.txt with project() is)
-    if (zephyrBase.empty()) {
+    // Find the root source directory (where CMakeLists.txt with project() is)
+    {
       while (!sourceDir.empty() && sourceDir != "/" && 
              !cmSystemTools::FileExists(sourceDir + "/CMakeLists.txt")) {
         sourceDir = cmSystemTools::GetParentDirectory(sourceDir);
@@ -429,29 +405,8 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         if (nextArgIsScript && !cmSystemTools::FileIsFullPath(arg)) {
           // This is a relative path to a CMake script that needs to be resolved
           // In the Nix build environment, we need to use the absolute path
-          // Look for the script in the Zephyr base directory if available
-          std::string zephyrBase;
-          for (size_t k = 1; k < argv.size(); ++k) {
-            if (argv[k].find("-DZEPHYR_BASE=") == 0) {
-              zephyrBase = argv[k].substr(14); // Skip "-DZEPHYR_BASE="
-              break;
-            }
-          }
-          
-          if (!zephyrBase.empty()) {
-            // Use the Zephyr base directory to resolve the script
-            std::string fullPath = zephyrBase + "/" + arg;
-            if (cmSystemTools::FileExists(fullPath)) {
-              // In the Nix build environment, we need to keep the relative path
-              // The source tree will be made available via needsSourceAccess
-              // Keep the original relative path instead of using the full path
-              if (this->LocalGenerator->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-                std::cerr << "[NIX-DEBUG] Keeping relative script path: " << arg << " (resolved to: " << fullPath << ")" << std::endl;
-              }
-              // Don't update arg to fullPath - keep it relative
-              // The script will be found when we cd to the source directory
-            }
-          }
+          // Script paths need to be kept relative for the Nix build environment
+          // The source tree will be made available via needsSourceAccess
           nextArgIsScript = false;
         } else if (arg == "-P") {
           nextArgIsScript = true;
@@ -561,7 +516,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
 std::string cmNixCustomCommandGenerator::GetDerivationName() const
 {
   // Create a unique name for the derivation based on the output file.
-  // Include more of the path to avoid collisions in large projects like Zephyr
+  // Include more of the path to avoid collisions in large projects
   const std::vector<std::string>& outputs = this->CustomCommand->GetOutputs();
   if (outputs.empty()) {
     // Return a fallback name if no outputs (shouldn't happen in valid CMake)

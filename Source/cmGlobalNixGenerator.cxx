@@ -399,7 +399,8 @@ void cmGlobalNixGenerator::WriteNixFile()
   
   // Write to binary directory to support out-of-source builds
   std::string nixFile = this->GetCMakeInstance()->GetHomeOutputDirectory();
-  nixFile += "/" + cmNix::Generator::DEFAULT_NIX;
+  nixFile += "/";
+  nixFile += cmNix::Generator::DEFAULT_NIX;
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
     this->LogDebug("WriteNixFile() writing to: " + nixFile);
