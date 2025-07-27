@@ -201,11 +201,38 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   if (needsSourceAccess) {
     // For Zephyr RTOS and similar projects, we need to make the source tree available
     std::string sourceDir = this->LocalGenerator->GetCurrentSourceDirectory();
-    // Find the root source directory (where CMakeLists.txt with project() is)
-    while (!sourceDir.empty() && sourceDir != "/" && 
-           !cmSystemTools::FileExists(sourceDir + "/CMakeLists.txt")) {
-      sourceDir = cmSystemTools::GetParentDirectory(sourceDir);
+    
+    // Check if we have ZEPHYR_BASE in the command - if so, use that as the source
+    std::string zephyrBase;
+    for (size_t i = 0; i < this->CustomCommand->GetCommandLines().size(); ++i) {
+      std::string fullCmd;
+      ccGen.AppendArguments(i, fullCmd);
+      size_t zephyrPos = fullCmd.find("-DZEPHYR_BASE=");
+      if (zephyrPos != std::string::npos) {
+        size_t startPos = zephyrPos + 14; // Skip "-DZEPHYR_BASE="
+        size_t endPos = fullCmd.find(' ', startPos);
+        if (endPos == std::string::npos) {
+          endPos = fullCmd.length();
+        }
+        zephyrBase = fullCmd.substr(startPos, endPos - startPos);
+        if (!zephyrBase.empty() && cmSystemTools::FileIsDirectory(zephyrBase)) {
+          sourceDir = zephyrBase;
+          if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
+            std::cout << "[NIX-DEBUG] Using ZEPHYR_BASE as source directory: " << sourceDir << std::endl;
+          }
+          break;
+        }
+      }
     }
+    
+    // If we didn't find ZEPHYR_BASE, find the root source directory (where CMakeLists.txt with project() is)
+    if (zephyrBase.empty()) {
+      while (!sourceDir.empty() && sourceDir != "/" && 
+             !cmSystemTools::FileExists(sourceDir + "/CMakeLists.txt")) {
+        sourceDir = cmSystemTools::GetParentDirectory(sourceDir);
+      }
+    }
+    
     if (!sourceDir.empty() && sourceDir != "/") {
       nixFileStream << "    src = " << sourceDir << ";\n";
     }
@@ -226,19 +253,28 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       nixFileStream << "      # Make source tree available\n";
       nixFileStream << "      export UNPACKED_SOURCE_DIR=\"\"\n";
       nixFileStream << "      for dir in /build/*; do\n";
-      nixFileStream << "        if [ -d \"$dir\" ] && [ -f \"$dir/CMakeLists.txt\" ]; then\n";
-      nixFileStream << "          export UNPACKED_SOURCE_DIR=\"$dir\"\n";
-      nixFileStream << "          # Link or copy the entire source tree structure\n";
-      nixFileStream << "          for item in \"$dir\"/*; do\n";
-      nixFileStream << "            if [ -e \"$item\" ]; then\n";
-      nixFileStream << "              ln -s \"$item\" . 2>/dev/null || cp -r \"$item\" .\n";
-      nixFileStream << "            fi\n";
-      nixFileStream << "          done\n";
-      nixFileStream << "          # Also cd to the unpacked directory if it exists\n";
-      nixFileStream << "          cd \"$dir\"\n";
-      nixFileStream << "          break\n";
+      nixFileStream << "        if [ -d \"$dir\" ]; then\n";
+      nixFileStream << "          # Check if this directory contains the expected files\n";
+      nixFileStream << "          if [ -f \"$dir/CMakeLists.txt\" ] || [ -f \"$dir/cmake/gen_version_h.cmake\" ]; then\n";
+      nixFileStream << "            export UNPACKED_SOURCE_DIR=\"$dir\"\n";
+      nixFileStream << "            # Link or copy the entire source tree structure\n";
+      nixFileStream << "            for item in \"$dir\"/*; do\n";
+      nixFileStream << "              if [ -e \"$item\" ]; then\n";
+      nixFileStream << "                ln -s \"$item\" . 2>/dev/null || cp -r \"$item\" .\n";
+      nixFileStream << "              fi\n";
+      nixFileStream << "            done\n";
+      nixFileStream << "            # Also cd to the unpacked directory if it exists\n";
+      nixFileStream << "            cd \"$dir\"\n";
+      nixFileStream << "            break\n";
+      nixFileStream << "          fi\n";
       nixFileStream << "        fi\n";
       nixFileStream << "      done\n";
+      nixFileStream << "      # Debug: show current directory and contents\n";
+      nixFileStream << "      echo \"Current directory: $(pwd)\"\n";
+      nixFileStream << "      echo \"Contents of current directory:\"\n";
+      nixFileStream << "      ls -la\n";
+      nixFileStream << "      echo \"Looking for cmake/gen_version_h.cmake:\"\n";
+      nixFileStream << "      ls -la cmake/gen_version_h.cmake || echo \"File not found\"\n";
     }
     
     // Copy dependent files from other custom command outputs or configuration-time files
@@ -419,10 +455,14 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
             // Use the Zephyr base directory to resolve the script
             std::string fullPath = zephyrBase + "/" + arg;
             if (cmSystemTools::FileExists(fullPath)) {
-              arg = fullPath;
+              // In the Nix build environment, we need to keep the relative path
+              // The source tree will be made available via needsSourceAccess
+              // Keep the original relative path instead of using the full path
               if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
-                std::cout << "[DEBUG] Resolved script path to: " << arg << std::endl;
+                std::cout << "[DEBUG] Keeping relative script path: " << arg << " (resolved to: " << fullPath << ")" << std::endl;
               }
+              // Don't update arg to fullPath - keep it relative
+              // The script will be found when we cd to the source directory
             }
           }
           nextArgIsScript = false;

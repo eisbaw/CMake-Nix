@@ -172,7 +172,11 @@ let
     buildPhase = ''
       mkdir -p $out
       echo #define\ GENERATED\ 1 > generated.h
-      cp generated.h $out/generated.h
+      if [ -f generated.h ]; then
+        cp generated.h $out/generated.h
+      elif [ -f generated.h ]; then
+        cp generated.h $out/generated.h
+      fi
     '';
   };
 
