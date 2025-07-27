@@ -357,6 +357,12 @@ DONE (2025-07-30): Refactored WriteObjectDerivation to extract helper methods:
 - WriteRegularSourceDerivation() - handles project sources (stub)
 
 
+DONE - Fix test_zephyr_rtos: composite-src-with-generated.drv permission denied error
+     - The issue was that using buildInputs or arguments in runCommand caused Nix to generate setup scripts that tried to execute files
+     - This led to "Permission denied" errors when trying to execute header files like autoconf.h
+     - Fixed by using a simple runCommand with no buildInputs or arguments, referencing custom command outputs directly in the script body
+     - The test_zephyr_rtos now has a different issue (Kconfig is a directory) which is unrelated to the CMake Nix generator
+
 #############################
 
 ## NEW HIGH PRIORITY ISSUE (2025-01-29):
