@@ -280,6 +280,9 @@ mod test_nix_tools
 # Test for -imacros flag with config-time generated files
 mod test_imacros_config
 
+# Test for external sources with config-time dependencies
+mod test_external_config_deps
+
 # Circular dependency test
 mod test_circular_deps
 
