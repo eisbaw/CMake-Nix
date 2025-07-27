@@ -6,6 +6,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 class cmCustomCommand;
 class cmLocalGenerator;
@@ -14,7 +15,8 @@ class cmGeneratedFileStream;
 class cmNixCustomCommandGenerator
 {
 public:
-  cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config);
+  cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config,
+                              const std::map<std::string, std::string>* customCommandOutputs = nullptr);
 
   void Generate(cmGeneratedFileStream& nixFileStream);
   std::string GetDerivationName() const;
@@ -30,4 +32,5 @@ private:
   cmCustomCommand const* CustomCommand;
   cmLocalGenerator* LocalGenerator;
   std::string Config;
+  const std::map<std::string, std::string>* CustomCommandOutputs;
 };

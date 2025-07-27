@@ -14,10 +14,12 @@
 #include <set>
 #include <cctype>
 
-cmNixCustomCommandGenerator::cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config)
+cmNixCustomCommandGenerator::cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config,
+                                                        const std::map<std::string, std::string>* customCommandOutputs)
   : CustomCommand(cc)
   , LocalGenerator(lg)
   , Config(config)
+  , CustomCommandOutputs(customCommandOutputs)
 {
 }
 
@@ -64,8 +66,21 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   std::vector<std::string> depends = this->GetDepends();
   std::set<std::string> uniqueDepends;
   for (const std::string& dep : depends) {
-    // Generate a unique derivation name for this dependency
-    std::string depDerivName = this->GetDerivationNameForPath(dep);
+    // Look up the actual derivation name from the CustomCommandOutputs map
+    std::string depDerivName;
+    if (this->CustomCommandOutputs) {
+      auto it = this->CustomCommandOutputs->find(dep);
+      if (it != this->CustomCommandOutputs->end()) {
+        depDerivName = it->second;
+      } else {
+        // Fall back to generating a name
+        depDerivName = this->GetDerivationNameForPath(dep);
+      }
+    } else {
+      // No map provided, generate a name
+      depDerivName = this->GetDerivationNameForPath(dep);
+    }
+    
     if (uniqueDepends.insert(depDerivName).second) {
       nixFileStream << " " << depDerivName;
     }
@@ -82,13 +97,31 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     
     // Copy dependent files from other custom command outputs
     for (const std::string& dep : depends) {
-      std::string depDerivName = this->GetDerivationNameForPath(dep);
-      std::string depFile = cmSystemTools::GetFilenameName(dep);
-      // SECURITY FIX: Escape both the derivation name and file name to prevent shell injection
-      // Note: For Nix attribute names, we already sanitize in GetDerivationNameForPath
-      // but we still escape the filename for shell safety
+      // Look up the actual derivation name from the CustomCommandOutputs map
+      std::string depDerivName;
+      if (this->CustomCommandOutputs) {
+        auto it = this->CustomCommandOutputs->find(dep);
+        if (it != this->CustomCommandOutputs->end()) {
+          depDerivName = it->second;
+        } else {
+          // Fall back to generating a name
+          depDerivName = this->GetDerivationNameForPath(dep);
+        }
+      } else {
+        // No map provided, generate a name
+        depDerivName = this->GetDerivationNameForPath(dep);
+      }
+      
+      // For multi-output custom commands, we need to use the relative path from the build directory
+      std::string depPath = dep;
+      if (cmSystemTools::FileIsFullPath(dep)) {
+        std::string buildDir = this->LocalGenerator->GetCurrentBinaryDirectory();
+        depPath = cmSystemTools::RelativePath(buildDir, dep);
+      }
+      
+      // SECURITY FIX: Escape the path to prevent shell injection
       nixFileStream << "      cp ${" << depDerivName << "}/" 
-                    << cmOutputConverter::EscapeForShell(depFile, cmOutputConverter::Shell_Flag_IsUnix) << " .\n";
+                    << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << " .\n";
     }
     
     // Execute commands with proper shell handling

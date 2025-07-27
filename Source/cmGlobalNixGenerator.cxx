@@ -759,7 +759,7 @@ void cmGlobalNixGenerator::WriteNixFile()
           config = "Release";
         }
       }
-      cmNixCustomCommandGenerator ccg(info->Command, info->LocalGen, config);
+      cmNixCustomCommandGenerator ccg(info->Command, info->LocalGen, config, &this->CustomCommandOutputs);
       ccg.Generate(nixFileStream);
     } catch (const std::bad_alloc& e) {
       std::ostringstream msg;
