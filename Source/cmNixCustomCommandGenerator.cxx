@@ -18,11 +18,13 @@
 #include <fstream>
 
 cmNixCustomCommandGenerator::cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config,
-                                                        const std::map<std::string, std::string>* customCommandOutputs)
+                                                        const std::map<std::string, std::string>* customCommandOutputs,
+                                                        const std::map<std::string, std::string>* objectFileOutputs)
   : CustomCommand(cc)
   , LocalGenerator(lg)
   , Config(config)
   , CustomCommandOutputs(customCommandOutputs)
+  , ObjectFileOutputs(objectFileOutputs)
 {
 }
 
@@ -94,22 +96,40 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     nixFileStream << "pkgs.python3";
   }
   
-  // Add dependencies on other custom commands
+  // Add dependencies on other custom commands and object files
   // Use expanded depends from ccGen
   std::vector<std::string> depends = ccGen.GetDepends();
   std::set<std::string> uniqueDepends;
   for (const std::string& dep : depends) {
-    // Only include custom command outputs as buildInputs
+    // First check if it's a custom command output
     if (this->CustomCommandOutputs) {
       auto it = this->CustomCommandOutputs->find(dep);
       if (it != this->CustomCommandOutputs->end()) {
         if (uniqueDepends.insert(it->second).second) {
           nixFileStream << " " << it->second;
         }
+        continue;
       }
-      // If it's not a custom command output, it's a configuration-time file
-      // and doesn't need to be in buildInputs
     }
+    
+    // Then check if it's an object file
+    if (this->ObjectFileOutputs) {
+      // The dependency might be a relative or absolute path
+      std::string depPath = dep;
+      if (!cmSystemTools::FileIsFullPath(depPath)) {
+        // Make it absolute for lookup
+        depPath = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory() + "/" + depPath;
+      }
+      
+      auto it = this->ObjectFileOutputs->find(depPath);
+      if (it != this->ObjectFileOutputs->end()) {
+        if (uniqueDepends.insert(it->second).second) {
+          nixFileStream << " " << it->second;
+        }
+      }
+    }
+    // If it's neither, it's likely a configuration-time file
+    // and doesn't need to be in buildInputs
   }
   
   nixFileStream << " ];\n";
@@ -146,11 +166,13 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       // We need both source and build artifacts
       // Copy source files to current directory instead of changing directory
       nixFileStream << "      # Copy source files needed by the command\n";
-      nixFileStream << "      if [ -d /build/zephyr ]; then\n";
-      nixFileStream << "        cp -r /build/zephyr/scripts .\n";
-      nixFileStream << "      elif [ -d /build/* ]; then\n";
-      nixFileStream << "        cp -r /build/*/scripts .\n";  
-      nixFileStream << "      fi\n";
+      nixFileStream << "      # When Nix unpacks src, it creates a subdirectory\n";
+      nixFileStream << "      for dir in /build/*; do\n";
+      nixFileStream << "        if [ -d \"$dir/scripts\" ]; then\n";
+      nixFileStream << "          cp -r \"$dir/scripts\" .\n";
+      nixFileStream << "          break\n";
+      nixFileStream << "        fi\n";
+      nixFileStream << "      done\n";
     }
     
     // Copy dependent files from other custom command outputs or configuration-time files
@@ -179,6 +201,31 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         nixFileStream << "      cp ${" << depDerivName << "}/" 
                       << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << " .\n";
       } else {
+        // Check if it's an object file dependency
+        bool isObjectFile = false;
+        std::string objDerivName;
+        if (this->ObjectFileOutputs) {
+          std::string objPath = dep;
+          if (!cmSystemTools::FileIsFullPath(objPath)) {
+            objPath = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory() + "/" + objPath;
+          }
+          auto objIt = this->ObjectFileOutputs->find(objPath);
+          if (objIt != this->ObjectFileOutputs->end()) {
+            objDerivName = objIt->second;
+            isObjectFile = true;
+          }
+        }
+        
+        if (isObjectFile) {
+          // Copy from object file derivation
+          // Create directory structure if needed
+          std::string depDir = cmSystemTools::GetFilenamePath(depPath);
+          if (!depDir.empty()) {
+            nixFileStream << "      mkdir -p " << cmOutputConverter::EscapeForShell(depDir, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
+          }
+          nixFileStream << "      cp ${" << objDerivName << "} " 
+                        << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
+        } else {
         // This is a configuration-time file or source file, not a custom command output
         // Check if it's a configuration-time generated file that needs to be embedded
         if (cmSystemTools::FileIsFullPath(dep)) {
@@ -204,6 +251,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
                            << " <<'EOF'\n" << content << "\nEOF\n";
             }
           }
+        }
         }
       }
     }

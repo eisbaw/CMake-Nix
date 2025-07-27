@@ -296,6 +296,9 @@ private:
   // Map from output file to custom command derivation name
   std::map<std::string, std::string> CustomCommandOutputs;
   
+  // Map from object file path to compilation derivation name
+  std::map<std::string, std::string> ObjectFileOutputs;
+  
   // Structure to store custom command information for dependency resolution
   struct CustomCommandInfo {
     std::string DerivationName;

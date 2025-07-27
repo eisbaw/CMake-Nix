@@ -16,7 +16,8 @@ class cmNixCustomCommandGenerator
 {
 public:
   cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config,
-                              const std::map<std::string, std::string>* customCommandOutputs = nullptr);
+                              const std::map<std::string, std::string>* customCommandOutputs = nullptr,
+                              const std::map<std::string, std::string>* objectFileOutputs = nullptr);
 
   void Generate(cmGeneratedFileStream& nixFileStream);
   std::string GetDerivationName() const;
@@ -33,4 +34,5 @@ private:
   cmLocalGenerator* LocalGenerator;
   std::string Config;
   const std::map<std::string, std::string>* CustomCommandOutputs;
+  const std::map<std::string, std::string>* ObjectFileOutputs;
 };

@@ -417,7 +417,7 @@ void cmGlobalNixGenerator::WriteNixFile()
             std::cerr << "[NIX-DEBUG] Found custom command in source: " << source->GetFullPath() << std::endl;
           }
           try {
-            cmNixCustomCommandGenerator ccg(cc, target->GetLocalGenerator(), this->GetBuildConfiguration(target.get()));
+            cmNixCustomCommandGenerator ccg(cc, target->GetLocalGenerator(), this->GetBuildConfiguration(target.get()), nullptr, nullptr);
             
             CustomCommandInfo info;
             info.DerivationName = ccg.GetDerivationName();
@@ -759,7 +759,7 @@ void cmGlobalNixGenerator::WriteNixFile()
           config = "Release";
         }
       }
-      cmNixCustomCommandGenerator ccg(info->Command, info->LocalGen, config, &this->CustomCommandOutputs);
+      cmNixCustomCommandGenerator ccg(info->Command, info->LocalGen, config, &this->CustomCommandOutputs, &this->ObjectFileOutputs);
       ccg.Generate(nixFileStream);
     } catch (const std::bad_alloc& e) {
       std::ostringstream msg;
@@ -1002,6 +1002,15 @@ void cmGlobalNixGenerator::AddObjectDerivation(std::string const& targetName, st
   od.Language = language;
   od.Dependencies = dependencies;
   this->ObjectDerivations[derivationName] = od;
+  
+  // Also track object file path to derivation mapping
+  // The object file path might be relative, so we need to handle it properly
+  std::string objPath = objectFileName;
+  if (!cmSystemTools::FileIsFullPath(objPath)) {
+    // Make it relative to the top build directory for consistency
+    objPath = this->GetCMakeInstance()->GetHomeOutputDirectory() + "/" + objPath;
+  }
+  this->ObjectFileOutputs[objPath] = derivationName;
 }
 
 void cmGlobalNixGenerator::WriteObjectDerivation(
