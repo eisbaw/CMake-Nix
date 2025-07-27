@@ -1748,25 +1748,34 @@ DONE - Code smell and bug review (2025-01-29):
      - Minor: Some hardcoded paths like "./../../" for Zephyr edge cases (acceptable for complex build systems)
      - Overall: Production-ready code with excellent quality
 
-## REMAINING ISSUE - Zephyr RTOS Configuration-Time File Dependencies (2025-01-29):
+DONE - Fix test_zephyr_rtos build failures (2025-07-27):
 
-The Zephyr RTOS test (test_zephyr_rtos) fails with undefined variable errors for configuration-time generated files.
+**Fixed Issues**:
+1. DONE - Undefined variable errors for configuration-time generated files
+   - Fixed by distinguishing between custom command outputs and configuration-time files
+   - Configuration-time files are now embedded directly in build scripts rather than referenced as derivations
+   
+2. DONE - Generator expressions not expanded in custom commands
+   - Fixed by using cmCustomCommandGenerator for proper expansion
+   - Expressions like `$<TARGET_OBJECTS:offsets>` now correctly expand to actual paths
+   
+3. DONE - Python scripts not accessible in Nix sandbox
+   - Fixed by detecting Python usage and adding to buildInputs
+   - Added source directory access when scripts are referenced
+   
+4. DONE - Object file dependencies not available for custom commands
+   - Fixed by reordering code generation so object derivations are written before custom commands
+   - Added ObjectFileOutputs mapping to track object files
+   - Fixed .c.obj vs .o extension mismatch
+   
+5. DONE - CMake absolute paths in custom commands
+   - Fixed by replacing absolute cmake paths with `${pkgs.cmake}/bin/cmake`
+   - Added cmake to buildInputs when needed
 
-**Issue**: Custom commands in Zephyr have dependencies on files generated during CMake configuration using `file(CONFIGURE ...)` or `file(GENERATE ...)`. These files exist in the build directory but aren't tracked as custom command outputs, so they can't be referenced as Nix derivations.
+**Remaining Issue**: 
+- CMake script paths with `-P` flag still use relative paths in some cases
+- The file `cmake/gen_version_h.cmake` is not found in the Nix build environment
+- This appears to be the last remaining issue preventing a full Zephyr RTOS build
 
-**Example Error**:
-```
-error: undefined variable 'custom_samples_posix_philosophers_build_zephyr_misc_generated_syscallsfilelist_txt'
-```
-
-**Root Cause**: The files `syscalls_file_list.txt` and `syscalls_subdirs.trigger` are created during CMake configuration phase, not by custom commands. The Nix generator tries to reference them as derivations but they don't exist as such.
-
-**Status**: This is a known limitation. The CMake Nix backend works correctly for the vast majority of use cases. This edge case would require significant architectural changes to support configuration-time file tracking.
-
-**Impact**: Low - 24 out of 25 tests pass. The Zephyr RTOS represents a particularly complex build system with unique requirements.
-
-**Workaround**: Users encountering this issue can:
-1. Use traditional generators (Ninja/Make) for Zephyr RTOS projects
-2. Pre-generate configuration files and commit them to source control
-3. Convert configuration-time file generation to custom commands where possible
+**Impact**: Significantly improved - most Zephyr RTOS components now build correctly. Only the version header generation fails due to the relative script path issue.
 
