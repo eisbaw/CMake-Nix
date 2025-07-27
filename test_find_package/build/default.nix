@@ -136,7 +136,8 @@ let
 
   compress_app_test_find_package_compress_c_o = cmakeNixCC {
     name = "compress.o";
-    src = pkgs.runCommand "composite-src-with-generated" {} ''
+    src = pkgs.runCommand "composite-src-with-generated" {
+    } ''
       mkdir -p $out
       # Copy source files
       cp -rL ${./..}/* $out/ 2>/dev/null || true
@@ -153,7 +154,8 @@ let
 
   opengl_app_test_find_package_opengl_c_o = cmakeNixCC {
     name = "opengl.o";
-    src = pkgs.runCommand "composite-src-with-generated" {} ''
+    src = pkgs.runCommand "composite-src-with-generated" {
+    } ''
       mkdir -p $out
       # Copy source files
       cp -rL ${./..}/* $out/ 2>/dev/null || true

@@ -122,7 +122,8 @@ let
 # Per-translation-unit derivations
   test_imacros_test_imacros_config_main_c_o = cmakeNixCC {
     name = "main.o";
-    src = pkgs.runCommand "composite-src-with-generated" {} ''
+    src = pkgs.runCommand "composite-src-with-generated" {
+    } ''
       mkdir -p $out
       # Copy source files
       cp -rL ${./..}/* $out/ 2>/dev/null || true

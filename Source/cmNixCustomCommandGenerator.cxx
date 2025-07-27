@@ -278,8 +278,9 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       // For multi-output custom commands, we need to use the relative path from the build directory
       std::string depPath = dep;
       if (cmSystemTools::FileIsFullPath(dep)) {
-        std::string buildDir = this->LocalGenerator->GetCurrentBinaryDirectory();
-        depPath = cmSystemTools::RelativePath(buildDir, dep);
+        // Use top-level build directory for consistent paths with how outputs are stored
+        std::string topBuildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
+        depPath = cmSystemTools::RelativePath(topBuildDir, dep);
       }
       
       if (isCustomCommandOutput) {

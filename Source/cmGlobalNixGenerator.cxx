@@ -1137,6 +1137,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   // Collect custom command generated headers needed by this source BEFORE creating composite
   std::vector<std::string> customCommandHeaders;
   
+  // Extract base name and extension for special case handling
+  std::string baseName = cmSystemTools::GetFilenameWithoutLastExtension(sourceFile);
+  std::string sourceExtension = cmSystemTools::GetFilenameLastExtension(sourceFile);
+  
   // Special case: offsets.c is used to generate offsets.h, so it can't depend on offsets.h
   // This avoids circular dependencies in the build graph
   bool isOffsetsSource = (baseName == "offsets" && sourceExtension == ".c");
