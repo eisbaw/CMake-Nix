@@ -1989,6 +1989,7 @@ The following items remain as potential future improvements but are not critical
 2. [ ] String concatenation performance improvements (use stringstream instead of += )
 3. [ ] More actionable error messages with specific hints
 4. [ ] Test edge cases where multiple external sources share the same config-time files
+5. [ ] Consider refactoring nested loops with goto in cmGlobalNixGenerator.cxx:2628 to use a helper function or early return pattern
 
 These are low-priority enhancements that can be addressed in future iterations.
 
