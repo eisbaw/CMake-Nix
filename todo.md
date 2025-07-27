@@ -7,10 +7,11 @@ DONE - test_zephyr_rtos: Kconfig directory issue
   - This causes: "[Errno 21] Is a directory: '/path/to/philosophers/Kconfig'"
   - Fixed by removing the incorrect Kconfig directory
 
-- test_zephyr_rtos: driver-validation.h path issue
+DONE - test_zephyr_rtos: driver-validation.h path issue
   - Custom command derivation is looking for `/zephyr/include/generated/zephyr/driver-validation.h` with absolute path
   - Should be looking in the build directory: `samples/posix/philosophers/build/zephyr/...`
   - The path generation in custom commands needs to handle build directory relative paths correctly
+  - Fixed by passing custom command derivations as buildInputs to composite-src-with-generated
 
 DONE - Code quality review and test coverage assessment (2025-01-27)
   - All tests mentioned in todo.md have been implemented
