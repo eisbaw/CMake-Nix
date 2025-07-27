@@ -122,7 +122,12 @@ let
 # Per-translation-unit derivations
   mylib_test_shared_library_lib_c_o = cmakeNixCC {
     name = "lib.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../lib.c
+      ];
+    };
     buildInputs = [ gcc ];
     source = "lib.c";
     compiler = gcc;
@@ -131,7 +136,12 @@ let
 
   versioned_lib_test_shared_library_versioned_c_o = cmakeNixCC {
     name = "versioned.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../versioned.c
+      ];
+    };
     buildInputs = [ gcc ];
     source = "versioned.c";
     compiler = gcc;
@@ -140,7 +150,12 @@ let
 
   app_test_shared_library_main_c_o = cmakeNixCC {
     name = "main.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../main.c
+      ];
+    };
     buildInputs = [ gcc ];
     source = "main.c";
     compiler = gcc;
@@ -149,7 +164,12 @@ let
 
   static_helper_test_shared_library_helper_c_o = cmakeNixCC {
     name = "helper.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../helper.c
+      ];
+    };
     buildInputs = [ gcc ];
     source = "helper.c";
     compiler = gcc;
@@ -158,7 +178,12 @@ let
 
   mixed_app_test_shared_library_mixed_c_o = cmakeNixCC {
     name = "mixed.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../mixed.c
+      ];
+    };
     buildInputs = [ gcc ];
     source = "mixed.c";
     compiler = gcc;

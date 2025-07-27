@@ -122,7 +122,12 @@ let
 # Per-translation-unit derivations
   c_program_test_compiler_detection_main_c_o = cmakeNixCC {
     name = "main.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../main.c
+      ];
+    };
     buildInputs = [ gcc ];
     source = "main.c";
     compiler = gcc;
@@ -131,7 +136,12 @@ let
 
   cpp_program_test_compiler_detection_main_cpp_o = cmakeNixCC {
     name = "main.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../main.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "main.cpp";
     compiler = gcc;
@@ -140,7 +150,12 @@ let
 
   mixed_program_test_compiler_detection_main_c_o = cmakeNixCC {
     name = "main.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../main.c
+      ];
+    };
     buildInputs = [ gcc ];
     source = "main.c";
     compiler = gcc;
@@ -149,7 +164,12 @@ let
 
   mixed_program_test_compiler_detection_helper_cpp_o = cmakeNixCC {
     name = "helper.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../helper.cpp
+      ];
+    };
     buildInputs = [ gcc ];
     source = "helper.cpp";
     compiler = gcc;

@@ -1811,3 +1811,18 @@ DONE - Investigate the mysterious "2" argument that appears to be passed to CMak
   - RESOLVED: This was a Bash tool issue with handling shell redirection (2>&1)
   - Workaround: Tests run successfully when executed directly without shell redirection
 
+
+DONE - Fixed minimal fileset issues causing test failures (2025-01-27):
+     - test_implicit_headers was failing because include directories weren't in minimal filesets
+     - test_mixed_language was failing because headers in same directory as sources weren't included
+     - Fixed by modifying WriteObjectDerivation to:
+       1. Add include directories to fileset when CMAKE_NIX_EXPLICIT_SOURCES is OFF
+       2. Add header files from source directory when they're in the same directory
+     - All tests now pass except test_pch (precompiled headers not supported with Nix)
+EOF < /dev/null
+     - test_implicit_headers was failing because include directories weren't in minimal filesets
+     - test_mixed_language was failing because headers in same directory as sources weren't included
+     - Fixed by modifying WriteObjectDerivation to:
+       1. Add include directories to fileset when CMAKE_NIX_EXPLICIT_SOURCES is OFF
+       2. Add header files from source directory when they're in the same directory
+     - All tests now pass except test_pch (precompiled headers not supported with Nix)

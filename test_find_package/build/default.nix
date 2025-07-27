@@ -122,7 +122,12 @@ let
 # Per-translation-unit derivations
   threaded_app_test_find_package_threaded_c_o = cmakeNixCC {
     name = "threaded.o";
-    src = ./..;
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../threaded.c
+      ];
+    };
     buildInputs = [ gcc ];
     source = "threaded.c";
     compiler = gcc;

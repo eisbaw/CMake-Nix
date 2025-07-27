@@ -16,6 +16,7 @@
 #include <exception>
 #include <fstream>
 
+#include "cmsys/Directory.hxx"
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
 #include "cmLocalNixGenerator.h"
@@ -1567,6 +1568,80 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
             generatedFiles.push_back(relSource);
           } else {
             existingFiles.push_back(relSource);
+          }
+        }
+        
+        // Also add include directories that are part of the project
+        // This ensures headers can be found during compilation
+        // Note: lg and includes are already defined above, reuse them
+        for (const auto& inc : includes) {
+          if (!inc.Value.empty()) {
+            std::string incPath = inc.Value;
+            // Only add project-relative include directories
+            if (!cmSystemTools::FileIsFullPath(incPath)) {
+              // This is a relative path, check if it exists in the project
+              std::string fullIncPath = this->GetCMakeInstance()->GetHomeDirectory() + "/" + incPath;
+              if (cmSystemTools::FileExists(fullIncPath) && cmSystemTools::FileIsDirectory(fullIncPath)) {
+                // Add the include directory to the fileset
+                existingFiles.push_back(incPath);
+              }
+            } else {
+              // Check if absolute path is within project
+              std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
+              if (cmSystemTools::IsSubDirectory(incPath, projectDir)) {
+                std::string relIncPath = cmSystemTools::RelativePath(projectDir, incPath);
+                if (!relIncPath.empty() && relIncPath.find("../") != 0) {
+                  existingFiles.push_back(relIncPath);
+                }
+              }
+            }
+          }
+        }
+        
+        // Also add the source file's directory if it's not already included
+        // This handles cases where headers are in the same directory as sources
+        std::string sourceDir = cmSystemTools::GetFilenamePath(relSource);
+        if (sourceDir.empty()) {
+          // Source is in the root directory
+          sourceDir = ".";
+        }
+        
+        // Check if this directory is already in the fileset
+        bool dirAlreadyIncluded = false;
+        for (const auto& file : existingFiles) {
+          if (file == sourceDir || (sourceDir != "." && file.find(sourceDir + "/") == 0)) {
+            dirAlreadyIncluded = true;
+            break;
+          }
+        }
+        
+        if (!dirAlreadyIncluded) {
+          // Add all .h and .hpp files from the source directory
+          std::string fullSourceDir;
+          if (sourceDir == ".") {
+            fullSourceDir = this->GetCMakeInstance()->GetHomeDirectory();
+          } else {
+            fullSourceDir = this->GetCMakeInstance()->GetHomeDirectory() + "/" + sourceDir;
+          }
+          
+          if (cmSystemTools::FileExists(fullSourceDir) && cmSystemTools::FileIsDirectory(fullSourceDir)) {
+            // Get all header files in the source directory
+            cmsys::Directory dir;
+            if (dir.Load(fullSourceDir)) {
+              for (unsigned long i = 0; i < dir.GetNumberOfFiles(); ++i) {
+                std::string fileName = dir.GetFile(i);
+                if (fileName != "." && fileName != "..") {
+                  std::string ext = cmSystemTools::GetFilenameLastExtension(fileName);
+                  if (ext == ".h" || ext == ".hpp" || ext == ".hxx" || ext == ".H") {
+                    if (sourceDir == ".") {
+                      existingFiles.push_back(fileName);
+                    } else {
+                      existingFiles.push_back(sourceDir + "/" + fileName);
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
