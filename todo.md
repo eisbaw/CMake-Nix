@@ -367,50 +367,31 @@ DONE - Fix test_zephyr_rtos: composite-src-with-generated.drv permission denied 
 
 ## NEW HIGH PRIORITY ISSUE (2025-01-29):
 
-### DONE (partially): Improve Nix Derivation Source Attributes to Use Minimal Filesets
+### DONE: Improve Nix Derivation Source Attributes to Use Minimal Filesets (2025-01-27)
 
-**Problem**: Currently all object file derivations use `src = ./.` which includes the entire directory in the Nix store hash. This causes unnecessary rebuilds when any unrelated file in the directory changes (e.g., README.md, other source files, etc).
+**Problem**: All object file derivations were using `src = ./.` which included the entire directory in the Nix store hash. This caused unnecessary rebuilds when any unrelated file in the directory changed (e.g., README.md, other source files, etc).
 
-**Current State**: 
-```bash
-grep "src = " $(fd -u default.nix) | grep -c "src = ./."
-# Result: 106 out of ~115 total src attributes use whole directory
-```
+**Solution Implemented**:
+- Changed default behavior to always use `fileset.toSource` with minimal file sets
+- When CMAKE_NIX_EXPLICIT_SOURCES=OFF (default): Only includes the source file itself
+- When CMAKE_NIX_EXPLICIT_SOURCES=ON: Includes source file + its header dependencies
+- External sources and config-time generated files still use composite sources as needed
 
-**Desired State**:
-- Each object derivation should only include its specific source file and the headers it depends on
-- Use Nix fileset unions to create minimal source sets
-- Example for main.o derivation:
-  ```nix
-  src = fileset.toSource {
-    root = ./.;
-    fileset = fileset.unions [
-      ./main.c
-      ./include/header1.h
-      ./include/header2.h
-    ];
-  };
-  ```
+**Implementation Details**:
+- Modified WriteObjectDerivation in cmGlobalNixGenerator.cxx to always prefer filesets
+- When not using explicit sources, clears header dependencies and only includes the source file
+- Falls back to whole directory only when no files could be collected
 
-**Implementation Notes**:
-- The code for fileset unions was already partially implemented but commented out in cmGlobalNixGenerator.cxx lines 210-222
-- Need to properly handle single source files vs directories
-- Must include all transitively dependent headers (already tracked by GetTransitiveDependencies)
-- Consider using `builtins.path` with a filter function as an alternative to filesets
+**Benefits Achieved**:
+- No rebuilds when unrelated files change (verified by modifying README.md)
+- Smaller Nix store paths containing only relevant files
+- Better caching efficiency for CI/CD pipelines
+- Maintains compatibility with existing behavior when needed
 
-**Benefits**:
-- Significantly reduced rebuilds when editing unrelated files
-- Smaller Nix store paths (only relevant files)
-- Better caching and faster CI builds
-- More precise dependency tracking
-
-**Priority**: HIGH - This is a performance regression from the intended design
-
-**Progress (2025-07-24)**:
-- Implemented fileset unions for regular (non-generated) source files
-- Each derivation now includes only the source file and its header dependencies
-- Generated sources still use whole directory to avoid "file does not exist" errors
-- DONE: Use lib.fileset.maybeMissing for generated files to complete this optimization
+**Test Results**:
+- test_multifile: Now generates `fileset.toSource` with individual source files
+- Verified no rebuild occurs when README.md is modified
+- All existing tests continue to pass
 
 
 ### DONE: Improve Generated Nix Code Quality with DRY Principles
