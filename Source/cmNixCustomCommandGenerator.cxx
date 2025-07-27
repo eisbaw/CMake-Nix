@@ -349,8 +349,10 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
               if (!content.empty() && content.back() != '\n') {
                 content += '\n';
               }
+              // Use unique delimiter to avoid conflicts with file content
+              std::string delimiter = "EOF_" + std::to_string(std::hash<std::string>{}(dep) % 1000000);
               nixFileStream << "      cat > " << cmOutputConverter::EscapeForShell(relToBuild, cmOutputConverter::Shell_Flag_IsUnix) 
-                           << " <<'EOF'\n" << content << "EOF\n";
+                           << " <<'" << delimiter << "'\n" << content << delimiter << "\n";
             }
           }
         }
