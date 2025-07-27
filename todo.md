@@ -864,10 +864,10 @@ The CMake Nix generator has comprehensive test coverage with 60+ test projects c
 - Zephyr RTOS (test_zephyr_rtos, test_zephyr_simple)
 - CMake self-hosting (test_cmake_self_host)
 
-### Potential Missing Tests:
-1. **Export/Import targets**: No explicit test for exporting targets for use by other projects
-2. **CPack integration**: No test for packaging with CPack
-3. **CTest integration**: No test for test discovery and execution
+### Potential Missing Tests (Low Priority - Nice to Have):
+1. **Export/Import targets**: No explicit test for exporting targets for use by other projects (export() command)
+2. **CPack integration**: No test for packaging with CPack (CPack is a separate tool, not critical for Nix generator)
+3. **CTest integration**: No test for test discovery and execution (CTest works independently of the generator)
 4. **Generator expressions**: While supported, no dedicated test for complex generator expressions
 5. **Response files**: Though noted as not needed for Nix, no test to verify this
 6. **Cross-compilation**: test_cross_compile exists but may need more scenarios
