@@ -2,6 +2,18 @@
 
 ## CURRENT ISSUES (2025-01-27)
 
+DONE - Fix Zephyr RTOS custom command output path issue (2025-01-27)
+  - Custom commands were trying to copy from incorrect paths due to base directory mismatch
+  - Fixed by using top-level build directory for consistent path calculation
+  - The fix ensures custom command outputs and dependencies use the same base directory
+
+IN PROGRESS - test_zephyr_rtos: CMake module path issue in custom commands
+  - Zephyr's gen_version_h.cmake script tries to include(git) but can't find the module
+  - This is because CMake -P script execution doesn't have access to CMAKE_MODULE_PATH
+  - Zephyr's build system assumes a mutable environment which conflicts with Nix's isolation
+  - This is a fundamental incompatibility between Zephyr's build approach and Nix
+  - Workaround: Users can build Zephyr projects using traditional generators (Make/Ninja)
+
 DONE - test_zephyr_rtos: Kconfig directory issue
   - The test creates a Kconfig directory in philosophers sample instead of having a Kconfig file
   - This causes: "[Errno 21] Is a directory: '/path/to/philosophers/Kconfig'"
