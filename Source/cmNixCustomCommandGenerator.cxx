@@ -255,6 +255,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       nixFileStream << "      for dir in /build/*; do\n";
       nixFileStream << "        if [ -d \"$dir\" ]; then\n";
       nixFileStream << "          # Check if this directory contains the expected files\n";
+      nixFileStream << "          # First check the directory itself\n";
       nixFileStream << "          if [ -f \"$dir/CMakeLists.txt\" ] || [ -f \"$dir/cmake/gen_version_h.cmake\" ]; then\n";
       nixFileStream << "            export UNPACKED_SOURCE_DIR=\"$dir\"\n";
       nixFileStream << "            # Link or copy the entire source tree structure\n";
@@ -273,6 +274,10 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       nixFileStream << "      echo \"Current directory: $(pwd)\"\n";
       nixFileStream << "      echo \"Contents of current directory:\"\n";
       nixFileStream << "      ls -la\n";
+      nixFileStream << "      if [ -n \"$UNPACKED_SOURCE_DIR\" ]; then\n";
+      nixFileStream << "        echo \"Contents of unpacked source dir: $UNPACKED_SOURCE_DIR\"\n";
+      nixFileStream << "        ls -la \"$UNPACKED_SOURCE_DIR\" | head -10\n";
+      nixFileStream << "      fi\n";
       nixFileStream << "      echo \"Looking for cmake/gen_version_h.cmake:\"\n";
       nixFileStream << "      ls -la cmake/gen_version_h.cmake || echo \"File not found\"\n";
     }
@@ -352,8 +357,12 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
             if (inFile) {
               std::string content((std::istreambuf_iterator<char>(inFile)), 
                                   std::istreambuf_iterator<char>());
+              // Ensure content ends with a newline to avoid here-doc issues
+              if (!content.empty() && content.back() != '\n') {
+                content += '\n';
+              }
               nixFileStream << "      cat > " << cmOutputConverter::EscapeForShell(relToBuild, cmOutputConverter::Shell_Flag_IsUnix) 
-                           << " <<'EOF'\n" << content << "\nEOF\n";
+                           << " <<'EOF'\n" << content << "EOF\n";
             }
           }
         }

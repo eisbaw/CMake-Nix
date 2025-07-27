@@ -81,6 +81,17 @@ DONE - Add profiling timing traces to Nix backend C++ source code
      - Shows the Nix generator is very fast (1-6ms total generation time)
      - Main cost is WritePerTranslationUnitDerivations (~0.3-0.9ms)
 
+DONE - Fix custom command here-doc generation issue
+     - Found in test_external_tools: Files containing `cmd=''` caused Nix syntax errors
+     - Fixed by ensuring content ends with newline before EOF marker in here-docs
+     - Improved debug output for custom command source directory detection
+
+DONE - test_zephyr_rtos build issue: cmake/gen_version_h.cmake file not found in custom command
+  - Found in dev.log: "CMake Error: Not a file: cmake/gen_version_h.cmake"  
+  - Custom command is trying to execute cmake -P with a relative path that doesn't exist in the build environment
+  - Added improved debug output to diagnose source tree detection in custom commands
+  - Issue may be related to how Nix unpacks source directories
+
 DONE - Look for code smells in the cmake Nix generator.
      - No major code smells found
      - All debug output properly guarded with GetDebugOutput()
