@@ -1955,7 +1955,9 @@ After implementing the -imacros fix for external sources:
    - Created test_imacros_config that tests -imacros with generated_config.h
    - Verifies that configuration-time generated files are properly embedded in Nix derivations
    - Test passes successfully and is added to the test suite
-2. [ ] Add test for external source files with config-time generated dependencies
+2. [x] DONE - Add test for external source files with config-time generated dependencies
+   - Added test_external_config_deps that tests external sources depending on generated headers
+   - Test passes successfully and is added to the test suite
 3. [ ] Test edge cases where multiple external sources share the same config-time files
 
 **Environment Issue Found**:

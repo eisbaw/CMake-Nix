@@ -1,0 +1,22 @@
+#!/usr/bin/env just --justfile
+
+# Test external source files with configuration-time generated dependencies
+# This tests that the Nix generator properly handles external sources that depend on generated headers
+
+default: configure build run
+
+configure:
+    rm -rf build default.nix
+    ../bin/cmake -G Nix -S . -B build
+
+build: configure
+    cd build && nix-build -A test_app
+
+run: build
+    cd build && ./result
+
+clean:
+    rm -rf build default.nix result
+
+test: run
+    @echo "✅ External source with config-time dependencies test completed"

@@ -1,0 +1,8 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define PROJECT_NAME "@PROJECT_NAME@"
+#define PROJECT_VERSION "1.0.0"
+#define EXTERNAL_VALUE 42
+
+#endif // CONFIG_H

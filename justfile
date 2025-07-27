@@ -196,6 +196,7 @@ test-all:
     just test_file_edge_cases::run
     just test_nix_tools::run
     just test_imacros_config::run
+    just test_external_config_deps::run
     # Scale and error recovery tests (run separately due to special nature)
     # NOTE: These tests are not included in the standard regression suite due to:
     # - test_scale: Extended runtime with configurable file counts

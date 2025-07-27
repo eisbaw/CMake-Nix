@@ -1,0 +1,8 @@
+#ifndef EXTERNAL_CONFIG_H
+#define EXTERNAL_CONFIG_H
+
+#define EXTERNAL_PROJECT "@PROJECT_NAME@"
+#define EXTERNAL_MESSAGE "External source using config-time generated header"
+#define EXTERNAL_MULTIPLIER 2
+
+#endif // EXTERNAL_CONFIG_H
