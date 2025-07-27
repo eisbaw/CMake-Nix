@@ -1216,33 +1216,6 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
   }
   
-  // Debug: log all custom command outputs available
-  if (this->GetCMakeInstance()->GetDebugOutput() && sourceFile.find("offsets.c") != std::string::npos) {
-    std::cerr << "[NIX-DEBUG] Processing offsets.c - checking for custom command headers" << std::endl;
-    std::cerr << "[NIX-DEBUG] Source file: " << sourceFile << std::endl;
-    std::cerr << "[NIX-DEBUG] Build dir: " << buildDir << std::endl;
-    std::cerr << "[NIX-DEBUG] Current binary dir: " << target->GetLocalGenerator()->GetCurrentBinaryDirectory() << std::endl;
-    std::cerr << "[NIX-DEBUG] Total custom command outputs: " << this->CustomCommandOutputs.size() << std::endl;
-    std::cerr << "[NIX-DEBUG] Include directories:" << std::endl;
-    for (const auto& inc : includeDirs) {
-      std::cerr << "[NIX-DEBUG]   " << inc << std::endl;
-    }
-    std::cerr << "[NIX-DEBUG] Custom command outputs containing 'syscall':" << std::endl;
-    for (const auto& [output, deriv] : this->CustomCommandOutputs) {
-      if (output.find("syscall") != std::string::npos) {
-        std::cerr << "[NIX-DEBUG]   " << output << " -> " << deriv << std::endl;
-      }
-    }
-    
-    // Also check include processing
-    std::cerr << "[NIX-DEBUG] Looking for the include dir containing syscall_list.h:" << std::endl;
-    std::string targetInclude = "/home/mpedersen/topics/cmake_nix_backend/CMake/test_zephyr_rtos/zephyr/samples/posix/philosophers/build/zephyr/include/generated/zephyr";
-    for (const auto& inc : includeDirs) {
-      if (inc == targetInclude) {
-        std::cerr << "[NIX-DEBUG]   FOUND matching include directory!" << std::endl;
-      }
-    }
-  }
   
   // Check all custom command outputs to see if they're in any include directories
   for (const auto& [output, deriv] : this->CustomCommandOutputs) {
