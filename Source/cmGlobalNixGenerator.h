@@ -141,7 +141,8 @@ protected:
                            const std::string& buildDir,
                            cmGeneratorTarget* target = nullptr,
                            const std::string& lang = "",
-                           const std::string& config = "");
+                           const std::string& config = "",
+                           const std::vector<std::string>& customCommandHeaders = {});
   void WriteFilesetUnion(cmGeneratedFileStream& nixFileStream,
                         const std::vector<std::string>& existingFiles,
                         const std::vector<std::string>& generatedFiles,

@@ -1214,9 +1214,43 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
     }
     
+    // Collect custom command generated headers needed by this source
+    std::vector<std::string> customCommandHeaders;
+    for (const auto& header : headers) {
+      // Check multiple possible paths for the header
+      std::vector<std::string> pathsToCheck;
+      
+      if (cmSystemTools::FileIsFullPath(header)) {
+        pathsToCheck.push_back(header);
+      } else {
+        pathsToCheck.push_back(this->GetCMakeInstance()->GetHomeDirectory() + "/" + header);
+        pathsToCheck.push_back(this->GetCMakeInstance()->GetHomeOutputDirectory() + "/" + header);
+      }
+      
+      // Also check for headers that might include "zephyr/" prefix
+      if (header.find("zephyr/syscall_list.h") != std::string::npos ||
+          header.find("syscall_list.h") != std::string::npos) {
+        pathsToCheck.push_back(buildDir + "/zephyr/include/generated/zephyr/syscall_list.h");
+        pathsToCheck.push_back(buildDir + "/include/generated/zephyr/syscall_list.h");
+      }
+      
+      // Check each possible path
+      for (const auto& pathToCheck : pathsToCheck) {
+        auto customIt = this->CustomCommandOutputs.find(pathToCheck);
+        if (customIt != this->CustomCommandOutputs.end()) {
+          customCommandHeaders.push_back(customIt->second);
+          if (this->GetCMakeInstance()->GetDebugOutput()) {
+            std::cerr << "[NIX-DEBUG] Found custom command header for composite source: " 
+                      << pathToCheck << " -> " << customIt->second << std::endl;
+          }
+          break;
+        }
+      }
+    }
+    
     // Handle configuration-time generated files or external includes
-    if (!configTimeGeneratedFiles.empty() || hasExternalIncludes) {
-      this->WriteCompositeSource(nixFileStream, configTimeGeneratedFiles, srcDir, buildDir, target, lang, config);
+    if (!configTimeGeneratedFiles.empty() || hasExternalIncludes || !customCommandHeaders.empty()) {
+      this->WriteCompositeSource(nixFileStream, configTimeGeneratedFiles, srcDir, buildDir, target, lang, config, customCommandHeaders);
       
       // Update compile flags to use relative paths for embedded config-time generated files
       for (const auto& genFile : configTimeGeneratedFiles) {
@@ -2790,10 +2824,24 @@ void cmGlobalNixGenerator::WriteCompositeSource(
   const std::string& buildDir,
   cmGeneratorTarget* target,
   const std::string& lang,
-  const std::string& config)
+  const std::string& config,
+  const std::vector<std::string>& customCommandHeaders)
 {
+  // Build buildInputs for runCommand
+  std::string buildInputsStr;
+  if (!customCommandHeaders.empty()) {
+    buildInputsStr = " { buildInputs = [ ";
+    std::set<std::string> uniqueHeaders(customCommandHeaders.begin(), customCommandHeaders.end());
+    for (const auto& header : uniqueHeaders) {
+      buildInputsStr += header + " ";
+    }
+    buildInputsStr += "]; }";
+  } else {
+    buildInputsStr = " {}";
+  }
+  
   // Create a composite source that includes both source files and config-time generated files
-  nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\" {} ''\n";
+  nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\"" << buildInputsStr << " ''\n";
   nixFileStream << "      mkdir -p $out\n";
   
   // Copy the source directory structure
@@ -2891,6 +2939,26 @@ void cmGlobalNixGenerator::WriteCompositeSource(
       nixFileStream << "      # Warning: Could not read " << genFile << "\n";
     }
   }
+  
+  // Copy custom command generated headers
+  if (!customCommandHeaders.empty()) {
+    nixFileStream << "      # Copy custom command generated headers\n";
+    for (const auto& headerDeriv : customCommandHeaders) {
+      // Find the output path for this derivation
+      for (const auto& [output, deriv] : this->CustomCommandOutputs) {
+        if (deriv == headerDeriv) {
+          std::string relPath = cmSystemTools::RelativePath(buildDir, output);
+          std::string destDir = cmSystemTools::GetFilenamePath(relPath);
+          if (!destDir.empty()) {
+            nixFileStream << "      mkdir -p $out/" << destDir << "\n";
+          }
+          nixFileStream << "      cp ${" << headerDeriv << "}/" << relPath << " $out/" << relPath << "\n";
+          break;
+        }
+      }
+    }
+  }
+  
   nixFileStream << "    '';\n";
 }
 
@@ -2984,25 +3052,59 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
   auto targetGen = cmNixTargetGenerator::New(target);
   std::vector<std::string> headers = targetGen->GetSourceDependencies(source);
   
+  if (this->GetCMakeInstance()->GetDebugOutput() && !headers.empty()) {
+    std::cerr << "[NIX-DEBUG] Checking header dependencies for " << sourceFile << std::endl;
+    for (const auto& header : headers) {
+      std::cerr << "[NIX-DEBUG]   Header: " << header << std::endl;
+    }
+  }
+  
   for (const auto& header : headers) {
-    // Convert to full path for checking custom command outputs
-    std::string fullPath = header;
-    if (!cmSystemTools::FileIsFullPath(header)) {
-      fullPath = this->GetCMakeInstance()->GetHomeDirectory();
-      fullPath += "/";
-      fullPath += header;
+    // Check multiple possible paths for the header
+    std::vector<std::string> pathsToCheck;
+    
+    if (cmSystemTools::FileIsFullPath(header)) {
+      pathsToCheck.push_back(header);
+    } else {
+      // Try with source directory
+      pathsToCheck.push_back(this->GetCMakeInstance()->GetHomeDirectory() + "/" + header);
+      // Try with binary directory
+      pathsToCheck.push_back(this->GetCMakeInstance()->GetHomeOutputDirectory() + "/" + header);
+      // Try with the header as-is (relative path)
+      pathsToCheck.push_back(header);
     }
     
-    // Check if this header is a custom command output
-    auto customIt = this->CustomCommandOutputs.find(fullPath);
-    if (customIt != this->CustomCommandOutputs.end()) {
-      // Only add if not already in buildInputs
-      if (std::find(buildInputs.begin(), buildInputs.end(), customIt->second) == buildInputs.end()) {
-        buildInputs.push_back(customIt->second);
-        if (this->GetCMakeInstance()->GetDebugOutput()) {
-          std::cerr << "[NIX-DEBUG] Found custom command generated header dependency: " 
-                    << header << " -> " << customIt->second << std::endl;
+    // Also check for headers that might include "zephyr/" prefix
+    if (header.find("zephyr/syscall_list.h") != std::string::npos ||
+        header.find("syscall_list.h") != std::string::npos) {
+      std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+      pathsToCheck.push_back(buildDir + "/zephyr/include/generated/zephyr/syscall_list.h");
+      pathsToCheck.push_back(buildDir + "/include/generated/zephyr/syscall_list.h");
+    }
+    
+    // Check each possible path
+    bool found = false;
+    for (const auto& pathToCheck : pathsToCheck) {
+      auto customIt = this->CustomCommandOutputs.find(pathToCheck);
+      if (customIt != this->CustomCommandOutputs.end()) {
+        // Only add if not already in buildInputs
+        if (std::find(buildInputs.begin(), buildInputs.end(), customIt->second) == buildInputs.end()) {
+          buildInputs.push_back(customIt->second);
+          if (this->GetCMakeInstance()->GetDebugOutput()) {
+            std::cerr << "[NIX-DEBUG] Found custom command generated header dependency: " 
+                      << header << " (resolved to " << pathToCheck << ") -> " << customIt->second << std::endl;
+          }
+          found = true;
+          break;
         }
+      }
+    }
+    
+    if (this->GetCMakeInstance()->GetDebugOutput() && !found) {
+      std::cerr << "[NIX-DEBUG] Header " << header << " not found in custom command outputs" << std::endl;
+      std::cerr << "[NIX-DEBUG] Checked paths:" << std::endl;
+      for (const auto& path : pathsToCheck) {
+        std::cerr << "[NIX-DEBUG]   - " << path << std::endl;
       }
     }
   }

@@ -126,9 +126,9 @@ let
     buildPhase = ''
       mkdir -p $out
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -Dcfgdir= -P /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/tmp/fmt-populate-mkdirs.cmake
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      cp fmt-populate-mkdir $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
+      cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
     '';
   };
 
@@ -141,9 +141,9 @@ let
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_gitinfo_txt}/fmt-populate-gitinfo.txt .
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir}/fmt-populate-mkdir .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/tmp/fmt-populate-gitclone.cmake
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      cp fmt-populate-download $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
+      cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
     '';
   };
 
@@ -158,7 +158,7 @@ let
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download}/fmt-populate-download .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      cp fmt-populate-update $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update
+      cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update
     '';
   };
 
@@ -171,9 +171,9 @@ let
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch_info_txt}/fmt-populate-patch-info.txt .
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_update}/fmt-populate-update .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      cp fmt-populate-patch $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch
+      cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch
     '';
   };
 
@@ -186,9 +186,9 @@ let
       cp ${custom_fmt_populate_prefix_tmp_fmt_populate_cfgcmd_txt}/fmt-populate-cfgcmd.txt .
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch}/fmt-populate-patch .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      cp fmt-populate-configure $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
+      cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
     '';
   };
 
@@ -200,9 +200,9 @@ let
       mkdir -p $out
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure}/fmt-populate-configure .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      cp fmt-populate-build $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
+      cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
     '';
   };
 
@@ -214,9 +214,9 @@ let
       mkdir -p $out
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_build}/fmt-populate-build .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      cp fmt-populate-install $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install
+      cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install
     '';
   };
 
@@ -236,10 +236,10 @@ let
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_install}/fmt-populate-install .
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_test}/fmt-populate-test .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E make_directory /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/CMakeFiles
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/CMakeFiles/fmt-populate-complete
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch CMakeFiles/fmt-populate-complete
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-done
       mkdir -p $out/CMakeFiles
-      cp fmt-populate-complete $out/CMakeFiles/fmt-populate-complete
+      cp CMakeFiles/fmt-populate-complete $out/CMakeFiles/fmt-populate-complete
     '';
   };
 
@@ -251,9 +251,9 @@ let
       mkdir -p $out
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_install}/fmt-populate-install .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      cp fmt-populate-test $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
+      cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
     '';
   };
 

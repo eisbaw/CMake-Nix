@@ -126,9 +126,9 @@ let
     buildPhase = ''
       mkdir -p $out
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -Dcfgdir= -P /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/tmp/simple_external-mkdirs.cmake
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external-stamp/simple_external-mkdir
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-mkdir
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      cp simple_external-mkdir $out/simple_external-prefix/src/simple_external-stamp/simple_external-mkdir
+      cp simple_external-prefix/src/simple_external-stamp/simple_external-mkdir $out/simple_external-prefix/src/simple_external-stamp/simple_external-mkdir
     '';
   };
 
@@ -141,9 +141,9 @@ let
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_gitinfo_txt}/simple_external-gitinfo.txt .
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir}/simple_external-mkdir .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/tmp/simple_external-gitclone.cmake
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external-stamp/simple_external-download
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-download
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      cp simple_external-download $out/simple_external-prefix/src/simple_external-stamp/simple_external-download
+      cp simple_external-prefix/src/simple_external-stamp/simple_external-download $out/simple_external-prefix/src/simple_external-stamp/simple_external-download
     '';
   };
 
@@ -157,9 +157,9 @@ let
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_update_info_txt}/simple_external-update-info.txt .
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download}/simple_external-download .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -Dcan_fetch=NO -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/tmp/simple_external-gitupdate.cmake
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      cp simple_external-update_disconnected $out/simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected
+      cp simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected $out/simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected
     '';
   };
 
@@ -172,9 +172,9 @@ let
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patch_info_txt}/simple_external-patch-info.txt .
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected}/simple_external-update_disconnected .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      cp simple_external-patch_disconnected $out/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
+      cp simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected $out/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
     '';
   };
 
@@ -187,9 +187,9 @@ let
       cp ${custom_build_simpleexternal_prefix_tmp_simpleexternal_cfgcmd_txt}/simple_external-cfgcmd.txt .
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected}/simple_external-patch_disconnected .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external-stamp/simple_external-configure
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-configure
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      cp simple_external-configure $out/simple_external-prefix/src/simple_external-stamp/simple_external-configure
+      cp simple_external-prefix/src/simple_external-stamp/simple_external-configure $out/simple_external-prefix/src/simple_external-stamp/simple_external-configure
     '';
   };
 
@@ -201,9 +201,9 @@ let
       mkdir -p $out
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure}/simple_external-configure .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external-stamp/simple_external-build
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-build
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      cp simple_external-build $out/simple_external-prefix/src/simple_external-stamp/simple_external-build
+      cp simple_external-prefix/src/simple_external-stamp/simple_external-build $out/simple_external-prefix/src/simple_external-stamp/simple_external-build
     '';
   };
 
@@ -215,9 +215,9 @@ let
       mkdir -p $out
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build}/simple_external-build .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E echo_append
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external-stamp/simple_external-install
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-install
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      cp simple_external-install $out/simple_external-prefix/src/simple_external-stamp/simple_external-install
+      cp simple_external-prefix/src/simple_external-stamp/simple_external-install $out/simple_external-prefix/src/simple_external-stamp/simple_external-install
     '';
   };
 
@@ -236,10 +236,10 @@ let
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build}/simple_external-build .
       cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install}/simple_external-install .
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E make_directory /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/CMakeFiles
-      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/CMakeFiles/simple_external-complete
+      /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch CMakeFiles/simple_external-complete
       /home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake -E touch /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external-stamp/simple_external-done
       mkdir -p $out/CMakeFiles
-      cp simple_external-complete $out/CMakeFiles/simple_external-complete
+      cp CMakeFiles/simple_external-complete $out/CMakeFiles/simple_external-complete
     '';
   };
 
