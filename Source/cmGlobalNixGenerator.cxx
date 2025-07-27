@@ -1199,7 +1199,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     
     // Handle configuration-time generated files (like Zephyr's autoconf.h)
     if (!configTimeGeneratedFiles.empty()) {
-      this->WriteCompositeSource(nixFileStream, configTimeGeneratedFiles, srcDir, buildDir);
+      this->WriteCompositeSource(nixFileStream, configTimeGeneratedFiles, srcDir, buildDir, target, lang, config);
       
       // Update compile flags to use relative paths for embedded config-time generated files
       for (const auto& genFile : configTimeGeneratedFiles) {
@@ -2725,7 +2725,10 @@ void cmGlobalNixGenerator::WriteCompositeSource(
   cmGeneratedFileStream& nixFileStream,
   const std::vector<std::string>& configTimeGeneratedFiles,
   const std::string& srcDir,
-  const std::string& buildDir)
+  const std::string& buildDir,
+  cmGeneratorTarget* target,
+  const std::string& lang,
+  const std::string& config)
 {
   // Create a composite source that includes both source files and config-time generated files
   nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\" {} ''\n";
@@ -2748,6 +2751,34 @@ void cmGlobalNixGenerator::WriteCompositeSource(
     }
   }
   nixFileStream << "      cp -rL ${" << rootPath << "}/* $out/ 2>/dev/null || true\n";
+  
+  // Handle external include directories - copy headers from them
+  if (target) {
+    cmLocalGenerator* lg = target->GetLocalGenerator();
+    std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, lang, config);
+    
+    for (const auto& inc : includes) {
+      if (!inc.Value.empty()) {
+        std::string incPath = inc.Value;
+        
+        // Check if this is an absolute path outside the project tree
+        if (cmSystemTools::FileIsFullPath(incPath)) {
+          std::string relPath = cmSystemTools::RelativePath(srcDir, incPath);
+          if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
+            // This is an external include directory
+            nixFileStream << "      # Copy headers from external include directory: " << incPath << "\n";
+            
+            // Create parent directories first
+            std::string parentPath = cmSystemTools::GetFilenamePath(incPath);
+            nixFileStream << "      mkdir -p $out" << parentPath << "\n";
+            
+            // Use Nix's path functionality to copy the entire directory
+            nixFileStream << "      cp -rL ${builtins.path { path = \"" << incPath << "\"; }} $out" << incPath << "\n";
+          }
+        }
+      }
+    }
+  }
   
   // Copy configuration-time generated files to their correct locations
   nixFileStream << "      # Copy configuration-time generated files\n";
