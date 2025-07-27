@@ -125,7 +125,7 @@ let
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      echo "#define GENERATED 1" > generated.h
+      echo #define\ GENERATED\ 1 > generated.h
       cp generated.h $out/generated.h
     '';
   };
