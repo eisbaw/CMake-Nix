@@ -26,6 +26,8 @@ build: configure
     nix-build --no-out-link -A versioned_lib
     nix-build --no-out-link -A app
     nix-build --no-out-link -A mixed_app
+    nix-build --no-out-link -A version_test
+    nix-build --no-out-link -A version_test2
 
 # Run executable tests
 run: build
@@ -33,6 +35,13 @@ run: build
     nix-build -A app && ./result && rm ./result
     @echo "\n=== Testing mixed app ==="
     nix-build -A mixed_app && ./result && rm ./result
+    @echo "\n=== Testing library versioning ==="
+    @echo "Versioned library (VERSION 1.2.3, SOVERSION 1):"
+    nix-build -A versioned_lib && ls -la result/ && rm ./result
+    @echo "\nVersion test library (VERSION 2.0.0, SOVERSION 2):"
+    nix-build -A version_test && ls -la result/ && rm ./result
+    @echo "\nVersion test2 library (VERSION 3.4.5, no SOVERSION):"
+    nix-build -A version_test2 && ls -la result/ && rm ./result
 
 # Check generated Nix for shared library flags
 check-flags: configure

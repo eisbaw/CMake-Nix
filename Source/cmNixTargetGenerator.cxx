@@ -43,6 +43,13 @@ cmNixTargetGenerator::cmNixTargetGenerator(cmGeneratorTarget* target)
 
 cmNixTargetGenerator::~cmNixTargetGenerator() = default;
 
+bool cmNixTargetGenerator::IsCompilableLanguage(const std::string& lang) const
+{
+  return lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || 
+         lang == "Swift" || lang == "ASM" || lang == "ASM-ATT" || 
+         lang == "ASM_NASM" || lang == "ASM_MASM";
+}
+
 void cmNixTargetGenerator::Generate()
 {
   // Generate precompiled header derivations if needed
@@ -76,7 +83,7 @@ void cmNixTargetGenerator::WriteObjectDerivations()
   for (cmSourceFile* source : sources) {
     // Process C/C++/Fortran/CUDA/Swift/ASM source files
     std::string const& lang = source->GetLanguage();
-    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || lang == "Swift" || lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
+    if (this->IsCompilableLanguage(lang)) {
       std::vector<std::string> dependencies = this->GetSourceDependencies(source);
       
       // Add PCH dependencies if applicable
@@ -106,7 +113,7 @@ void cmNixTargetGenerator::WriteLinkDerivation()
   std::vector<std::string> objectDeps;
   for (cmSourceFile* source : sources) {
     std::string const& lang = source->GetLanguage();
-    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || lang == "Swift" || lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
+    if (this->IsCompilableLanguage(lang)) {
       objectDeps.push_back(this->GetDerivationName(source));
     }
   }

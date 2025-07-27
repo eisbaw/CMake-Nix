@@ -21,8 +21,8 @@ generate-minsizerel:
 # Test all configurations
 test-all: generate-debug test-debug generate-release test-release generate-relwithdebinfo test-relwithdebinfo generate-minsizerel test-minsizerel
 
-# Main test entry point - test core multi-config functionality
-run: test-debug test-release
+# Main test entry point - test all multi-config functionality
+run: test-debug test-release test-relwithdebinfo test-minsizerel
 
 test-debug: generate-debug
     @echo "=== Testing Debug configuration ==="

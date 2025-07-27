@@ -19,3 +19,16 @@ target_link_libraries(app mylib)
 add_library(static_helper STATIC helper.c)
 add_executable(mixed_app mixed.c)
 target_link_libraries(mixed_app mylib static_helper)
+
+# Test edge cases for versioning
+add_library(version_test SHARED test_versioning.c)
+set_target_properties(version_test PROPERTIES
+  VERSION 2.0.0  # Only major version
+  SOVERSION 2
+)
+
+# Test library with no SOVERSION (should default to major version)
+add_library(version_test2 SHARED test_versioning.c)
+set_target_properties(version_test2 PROPERTIES
+  VERSION 3.4.5
+)

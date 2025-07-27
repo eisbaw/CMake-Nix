@@ -7,6 +7,10 @@
 
 #include "cmGeneratedFileStream.h"
 
+// Constants for code formatting
+static constexpr int SPACES_PER_INDENT = 2;
+static constexpr size_t STRING_ESCAPE_RESERVE = 10;
+
 cmNixWriter::cmNixWriter(cmGeneratedFileStream& stream)
   : Stream(stream)
 {
@@ -242,13 +246,13 @@ void cmNixWriter::EndAttributeSet(int indentLevel)
 
 std::string cmNixWriter::GetIndent(int level) const
 {
-  return std::string(level * 2, ' ');
+  return std::string(level * SPACES_PER_INDENT, ' ');
 }
 
 std::string cmNixWriter::EscapeNixString(const std::string& str)
 {
   std::string result;
-  result.reserve(str.size() + 10);
+  result.reserve(str.size() + STRING_ESCAPE_RESERVE);
   
   for (char c : str) {
     switch (c) {

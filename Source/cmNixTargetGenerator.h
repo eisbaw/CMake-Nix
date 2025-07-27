@@ -105,6 +105,9 @@ public:
   std::vector<std::string> GetPchDependencies(cmSourceFile const* source, std::string const& config) const;
 
 private:
+  // Helper method to check if a language is compilable
+  bool IsCompilableLanguage(const std::string& lang) const;
+  
   // Constants
   static constexpr int MAX_HEADER_RECURSION_DEPTH = 100; // Maximum depth for header dependency scanning
   static constexpr size_t MAX_DEPENDENCY_CACHE_SIZE = 10000; // Maximum entries in dependency cache

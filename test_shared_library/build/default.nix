@@ -190,6 +190,34 @@ let
     flags = "-O3 -DNDEBUG";
   };
 
+  version_test_test_shared_library_test_versioning_c_o = cmakeNixCC {
+    name = "test_versioning.o";
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../test_versioning.c
+      ];
+    };
+    buildInputs = [ gcc ];
+    source = "test_versioning.c";
+    compiler = gcc;
+    flags = "-O3 -DNDEBUG -fPIC -Dversion_test_EXPORTS";
+  };
+
+  version_test2_test_shared_library_test_versioning_c_o = cmakeNixCC {
+    name = "test_versioning.o";
+    src = fileset.toSource {
+      root = ./..;
+      fileset = fileset.unions [
+        ./../test_versioning.c
+      ];
+    };
+    buildInputs = [ gcc ];
+    source = "test_versioning.c";
+    compiler = gcc;
+    flags = "-O3 -DNDEBUG -fPIC -Dversion_test2_EXPORTS";
+  };
+
 
   # Linking derivations
   link_mylib = cmakeNixLD {
@@ -236,6 +264,25 @@ let
     flags = "${link_mylib}/libmylib.so ${link_static_helper}";
   };
 
+  link_version_test = cmakeNixLD {
+    name = "version_test";
+    type = "shared";
+    buildInputs = [ gcc ];
+    objects = [ version_test_test_shared_library_test_versioning_c_o ];
+    compiler = gcc;
+    version = "2.0.0";
+    soversion = "2";
+  };
+
+  link_version_test2 = cmakeNixLD {
+    name = "version_test2";
+    type = "shared";
+    buildInputs = [ gcc ];
+    objects = [ version_test2_test_shared_library_test_versioning_c_o ];
+    compiler = gcc;
+    version = "3.4.5";
+  };
+
 in
 {
   "mylib" = link_mylib;
@@ -243,4 +290,6 @@ in
   "app" = link_app;
   "static_helper" = link_static_helper;
   "mixed_app" = link_mixed_app;
+  "version_test" = link_version_test;
+  "version_test2" = link_version_test2;
 }
