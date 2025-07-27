@@ -478,10 +478,6 @@ void cmGlobalNixGenerator::WriteNixFile()
                 if (this->GetCMakeInstance()->GetDebugOutput()) {
                   std::cerr << "[NIX-DEBUG] Registering custom command output: " 
                             << output << " -> " << info.DerivationName << std::endl;
-                  // Also check if this is syscall_list.h
-                  if (output.find("syscall_list.h") != std::string::npos) {
-                    std::cerr << "[NIX-DEBUG] !!! Found syscall_list.h output: " << output << std::endl;
-                  }
                 }
               }
             }
@@ -742,7 +738,7 @@ void cmGlobalNixGenerator::WriteNixFile()
     
     msg << "\nWORKAROUND FOR COMPLEX BUILD SYSTEMS:\n";
     msg << "The Nix generator has detected circular dependencies in custom commands, which\n";
-    msg << "typically occurs with complex build systems like Zephyr, Linux kernel, etc.\n";
+    msg << "typically occurs with complex build systems.\n";
     msg << "\n";
     msg << "To work around this issue, you can:\n";
     msg << "1. Use the Ninja generator instead: cmake -GNinja -DBOARD=native_sim/native/64 .\n";
@@ -1152,7 +1148,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   bool isExternalSource = (cmNixPathUtils::IsPathOutsideTree(initialRelativePath) || cmSystemTools::FileIsFullPath(initialRelativePath));
   
   // Process files referenced by -imacros and -include flags for ALL sources (external and non-external)
-  // These files (like Zephyr's autoconf.h) need to be embedded if they are configuration-time generated
+  // These files need to be embedded if they are configuration-time generated
   std::vector<std::string> configTimeGeneratedFiles;
   std::vector<std::string> parsedFlags;
   cmSystemTools::ParseUnixCommandLine(allCompileFlags.c_str(), parsedFlags);
@@ -1185,12 +1181,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   std::string baseName = cmSystemTools::GetFilenameWithoutLastExtension(sourceFile);
   std::string sourceExtension = cmSystemTools::GetFilenameLastExtension(sourceFile);
   
-  // Special case: offsets.c is used to generate offsets.h, so it can't depend on offsets.h
-  // This avoids circular dependencies in the build graph
-  bool isOffsetsSource = (baseName == "offsets" && sourceExtension == ".c");
   
   // Even without explicit dependencies, check include directories for custom command outputs
-  // This is needed for cases like Zephyr RTOS where generated headers are included
+  // This is needed for cases where generated headers are included
   std::vector<std::string> includeDirs;
   std::vector<std::string> parsedIncludeFlags;
   cmSystemTools::ParseUnixCommandLine(allCompileFlags.c_str(), parsedIncludeFlags);
@@ -1206,14 +1199,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           std::string topBuildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
           std::string topSrcDir = this->GetCMakeInstance()->GetHomeDirectory();
           
-          // If the path starts with "build/", it's likely relative to the source directory
-          // (as in Zephyr RTOS where build/ is a subdirectory of the source)
-          if (includeDir.find("build/") == 0) {
-            includeDir = topSrcDir + "/" + includeDir;
-          } else {
-            // Otherwise, it's relative to the build directory
-            includeDir = topBuildDir + "/" + includeDir;
-          }
+          // Include paths are typically relative to the build directory
+          includeDir = topBuildDir + "/" + includeDir;
         }
         includeDirs.push_back(includeDir);
       }
@@ -1238,13 +1225,6 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       }
       if (outputDir == fullIncludeDir || 
           cmSystemTools::IsSubDirectory(output, fullIncludeDir)) {
-        // Skip offsets.h when building offsets.c to avoid circular dependencies
-        if (isOffsetsSource && output.find("offsets.h") != std::string::npos) {
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Skipping offsets.h for offsets.c to avoid circular dependency" << std::endl;
-          }
-          continue;
-        }
         
         // This header is in an include directory, add it as a dependency
         if (std::find(customCommandHeaders.begin(), customCommandHeaders.end(), deriv) == customCommandHeaders.end()) {
@@ -3486,7 +3466,7 @@ void cmGlobalNixGenerator::ProcessHeaderDependencies(
       if (cmSystemTools::FileExists(fullPath)) {
         // Check if it's a configuration-time generated file (exists in build dir)
         if (isConfigTimeGenerated) {
-          // This is a configuration-time generated file (like Zephyr's autoconf.h)
+          // This is a configuration-time generated file
           configTimeGeneratedFiles.push_back(fullPath);
           if (this->GetCMakeInstance()->GetDebugOutput()) {
             std::cerr << "[NIX-DEBUG] Added config-time generated header: " << fullPath << std::endl;
@@ -3834,13 +3814,6 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
       pathsToCheck.push_back(header);
     }
     
-    // Also check for headers that might include "zephyr/" prefix
-    if (header.find("zephyr/syscall_list.h") != std::string::npos ||
-        header.find("syscall_list.h") != std::string::npos) {
-      std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-      pathsToCheck.push_back(buildDir + "/zephyr/include/generated/zephyr/syscall_list.h");
-      pathsToCheck.push_back(buildDir + "/include/generated/zephyr/syscall_list.h");
-    }
     
     // Check each possible path
     bool found = false;
@@ -3906,7 +3879,6 @@ std::vector<std::string> cmGlobalNixGenerator::FilterProjectHeaders(
       }
     }
     // Skip configuration-time generated files that are already in composite source
-    // These would have paths like "build/zephyr/include/..." when build != source
     if (header.find("build/") == 0 || header.find("./build/") == 0) {
       continue;
     }
@@ -4256,7 +4228,7 @@ void cmGlobalNixGenerator::WriteCustomCommandDerivations(
     
     msg << "\nWORKAROUND FOR COMPLEX BUILD SYSTEMS:\n";
     msg << "The Nix generator has detected circular dependencies in custom commands, which\n";
-    msg << "typically occurs with complex build systems like Zephyr, Linux kernel, etc.\n";
+    msg << "typically occurs with complex build systems.\n";
     msg << "\n";
     msg << "To work around this issue, you can:\n";
     msg << "1. Use the Ninja generator instead: cmake -GNinja -DBOARD=native_sim/native/64 .\n";

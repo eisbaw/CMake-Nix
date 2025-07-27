@@ -1,6 +1,9 @@
 # CMake Nix Backend - TODO Status
 
-Implement and fix the recommendations made in maintainabilty_review.md 
+DONE - Implement and fix the recommendations made in maintainabilty_review.md 
+  - Created cmNixConstants.h header for hardcoded strings
+  - Updated cmGlobalNixGenerator.cxx and cmNixCompilerResolver.cxx to use constants
+  - Replaced magic strings with named constants as recommended
 
 Remove Zephyr specific C++ code in Nix backend and the zephyr test case.
 

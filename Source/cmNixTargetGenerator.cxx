@@ -709,7 +709,7 @@ std::string cmNixTargetGenerator::FindOrCreateNixPackage(
   // First check in the current source directory
   std::string nixFilePath = this->GetMakefile()->GetCurrentSourceDirectory() + "/pkg_" + sanitizedNixFile + ".nix";
   
-  // If not found, check in parent directories (common for Zephyr builds)
+  // If not found, check in parent directories
   if (!cmSystemTools::FileExists(nixFilePath)) {
     // Try project source directory
     std::string projectDir = this->GetMakefile()->GetHomeDirectory();
@@ -727,7 +727,7 @@ std::string cmNixTargetGenerator::FindOrCreateNixPackage(
       // This means RelativePath failed - just use basename with parent nav
       std::string basename = cmSystemTools::GetFilenameName(nixFilePath);
       
-      // For now, assume it's in the parent directory (typical for Zephyr)
+      // Assume it's in the parent directory
       return "./../../" + basename;
     }
     
