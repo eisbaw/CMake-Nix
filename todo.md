@@ -4,6 +4,31 @@
 
 ✅ **ALL REQUESTED TASKS COMPLETED**
 
+## NEW CODE QUALITY FINDINGS (2025-07-28)
+
+### Code Smells Found:
+1. **Large Functions Needing Refactoring**:
+   - WriteObjectDerivation() - 1004 lines (could be split into smaller helper functions)
+   - WriteNixFile() - 489 lines (moderately large but manageable)
+   - Note: These are working correctly but could benefit from decomposition for maintainability
+
+### Missing Tests from Main Test Suite:
+The following test directories have run targets but are not included in `just dev`:
+- test_circular_deps - Tests circular dependency detection
+- test_cmake_self_host - Tests CMake building itself with Nix generator
+- test_cuda_language - Tests CUDA support
+- test_custom_commands_advanced - Advanced custom command features
+- test_deep_dependencies - Tests deep dependency chains
+- test_fortran - Fortran language tests
+- test_generator_expressions - Generator expression tests
+- test_opencv - OpenCV integration test
+- test_performance_large - Large scale performance tests
+- test_scale - Scalability tests with configurable file counts
+- test_security_paths - Security path validation tests
+- test_special_characters - Tests special characters in target names
+
+Note: These appear to be special tests that may have longer runtimes or specific requirements.
+
 ## Code Quality Review (2025-07-28)
 
 DONE - Comprehensive code quality review
