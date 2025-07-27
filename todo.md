@@ -26,6 +26,13 @@ DONE - Use the timestamps of the configure-time profiling traces, to determine h
 
 # Active TODO items:
 
+NOT DONE - Zephyr RTOS build issue: The -imacros flag with absolute path to autoconf.h is not being converted to relative path properly
+  - GetCompileFlags has been modified to handle -imacros and -include flags but the fix is not working
+  - The generated Nix file still contains absolute paths like: -imacros /home/.../build/zephyr/include/generated/zephyr/autoconf.h
+  - Need to investigate why the path conversion is not being applied
+  - The compile flags are coming from CMake already formed and may need different handling
+  - Configuration-time generated files like autoconf.h need to be included in the Nix derivation
+
 DONE - test_zephyr_rtos: CMake cache conflict error
      - Found in dev.log: "CMake Error: Error: generator : Nix Does not match the generator used previously: Ninja"
      - Fixed by removing samples/posix/philosophers/build directory

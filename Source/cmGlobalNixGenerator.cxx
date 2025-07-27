@@ -1451,6 +1451,10 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
 {
   cmLocalGenerator* lg = target->GetLocalGenerator();
   
+  // Get source and build directories upfront (needed for path processing)
+  std::string sourceDir = this->GetCMakeInstance()->GetHomeDirectory();
+  std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+  
   // Get configuration-specific compile flags
   std::vector<BT<std::string>> compileFlagsVec = lg->GetTargetCompileFlags(target, config, lang, "");
   std::ostringstream compileFlagsStream;
@@ -1473,12 +1477,58 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
       
       // ParseUnixCommandLine should handle all parsing correctly
       // Trust its output and don't second-guess by splitting further
-      for (const auto& pFlag : parsedFlags) {
-        if (!firstFlag) {
-          compileFlagsStream << " ";
+      for (size_t i = 0; i < parsedFlags.size(); ++i) {
+        const auto& pFlag = parsedFlags[i];
+        
+        // Check if this is a flag that takes a file argument
+        if ((pFlag == "-imacros" || pFlag == "-include") && i + 1 < parsedFlags.size()) {
+          // Handle the flag and its file argument
+          if (!firstFlag) {
+            compileFlagsStream << " ";
+          }
+          compileFlagsStream << pFlag;
+          firstFlag = false;
+          
+          // Process the file path argument
+          std::string filePath = parsedFlags[++i];
+          
+          if (this->GetCMakeInstance()->GetDebugOutput()) {
+            std::cerr << "[NIX-DEBUG] Processing " << pFlag << " flag with file: " << filePath << std::endl;
+          }
+          
+          // Check if it's an absolute path that needs to be made relative
+          if (cmSystemTools::FileIsFullPath(filePath)) {
+            // Check if it's in the build directory (configuration-time generated)
+            std::string relToBuild = cmSystemTools::RelativePath(buildDir, filePath);
+            if (!cmNixPathUtils::IsPathOutsideTree(relToBuild)) {
+              // This is a build directory file - use relative path
+              filePath = relToBuild;
+              if (this->GetCMakeInstance()->GetDebugOutput()) {
+                std::cerr << "[NIX-DEBUG] Converted to build-relative path: " << filePath << std::endl;
+              }
+            } else {
+              // Check if it's in the source directory
+              std::string relToSource = cmSystemTools::RelativePath(sourceDir, filePath);
+              if (!cmNixPathUtils::IsPathOutsideTree(relToSource)) {
+                // This is a source directory file - use relative path
+                filePath = relToSource;
+                if (this->GetCMakeInstance()->GetDebugOutput()) {
+                  std::cerr << "[NIX-DEBUG] Converted to source-relative path: " << filePath << std::endl;
+                }
+              }
+              // Otherwise keep the absolute path (will be handled later)
+            }
+          }
+          
+          compileFlagsStream << " " << filePath;
+        } else {
+          // Regular flag - just add it
+          if (!firstFlag) {
+            compileFlagsStream << " ";
+          }
+          compileFlagsStream << pFlag;
+          firstFlag = false;
         }
-        compileFlagsStream << pFlag;
-        firstFlag = false;
       }
     }
   }
@@ -1497,8 +1547,6 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
   
   // Get include directories
   std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, lang, config);
-  std::string sourceDir = this->GetCMakeInstance()->GetHomeDirectory();
-  std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
   
   for (const auto& inc : includes) {
     if (!inc.Value.empty()) {
