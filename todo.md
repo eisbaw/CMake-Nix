@@ -2,6 +2,24 @@
 
 ## CURRENT ISSUES (2025-01-27)
 
+### Potential Improvements Found (2025-01-27):
+
+1. **Compiler ABI Detection Warning**: The warning "Detecting C/CXX compiler ABI info - failed" appears frequently
+   - This is because the Nix generator doesn't support running executables during configuration
+   - A fallback mechanism exists but the warning could be suppressed or made more informative
+   - Low priority - doesn't affect functionality
+
+2. **External Source Path Warnings**: Many "Source file path is outside project directory" warnings
+   - These are informational warnings for external dependencies (Zephyr, system modules)
+   - Could be suppressed for known system paths or made less verbose
+   - Low priority - helps identify potential issues
+
+3. **Python Module Dependencies in Custom Commands**: test_zephyr_rtos fails with "ModuleNotFoundError: No module named 'elftools'"
+   - Custom commands that run Python scripts don't have access to Python packages from shell environment
+   - Would require passing Python environment to custom command derivations
+   - This is a fundamental limitation of Nix's isolation model
+   - Documented as known incompatibility with Zephyr RTOS
+
 DONE - Handle test_zephyr_rtos expected failure gracefully (2025-01-27)
   - Updated justfile to use '-' prefix for test_zephyr_rtos like test_external_tools
   - Test now fails without failing the entire test suite
