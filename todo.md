@@ -1169,16 +1169,18 @@ The following items are currently pending and need attention:
 ## NEW CODE QUALITY ISSUES (2025-01-16)
 
 ### Debug Output Issues:
-83. **Inconsistent Debug Output Control**:
+DONE 83. **Inconsistent Debug Output Control**:
     - Location: cmGlobalNixGenerator.cxx and cmNixTargetGenerator.cxx
     - Issue: Some debug output uses CMAKE_NIX_DEBUG env var, others are always printed
     - Examples: Lines 507-532, 690, 1585 in cmGlobalNixGenerator.cxx use [DEBUG] or DEBUG: without checking debug flag
     - Impact: Verbose output in production builds
     - Fix: Ensure all debug output checks GetDebugOutput() or CMAKE_NIX_DEBUG
+    - RESOLVED: All debug output is properly guarded with GetDebugOutput() checks
 
-84. **Mixed Debug Prefixes**:
+DONE 84. **Mixed Debug Prefixes**:
     - Location: Throughout Nix generator code
     - Issue: Mix of [NIX-TRACE], [NIX-DEBUG], [DEBUG], DEBUG:, and [WARNING] prefixes
+    - RESOLVED: All debug output now uses consistent [NIX-DEBUG] prefix
     - Impact: Confusing log output, hard to filter
     - Fix: Standardize on [NIX-DEBUG] for debug, [NIX-WARNING] for warnings
 
@@ -1813,7 +1815,9 @@ After implementing the -imacros fix for external sources:
 3. [ ] Test edge cases where multiple external sources share the same config-time files
 
 **Environment Issue Found**:
-- [ ] Investigate the mysterious "2" argument that appears to be passed to CMake and nix-build commands
+DONE - Investigate the mysterious "2" argument that appears to be passed to CMake and nix-build commands
   - This is preventing proper testing of the Nix backend
   - May be related to shell environment or CMake invocation
+  - RESOLVED: This was a Bash tool issue with handling shell redirection (2>&1)
+  - Workaround: Tests run successfully when executed directly without shell redirection
 

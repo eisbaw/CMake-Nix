@@ -21,11 +21,11 @@ let
       mkdir -p "$(dirname "$out")"
       # Determine compiler binary name based on the compiler derivation
       compilerBin="${
-        if compiler == gcc then
+        if compiler == gcc || compiler == pkgsi686Linux.gcc then
           "gcc"
-        else if compiler == clang then
+        else if compiler == clang || compiler == pkgsi686Linux.clang then
           "clang"
-        else if compiler == gfortran then
+        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
           "gfortran"
         else
           compiler.pname or "cc"
@@ -34,8 +34,8 @@ let
       # We need to find the actual source file
       # Store source in a variable to handle paths with spaces
       sourceFile="${source}"
-      # Check if source is an absolute path or Nix expression (e.g., $\{derivation}/file)
-      if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"$"* ]]; then
+      # Check if source is an absolute path or Nix expression (e.g., derivation/file)
+      if [[ "$sourceFile" == /* ]] || [[ "$sourceFile" == *"\$"* ]]; then
         # Absolute path or Nix expression - use as-is
         srcFile="$sourceFile"
       elif [[ -f "$sourceFile" ]]; then
@@ -78,11 +78,11 @@ let
         mkdir -p $out
         compilerBin="${if compilerCommand != null then
           compilerCommand
-        else if compiler == gcc then
+        else if compiler == gcc || compiler == pkgsi686Linux.gcc then
           "gcc"
-        else if compiler == clang then
+        else if compiler == clang || compiler == pkgsi686Linux.clang then
           "clang"
-        else if compiler == gfortran then
+        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
           "gfortran"
         else
           compiler.pname or "cc"
@@ -104,11 +104,11 @@ let
         mkdir -p "$(dirname "$out")"
         compilerBin="${if compilerCommand != null then
           compilerCommand
-        else if compiler == gcc then
+        else if compiler == gcc || compiler == pkgsi686Linux.gcc then
           "gcc"
-        else if compiler == clang then
+        else if compiler == clang || compiler == pkgsi686Linux.clang then
           "clang"
-        else if compiler == gfortran then
+        else if compiler == gfortran || compiler == pkgsi686Linux.gfortran then
           "gfortran"
         else
           compiler.pname or "cc"
