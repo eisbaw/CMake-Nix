@@ -477,6 +477,9 @@ void cmGlobalNixGenerator::WriteNixFile()
     this->CustomCommandOutputs = std::move(tempCustomCommandOutputs);
   }
   
+  // MOVED TO WriteCustomCommandDerivations - this code needs to run AFTER object derivations
+  // are generated so that ObjectFileOutputs is populated
+  /*
   // Create local copies for dependency processing
   std::vector<CustomCommandInfo> localCustomCommands = this->CustomCommands;
   std::map<std::string, std::string> localCustomCommandOutputs = this->CustomCommandOutputs;
@@ -780,6 +783,7 @@ void cmGlobalNixGenerator::WriteNixFile()
       this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
     }
   }
+  */
 
   // Collect install targets
   this->CollectInstallTargets();
@@ -789,13 +793,21 @@ void cmGlobalNixGenerator::WriteNixFile()
     ProfileTimer headerTimer(this, "WriteExternalHeaderDerivations");
     this->WriteExternalHeaderDerivations(nixFileStream);
   }
-
-  // Write per-translation-unit derivations
+  
+  // Write per-translation-unit derivations BEFORE custom commands
+  // so that ObjectFileOutputs is populated when custom commands need it
   {
     ProfileTimer unitTimer(this, "WritePerTranslationUnitDerivations");
     this->WritePerTranslationUnitDerivations(nixFileStream);
   }
   
+  // Write custom command derivations AFTER object derivations
+  // so that object file dependencies are available
+  {
+    ProfileTimer customTimer(this, "WriteCustomCommandDerivations");
+    this->WriteCustomCommandDerivations(nixFileStream);
+  }
+
   // Write linking derivations
   {
     ProfileTimer linkTimer(this, "WriteLinkingDerivations");
@@ -3401,6 +3413,315 @@ void cmGlobalNixGenerator::CheckForExternalProjectUsage()
   // Additionally, we could generate skeleton pkg_*.nix files for known dependencies
   if (hasExternalProject || hasFetchContent) {
     this->GenerateSkeletonPackageFiles();
+  }
+}
+
+void cmGlobalNixGenerator::WriteCustomCommandDerivations(
+  cmGeneratedFileStream& nixFileStream)
+{
+  // Create local copies for dependency processing
+  std::vector<CustomCommandInfo> localCustomCommands = this->CustomCommands;
+  std::map<std::string, std::string> localCustomCommandOutputs = this->CustomCommandOutputs;
+  
+  // Second pass: Write custom commands in dependency order
+  std::set<std::string> written;
+  std::vector<size_t> orderedCommands; // Store indices instead of pointers
+  
+  // Simple topological sort using Kahn's algorithm
+  std::map<std::string, std::vector<size_t>> dependents; // Store indices
+  std::map<std::string, int> inDegree;
+  
+  // Build dependency graph using local copies (thread-safe)
+  for (const auto& info : localCustomCommands) {
+    inDegree[info.DerivationName] = 0;
+  }
+  
+  // PERFORMANCE FIX: Create map for O(1) lookup instead of O(n) search
+  std::map<std::string, size_t> derivNameToIndex;
+  for (size_t i = 0; i < localCustomCommands.size(); ++i) {
+    derivNameToIndex[localCustomCommands[i].DerivationName] = i;
+  }
+  
+  // Build dependency graph using indices - now O(n*m) instead of O(n²*m)
+  for (size_t i = 0; i < localCustomCommands.size(); ++i) {
+    const auto& info = localCustomCommands[i];
+    for (const std::string& dep : info.Depends) {
+      auto depIt = localCustomCommandOutputs.find(dep);
+      if (depIt != localCustomCommandOutputs.end()) {
+        // Use the map for O(1) lookup
+        auto indexIt = derivNameToIndex.find(depIt->second);
+        if (indexIt != derivNameToIndex.end()) {
+          dependents[depIt->second].push_back(i);
+          inDegree[info.DerivationName]++;
+          break;
+        }
+      }
+    }
+  }
+  
+  // Find nodes with no dependencies
+  std::queue<size_t> q;
+  for (size_t i = 0; i < localCustomCommands.size(); ++i) {
+    if (inDegree[localCustomCommands[i].DerivationName] == 0) {
+      q.push(i);
+    }
+  }
+  
+  // Process in dependency order
+  while (!q.empty()) {
+    size_t currentIdx = q.front();
+    q.pop();
+    orderedCommands.push_back(currentIdx);
+    
+    // Reduce in-degree for dependents
+    const std::string& currentName = localCustomCommands[currentIdx].DerivationName;
+    for (size_t dependentIdx : dependents[currentName]) {
+      if (--inDegree[localCustomCommands[dependentIdx].DerivationName] == 0) {
+        q.push(dependentIdx);
+      }
+    }
+  }
+  
+  // Check for cycles - if not all commands were processed, there's a cycle
+  if (orderedCommands.size() != localCustomCommands.size()) {
+    std::ostringstream msg;
+    msg << "CMake Error: Cyclic dependency detected in custom commands. ";
+    msg << "Processed " << orderedCommands.size() << " of " 
+        << localCustomCommands.size() << " commands.\n\n";
+    
+    // Debug output
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Total custom commands: " << localCustomCommands.size() << std::endl;
+      std::cerr << "[NIX-DEBUG] Ordered commands: " << orderedCommands.size() << std::endl;
+      for (size_t i = 0; i < localCustomCommands.size(); ++i) {
+        std::cerr << "[NIX-DEBUG] Command " << i << ": " << localCustomCommands[i].DerivationName << std::endl;
+      }
+    }
+    
+    // Find which commands weren't processed (part of cycles)
+    std::set<std::string> processedNames;
+    for (size_t idx : orderedCommands) {
+      processedNames.insert(localCustomCommands[idx].DerivationName);
+    }
+    
+    std::vector<size_t> cyclicCommands;
+    for (size_t i = 0; i < localCustomCommands.size(); ++i) {
+      if (processedNames.find(localCustomCommands[i].DerivationName) == processedNames.end()) {
+        cyclicCommands.push_back(i);
+      }
+    }
+    
+    // More debug output  
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Unprocessed commands: " << cyclicCommands.size() << std::endl;
+      for (size_t idx : cyclicCommands) {
+        const auto& cmd = localCustomCommands[idx];
+        std::cerr << "[NIX-DEBUG] Unprocessed: " << cmd.DerivationName << " (indegree=" << inDegree[cmd.DerivationName] << ")" << std::endl;
+      }
+    }
+    
+    msg << "Commands involved in circular dependencies (" << cyclicCommands.size() << " commands):\n";
+    
+    // Enhanced reporting with more context
+    for (size_t idx : cyclicCommands) {
+      const auto& info = localCustomCommands[idx];
+      msg << "  • " << info.DerivationName << "\n";
+      msg << "    Working directory: " << info.LocalGen->GetCurrentBinaryDirectory() << "\n";
+      
+      // Show the command itself (first few words)
+      if (info.Command && !info.Command->GetCommandLines().empty()) {
+        const auto& cmdLine = info.Command->GetCommandLines()[0];
+        if (!cmdLine.empty()) {
+          std::string cmdStr = cmdLine[0];
+          if (cmdLine.size() > 1) {
+            cmdStr += " " + cmdLine[1];
+          }
+          if (cmdLine.size() > 2) {
+            cmdStr += " ...";
+          }
+          msg << "    Command: " << cmdStr << "\n";
+        }
+      }
+      
+      // Show outputs this command produces
+      msg << "    Outputs: ";
+      if (info.Outputs.empty()) {
+        msg << "(none)";
+      } else {
+        for (size_t i = 0; i < info.Outputs.size(); ++i) {
+          if (i > 0) msg << ", ";
+          msg << cmSystemTools::GetFilenameName(info.Outputs[i]);
+        }
+      }
+      msg << "\n";
+      
+      // Show dependencies this command has
+      msg << "    Depends on: ";
+      if (info.Depends.empty()) {
+        msg << "(none)";
+      } else {
+        bool first = true;
+        for (const std::string& dep : info.Depends) {
+          if (!first) msg << ", ";
+          first = false;
+          
+          auto depIt = this->CustomCommandOutputs.find(dep);
+          if (depIt != this->CustomCommandOutputs.end()) {
+            msg << depIt->second << " (via " << cmSystemTools::GetFilenameName(dep) << ")";
+          } else {
+            msg << cmSystemTools::GetFilenameName(dep);
+          }
+        }
+      }
+      msg << "\n\n";
+    }
+    
+    // Try to detect and report specific cycles
+    msg << "Cycle Analysis:\n";
+    std::function<bool(const std::string&, std::set<std::string>&, std::vector<std::string>&, int)> findCycle;
+    findCycle = [&](const std::string& current, std::set<std::string>& visited, std::vector<std::string>& path, int depth) -> bool {
+      // Prevent stack overflow with depth limit
+      if (depth > MAX_CYCLE_DETECTION_DEPTH) {
+        this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, "Cycle detection depth limit exceeded at: " + current);
+        return false;
+      }
+      if (visited.count(current)) {
+        // Found a cycle - report it
+        auto cycleStart = std::find(path.begin(), path.end(), current);
+        if (cycleStart != path.end()) {
+          msg << "  Detected cycle: ";
+          bool first = true;
+          for (auto it = cycleStart; it != path.end(); ++it) {
+            if (!first) msg << " → ";
+            first = false;
+            msg << *it;
+          }
+          msg << " → " << current << "\n";
+          return true;
+        }
+      }
+      
+      visited.insert(current);
+      path.push_back(current);
+      
+      // Follow dependencies
+      for (size_t idx : cyclicCommands) {
+        const auto& info = localCustomCommands[idx];
+        if (info.DerivationName == current) {
+          for (const std::string& dep : info.Depends) {
+            auto depIt = localCustomCommandOutputs.find(dep);
+            if (depIt != localCustomCommandOutputs.end()) {
+              if (findCycle(depIt->second, visited, path, depth + 1)) {
+                return true;
+              }
+            }
+          }
+          break;
+        }
+      }
+      
+      path.pop_back();
+      visited.erase(current);
+      return false;
+    };
+    
+    std::set<std::string> visited;
+    std::vector<std::string> path;
+    bool foundCycle = false;
+    for (size_t idx : cyclicCommands) {
+      if (!foundCycle) {
+        foundCycle = findCycle(localCustomCommands[idx].DerivationName, visited, path, 0);
+      }
+    }
+    
+    if (!foundCycle) {
+      msg << "  Unable to trace specific cycle (complex interdependencies)\n";
+    }
+    
+    msg << "\nWORKAROUND FOR COMPLEX BUILD SYSTEMS:\n";
+    msg << "The Nix generator has detected circular dependencies in custom commands, which\n";
+    msg << "typically occurs with complex build systems like Zephyr, Linux kernel, etc.\n";
+    msg << "\n";
+    msg << "To work around this issue, you can:\n";
+    msg << "1. Use the Ninja generator instead: cmake -GNinja -DBOARD=native_sim/native/64 .\n";
+    msg << "2. Or set CMAKE_NIX_IGNORE_CIRCULAR_DEPS=ON to bypass this check (experimental)\n";
+    msg << "\n";
+    msg << "GENERAL SUGGESTIONS:\n";
+    msg << "• Check if custom commands have correct INPUT/OUTPUT dependencies\n";
+    msg << "• Verify that generated files are not both input and output of different commands\n";
+    msg << "• Consider breaking complex dependencies into separate steps\n";
+    msg << "• Use add_dependencies() to establish explicit ordering when needed\n";
+    
+    // Check if user wants to bypass this check
+    cmValue ignoreCircular = this->GetCMakeInstance()->GetCacheDefinition("CMAKE_NIX_IGNORE_CIRCULAR_DEPS");
+    if (ignoreCircular && (*ignoreCircular == "ON" || *ignoreCircular == "1" || *ignoreCircular == "YES" || *ignoreCircular == "TRUE")) {
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, 
+        "Circular dependencies detected, but proceeding due to CMAKE_NIX_IGNORE_CIRCULAR_DEPS=ON\n"
+        "This may result in incorrect build order and build failures.\n"
+        + std::to_string(this->CustomCommands.size() - orderedCommands.size()) + 
+        " commands have circular dependencies but will be processed anyway.");
+      
+      // Process all commands regardless of dependencies - append the unprocessed ones to orderedCommands
+      for (size_t i = 0; i < this->CustomCommands.size(); ++i) {
+        bool found = false;
+        for (size_t idx : orderedCommands) {
+          if (idx == i) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          orderedCommands.push_back(i);
+        }
+      }
+      
+      if (this->GetCMakeInstance()->GetDebugOutput()) {
+        std::cerr << "[NIX-DEBUG] Now processing all " << orderedCommands.size() << " custom commands." << std::endl;
+        std::cerr << "[NIX-DEBUG] About to write custom commands to Nix file..." << std::endl;
+      }
+    } else {
+      this->GetCMakeInstance()->IssueMessage(MessageType::FATAL_ERROR, msg.str());
+      return;
+    }
+  }
+  
+  // Write commands in order
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-DEBUG] Writing " << orderedCommands.size() << " custom commands" << std::endl;
+    std::cerr << "[NIX-DEBUG] CustomCommandOutputs has " << this->CustomCommandOutputs.size() << " entries" << std::endl;
+    std::cerr << "[NIX-DEBUG] ObjectFileOutputs has " << this->ObjectFileOutputs.size() << " entries" << std::endl;
+  }
+  for (size_t idx : orderedCommands) {
+    const CustomCommandInfo* info = &localCustomCommands[idx];
+    try {
+      std::string config = "Release";
+      const auto& makefiles = this->GetCMakeInstance()->GetGlobalGenerator()->GetMakefiles();
+      if (!makefiles.empty()) {
+        config = makefiles[0]->GetSafeDefinition("CMAKE_BUILD_TYPE");
+        if (config.empty()) {
+          config = "Release";
+        }
+      }
+      cmNixCustomCommandGenerator ccg(info->Command, info->LocalGen, config, &this->CustomCommandOutputs, &this->ObjectFileOutputs);
+      ccg.Generate(nixFileStream);
+    } catch (const std::bad_alloc& e) {
+      std::ostringstream msg;
+      msg << "Out of memory writing custom command " << info->DerivationName;
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    } catch (const std::system_error& e) {
+      std::ostringstream msg;
+      msg << "System error writing custom command " << info->DerivationName 
+          << ": " << e.what() << " (code: " << e.code() << ")";
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    } catch (const std::runtime_error& e) {
+      std::ostringstream msg;
+      msg << "Runtime error writing custom command " << info->DerivationName << ": " << e.what();
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    } catch (const std::exception& e) {
+      std::ostringstream msg;
+      msg << "Exception writing custom command " << info->DerivationName << ": " << e.what();
+      this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    }
   }
 }
 

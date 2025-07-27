@@ -119,17 +119,6 @@ let
     installPhase = "true";
   };
 
-  custom_build_generated_h_1715 = stdenv.mkDerivation {
-    name = "custom_build_generated_h_1715";
-    buildInputs = [ pkgs.coreutils ];
-    phases = [ "buildPhase" ];
-    buildPhase = ''
-      mkdir -p $out
-      echo #define\ GENERATED\ 1 > generated.h
-      cp generated.h $out/generated.h
-    '';
-  };
-
 # Per-translation-unit derivations
   simple_lib_test_nix_tools_lib_cpp_o = cmakeNixCC {
     name = "lib.o";
@@ -174,6 +163,17 @@ let
     source = "custom_main.cpp";
     compiler = gcc;
     flags = "-O3 -DNDEBUG -std=gnu++17 -Ibuild -std=c++17";
+  };
+
+  custom_build_generated_h_1715 = stdenv.mkDerivation {
+    name = "custom_build_generated_h_1715";
+    buildInputs = [ pkgs.coreutils pkgs.cmake ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      echo #define\ GENERATED\ 1 > generated.h
+      cp generated.h $out/generated.h
+    '';
   };
 
 

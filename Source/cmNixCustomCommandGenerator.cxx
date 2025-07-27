@@ -16,6 +16,7 @@
 #include <set>
 #include <cctype>
 #include <fstream>
+#include <iostream>
 
 cmNixCustomCommandGenerator::cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config,
                                                         const std::map<std::string, std::string>* customCommandOutputs,
@@ -40,6 +41,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   bool needsCoreutils = false;
   bool hasNonEchoCommands = false;
   bool needsPython = false;
+  bool needsCMake = false;
   bool needsSourceAccess = false;
   std::set<std::string> objectFileDeps;
   
@@ -79,6 +81,18 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
           continue;
         }
       }
+      // Check if this command uses cmake
+      if (cmd.find("/cmake") != std::string::npos && cmd.find("/bin/cmake") != std::string::npos) {
+        needsCMake = true;
+      }
+      // Check if this command uses cmake -P (script mode)
+      if (cmd.find("cmake") != std::string::npos && fullCmd.find(" -P ") != std::string::npos) {
+        needsCMake = true;
+        needsSourceAccess = true;  // We'll need the source tree for the script
+        if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
+          std::cout << "[DEBUG] Detected cmake -P in custom command: " << fullCmd << std::endl;
+        }
+      }
       hasNonEchoCommands = true;
       needsCoreutils = true;
     }
@@ -94,12 +108,27 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   if (needsPython) {
     if (!firstInput) nixFileStream << " ";
     nixFileStream << "pkgs.python3";
+    firstInput = false;
+  }
+  if (needsCMake) {
+    if (!firstInput) nixFileStream << " ";
+    nixFileStream << "pkgs.cmake";
   }
   
   // Add dependencies on other custom commands and object files
   // Use expanded depends from ccGen
   std::vector<std::string> depends = ccGen.GetDepends();
   std::set<std::string> uniqueDepends;
+  
+  // Debug: log dependencies if CMAKE_NIX_DEBUG is set
+  if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
+    std::cout << "[DEBUG] Custom command " << this->GetDerivationName() 
+              << " has " << depends.size() << " dependencies:" << std::endl;
+    for (const std::string& dep : depends) {
+      std::cout << "[DEBUG]   - " << dep << std::endl;
+    }
+  }
+  
   for (const std::string& dep : depends) {
     // First check if it's a custom command output
     if (this->CustomCommandOutputs) {
@@ -116,15 +145,49 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     if (this->ObjectFileOutputs) {
       // The dependency might be a relative or absolute path
       std::string depPath = dep;
+      
+      // Check if it's already a full path
       if (!cmSystemTools::FileIsFullPath(depPath)) {
-        // Make it absolute for lookup
-        depPath = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory() + "/" + depPath;
+        // Try relative to current binary directory first
+        std::string fullPath = this->LocalGenerator->GetCurrentBinaryDirectory() + "/" + depPath;
+        if (this->ObjectFileOutputs->find(fullPath) != this->ObjectFileOutputs->end()) {
+          depPath = fullPath;
+        } else {
+          // Try relative to top-level binary directory
+          depPath = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory() + "/" + depPath;
+        }
+      }
+      
+      // Also try without the .c.obj extension - Nix generator uses .o
+      if (this->ObjectFileOutputs->find(depPath) == this->ObjectFileOutputs->end()) {
+        // Replace .c.obj with .o
+        std::string altPath = depPath;
+        size_t pos = altPath.rfind(".c.obj");
+        if (pos != std::string::npos) {
+          altPath = altPath.substr(0, pos) + ".o";
+          // Also try just the basename
+          std::string basename = cmSystemTools::GetFilenameName(altPath);
+          // Look for this basename in all object files
+          for (const auto& obj : *this->ObjectFileOutputs) {
+            if (cmSystemTools::GetFilenameName(obj.first) == basename) {
+              depPath = obj.first;
+              break;
+            }
+          }
+        }
       }
       
       auto it = this->ObjectFileOutputs->find(depPath);
       if (it != this->ObjectFileOutputs->end()) {
         if (uniqueDepends.insert(it->second).second) {
           nixFileStream << " " << it->second;
+        }
+      } else if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
+        std::cout << "[DEBUG] Object file dependency '" << dep 
+                  << "' (full path: '" << depPath << "') not found in ObjectFileOutputs" << std::endl;
+        std::cout << "[DEBUG] Available object files:" << std::endl;
+        for (const auto& obj : *this->ObjectFileOutputs) {
+          std::cout << "[DEBUG]   - " << obj.first << " -> " << obj.second << std::endl;
         }
       }
     }
@@ -155,21 +218,24 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     nixFileStream << "    buildPhase = ''\n";
     nixFileStream << "      mkdir -p $out\n";
     
-    // If we have source access, we may need to change to the source directory
-    // But only if we don't have build artifact dependencies
-    bool needsBuildArtifacts = !objectFileDeps.empty() || !depends.empty();
+    // If we have source access, we need to make the source tree available
     
-    if (needsSourceAccess && !needsBuildArtifacts) {
-      nixFileStream << "      # Change to the source directory unpacked by Nix\n";
-      nixFileStream << "      cd /build/*\n";
-    } else if (needsSourceAccess && needsBuildArtifacts) {
-      // We need both source and build artifacts
-      // Copy source files to current directory instead of changing directory
-      nixFileStream << "      # Copy source files needed by the command\n";
-      nixFileStream << "      # When Nix unpacks src, it creates a subdirectory\n";
+    if (needsSourceAccess) {
+      // When Nix unpacks src, it creates a subdirectory
+      // We need to make the source tree available in the current directory
+      nixFileStream << "      # Make source tree available\n";
+      nixFileStream << "      export UNPACKED_SOURCE_DIR=\"\"\n";
       nixFileStream << "      for dir in /build/*; do\n";
-      nixFileStream << "        if [ -d \"$dir/scripts\" ]; then\n";
-      nixFileStream << "          cp -r \"$dir/scripts\" .\n";
+      nixFileStream << "        if [ -d \"$dir\" ] && [ -f \"$dir/CMakeLists.txt\" ]; then\n";
+      nixFileStream << "          export UNPACKED_SOURCE_DIR=\"$dir\"\n";
+      nixFileStream << "          # Link or copy the entire source tree structure\n";
+      nixFileStream << "          for item in \"$dir\"/*; do\n";
+      nixFileStream << "            if [ -e \"$item\" ]; then\n";
+      nixFileStream << "              ln -s \"$item\" . 2>/dev/null || cp -r \"$item\" .\n";
+      nixFileStream << "            fi\n";
+      nixFileStream << "          done\n";
+      nixFileStream << "          # Also cd to the unpacked directory if it exists\n";
+      nixFileStream << "          cd \"$dir\"\n";
       nixFileStream << "          break\n";
       nixFileStream << "        fi\n";
       nixFileStream << "      done\n";
@@ -223,7 +289,10 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
           if (!depDir.empty()) {
             nixFileStream << "      mkdir -p " << cmOutputConverter::EscapeForShell(depDir, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
           }
-          nixFileStream << "      cp ${" << objDerivName << "} " 
+          // The object file derivation outputs to the root of $out
+          // We need to copy it to the expected location
+          nixFileStream << "      cp ${" << objDerivName << "}/* " 
+                        << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << " 2>/dev/null || cp ${" << objDerivName << "} " 
                         << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
         } else {
         // This is a configuration-time file or source file, not a custom command output
@@ -282,17 +351,22 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       if (cmd.find("/python") != std::string::npos && cmd.find("/bin/python") != std::string::npos) {
         processedCmd = "python3";
       } 
-      // Replace absolute cmake paths with echo for -E echo commands
-      else if (cmd.find("/cmake") != std::string::npos && cmd.find("/bin/cmake") != std::string::npos && 
-               fullCmd.find(" -E echo") != std::string::npos) {
-        // Extract everything after "-E echo" from fullCmd
-        size_t echoPos = fullCmd.find(" -E echo");
-        if (echoPos != std::string::npos) {
-          size_t contentStart = fullCmd.find_first_not_of(" ", echoPos + 8);
-          if (contentStart != std::string::npos) {
-            nixFileStream << "echo " << fullCmd.substr(contentStart) << "\n";
-            continue;
+      // Replace absolute cmake paths
+      else if (cmd.find("/cmake") != std::string::npos && cmd.find("/bin/cmake") != std::string::npos) {
+        // Check if this is a -E echo command
+        if (fullCmd.find(" -E echo") != std::string::npos) {
+          // Extract everything after "-E echo" from fullCmd
+          size_t echoPos = fullCmd.find(" -E echo");
+          if (echoPos != std::string::npos) {
+            size_t contentStart = fullCmd.find_first_not_of(" ", echoPos + 8);
+            if (contentStart != std::string::npos) {
+              nixFileStream << "echo " << fullCmd.substr(contentStart) << "\n";
+              continue;
+            }
           }
+        } else {
+          // For other cmake commands, use cmake from nixpkgs
+          processedCmd = "${pkgs.cmake}/bin/cmake";
         }
       }
       // Handle source paths if needed
@@ -315,14 +389,55 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       std::string args;
       ccGen.AppendArguments(i, args);
       
+      // Reconstruct the full command for parsing
+      std::string fullCmdForParsing = processedCmd + " " + args;
+      
       // Process arguments for output paths and source paths
       std::vector<std::string> argv;
-      cmSystemTools::ParseUnixCommandLine(fullCmd.c_str(), argv);
+      cmSystemTools::ParseUnixCommandLine(fullCmdForParsing.c_str(), argv);
       
       // Skip the first element (command) and process the rest
+      bool nextArgIsScript = false;
       for (size_t j = 1; j < argv.size(); ++j) {
-        const std::string& arg = argv[j];
+        std::string arg = argv[j];
         nixFileStream << " ";
+        
+        // Check if previous arg was -P (cmake script argument)
+        if (nextArgIsScript && !cmSystemTools::FileIsFullPath(arg)) {
+          // This is a relative path to a CMake script that needs to be resolved
+          // In the Nix build environment, we need to use the absolute path
+          // Look for the script in the Zephyr base directory if available
+          std::string zephyrBase;
+          for (size_t k = 1; k < argv.size(); ++k) {
+            if (argv[k].find("-DZEPHYR_BASE=") == 0) {
+              zephyrBase = argv[k].substr(14); // Skip "-DZEPHYR_BASE="
+              break;
+            }
+          }
+          
+          if (!zephyrBase.empty()) {
+            // Use the Zephyr base directory to resolve the script
+            std::string fullPath = zephyrBase + "/" + arg;
+            if (cmSystemTools::FileExists(fullPath)) {
+              arg = fullPath;
+              if (this->LocalGenerator->GetMakefile()->IsOn("CMAKE_NIX_DEBUG")) {
+                std::cout << "[DEBUG] Resolved script path to: " << arg << std::endl;
+              }
+            }
+          }
+          nextArgIsScript = false;
+        } else if (arg == "-P") {
+          nextArgIsScript = true;
+        }
+        
+        // Check if this is an object file dependency that needs translation
+        if (arg.find(".c.obj") != std::string::npos) {
+          // Replace .c.obj with .o
+          size_t pos = arg.rfind(".c.obj");
+          if (pos != std::string::npos) {
+            arg = arg.substr(0, pos) + ".o";
+          }
+        }
         
         bool isOutputPath = false;
         bool isSourcePath = false;
@@ -355,6 +470,9 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         // Shell operators don't need escaping
         if (arg == ">" || arg == ">>" || arg == "<" || arg == "|" || arg == "&&" || arg == "||" || arg == ";" || arg == "&") {
           nixFileStream << arg;
+        } else if (arg.find("$UNPACKED_SOURCE_DIR/") == 0) {
+          // Don't escape arguments that contain shell variables
+          nixFileStream << arg;
         } else {
           nixFileStream << cmOutputConverter::EscapeForShell((isOutputPath || isSourcePath) ? relativeArg : arg, cmOutputConverter::Shell_Flag_IsUnix);
         }
@@ -375,9 +493,15 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         nixFileStream << "      mkdir -p $out/" << cmOutputConverter::EscapeForShell(outputDir, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
       }
       
-      // Copy file to proper location - the file should be at the relative path we used in the command
-      nixFileStream << "      cp " << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) 
+      // Copy file to proper location
+      // If we cd'd to the unpacked source directory, the output might be there
+      nixFileStream << "      if [ -f " << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) << " ]; then\n";
+      nixFileStream << "        cp " << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) 
                     << " $out/" << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
+      nixFileStream << "      elif [ -f " << cmOutputConverter::EscapeForShell(cmSystemTools::GetFilenameName(output), cmOutputConverter::Shell_Flag_IsUnix) << " ]; then\n";
+      nixFileStream << "        cp " << cmOutputConverter::EscapeForShell(cmSystemTools::GetFilenameName(output), cmOutputConverter::Shell_Flag_IsUnix) 
+                    << " $out/" << cmOutputConverter::EscapeForShell(relativePath, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
+      nixFileStream << "      fi\n";
     }
 
     nixFileStream << "    '';\n";
