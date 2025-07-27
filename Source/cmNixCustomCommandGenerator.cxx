@@ -234,50 +234,30 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     }
     
     if (!sourceDir.empty() && sourceDir != "/") {
-      nixFileStream << "    src = " << sourceDir << ";\n";
+      nixFileStream << "    src = " << sourceDir << "/.;\n";
     }
   }
   
   // For custom commands, we don't need to copy the entire source tree
   // Only include the specific files we need
   if (hasNonEchoCommands) {
-    nixFileStream << "    phases = [ \"buildPhase\" ];\n";
+    if (needsSourceAccess) {
+      // When we need source access, include unpackPhase to properly handle the src
+      nixFileStream << "    phases = [ \"unpackPhase\" \"buildPhase\" ];\n";
+    } else {
+      nixFileStream << "    phases = [ \"buildPhase\" ];\n";
+    }
     nixFileStream << "    buildPhase = ''\n";
     nixFileStream << "      mkdir -p $out\n";
     
     // If we have source access, we need to make the source tree available
     
     if (needsSourceAccess) {
-      // When Nix unpacks src, it creates a subdirectory
-      // We need to make the source tree available in the current directory
-      nixFileStream << "      # Make source tree available\n";
-      nixFileStream << "      export UNPACKED_SOURCE_DIR=\"\"\n";
-      nixFileStream << "      for dir in /build/*; do\n";
-      nixFileStream << "        if [ -d \"$dir\" ]; then\n";
-      nixFileStream << "          # Check if this directory contains the expected files\n";
-      nixFileStream << "          # First check the directory itself\n";
-      nixFileStream << "          if [ -f \"$dir/CMakeLists.txt\" ] || [ -f \"$dir/cmake/gen_version_h.cmake\" ]; then\n";
-      nixFileStream << "            export UNPACKED_SOURCE_DIR=\"$dir\"\n";
-      nixFileStream << "            # Link or copy the entire source tree structure\n";
-      nixFileStream << "            for item in \"$dir\"/*; do\n";
-      nixFileStream << "              if [ -e \"$item\" ]; then\n";
-      nixFileStream << "                ln -s \"$item\" . 2>/dev/null || cp -r \"$item\" .\n";
-      nixFileStream << "              fi\n";
-      nixFileStream << "            done\n";
-      nixFileStream << "            # Also cd to the unpacked directory if it exists\n";
-      nixFileStream << "            cd \"$dir\"\n";
-      nixFileStream << "            break\n";
-      nixFileStream << "          fi\n";
-      nixFileStream << "        fi\n";
-      nixFileStream << "      done\n";
-      nixFileStream << "      # Debug: show current directory and contents\n";
-      nixFileStream << "      echo \"Current directory: $(pwd)\"\n";
+      // The unpackPhase has already handled unpacking, and we should be in the source directory
+      nixFileStream << "      # Source tree was unpacked by unpackPhase\n";
+      nixFileStream << "      echo \"Current directory after unpack: $(pwd)\"\n";
       nixFileStream << "      echo \"Contents of current directory:\"\n";
-      nixFileStream << "      ls -la\n";
-      nixFileStream << "      if [ -n \"$UNPACKED_SOURCE_DIR\" ]; then\n";
-      nixFileStream << "        echo \"Contents of unpacked source dir: $UNPACKED_SOURCE_DIR\"\n";
-      nixFileStream << "        ls -la \"$UNPACKED_SOURCE_DIR\" | head -10\n";
-      nixFileStream << "      fi\n";
+      nixFileStream << "      ls -la | head -10\n";
       nixFileStream << "      echo \"Looking for cmake/gen_version_h.cmake:\"\n";
       nixFileStream << "      ls -la cmake/gen_version_h.cmake || echo \"File not found\"\n";
     }

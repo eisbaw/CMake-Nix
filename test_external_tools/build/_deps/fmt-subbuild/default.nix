@@ -123,26 +123,16 @@ let
   custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592 = stdenv.mkDerivation {
     name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592";
     buildInputs = [ pkgs.coreutils pkgs.cmake ];
-    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild;
-    phases = [ "buildPhase" ];
+    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/.;
+    phases = [ "unpackPhase" "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      # Make source tree available
-      export UNPACKED_SOURCE_DIR=""
-      for dir in /build/*; do
-        if [ -d "$dir" ] && [ -f "$dir/CMakeLists.txt" ]; then
-          export UNPACKED_SOURCE_DIR="$dir"
-          # Link or copy the entire source tree structure
-          for item in "$dir"/*; do
-            if [ -e "$item" ]; then
-              ln -s "$item" . 2>/dev/null || cp -r "$item" .
-            fi
-          done
-          # Also cd to the unpacked directory if it exists
-          cd "$dir"
-          break
-        fi
-      done
+      # Source tree was unpacked by unpackPhase
+      echo "Current directory after unpack: $(pwd)"
+      echo "Contents of current directory:"
+      ls -la | head -10
+      echo "Looking for cmake/gen_version_h.cmake:"
+      ls -la cmake/gen_version_h.cmake || echo "File not found"
       ${pkgs.cmake}/bin/cmake -Dcfgdir= -P fmt-populate-prefix/tmp/fmt-populate-mkdirs.cmake
       ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
@@ -157,26 +147,16 @@ let
   custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882 = stdenv.mkDerivation {
     name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882";
     buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592 ];
-    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild;
-    phases = [ "buildPhase" ];
+    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/.;
+    phases = [ "unpackPhase" "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      # Make source tree available
-      export UNPACKED_SOURCE_DIR=""
-      for dir in /build/*; do
-        if [ -d "$dir" ] && [ -f "$dir/CMakeLists.txt" ]; then
-          export UNPACKED_SOURCE_DIR="$dir"
-          # Link or copy the entire source tree structure
-          for item in "$dir"/*; do
-            if [ -e "$item" ]; then
-              ln -s "$item" . 2>/dev/null || cp -r "$item" .
-            fi
-          done
-          # Also cd to the unpacked directory if it exists
-          cd "$dir"
-          break
-        fi
-      done
+      # Source tree was unpacked by unpackPhase
+      echo "Current directory after unpack: $(pwd)"
+      echo "Contents of current directory:"
+      ls -la | head -10
+      echo "Looking for cmake/gen_version_h.cmake:"
+      ls -la cmake/gen_version_h.cmake || echo "File not found"
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
       cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-gitinfo.txt <<'EOF'
 # This is a generated file and its contents are an internal implementation detail.
@@ -194,7 +174,6 @@ recurse_submodules=--recursive
 submodules=
 CMP0097=NEW
       
-
 EOF
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir .
       ${pkgs.cmake}/bin/cmake -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P fmt-populate-prefix/tmp/fmt-populate-gitclone.cmake
@@ -211,26 +190,16 @@ EOF
   custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_update_7392 = stdenv.mkDerivation {
     name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_update_7392";
     buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882 ];
-    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild;
-    phases = [ "buildPhase" ];
+    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/.;
+    phases = [ "unpackPhase" "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      # Make source tree available
-      export UNPACKED_SOURCE_DIR=""
-      for dir in /build/*; do
-        if [ -d "$dir" ] && [ -f "$dir/CMakeLists.txt" ]; then
-          export UNPACKED_SOURCE_DIR="$dir"
-          # Link or copy the entire source tree structure
-          for item in "$dir"/*; do
-            if [ -e "$item" ]; then
-              ln -s "$item" . 2>/dev/null || cp -r "$item" .
-            fi
-          done
-          # Also cd to the unpacked directory if it exists
-          cd "$dir"
-          break
-        fi
-      done
+      # Source tree was unpacked by unpackPhase
+      echo "Current directory after unpack: $(pwd)"
+      echo "Contents of current directory:"
+      ls -la | head -10
+      echo "Looking for cmake/gen_version_h.cmake:"
+      ls -la cmake/gen_version_h.cmake || echo "File not found"
       mkdir -p fmt-populate-prefix/tmp
       cat > fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake <<'EOF'
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
@@ -550,7 +519,6 @@ if(init_submodules)
     ${maybe_show_command}
   )
 endif()
-
 EOF
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
       cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update-info.txt <<'EOF'
@@ -561,7 +529,6 @@ EOF
 command (connected)=/home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake;-Dcan_fetch=YES;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake
 command (disconnected)=/home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake;-Dcan_fetch=NO;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake
 work_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-src
-
 EOF
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download .
       ${pkgs.cmake}/bin/cmake -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P fmt-populate-prefix/tmp/fmt-populate-gitupdate.cmake
@@ -588,7 +555,6 @@ EOF
 
 command=
 work_dir=
-
 EOF
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_update_7392}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-update .
       ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch
@@ -610,7 +576,6 @@ EOF
       mkdir -p fmt-populate-prefix/tmp
       cat > fmt-populate-prefix/tmp/fmt-populate-cfgcmd.txt <<'EOF'
 cmd=''
-
 EOF
       cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch_9560}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch .
       ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
