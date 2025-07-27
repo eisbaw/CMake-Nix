@@ -10,6 +10,8 @@
 #include <functional>
 #include <queue>
 #include <cctype>
+#include <chrono>
+#include <iomanip>
 #include <system_error>
 #include <exception>
 #include <fstream>
@@ -66,6 +68,8 @@ cmDocumentationEntry cmGlobalNixGenerator::GetDocumentation()
 
 void cmGlobalNixGenerator::Generate()
 {
+  ProfileTimer timer(this, "cmGlobalNixGenerator::Generate");
+  
   if (this->GetCMakeInstance()->GetDebugOutput()) {
     std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Generate() started" << std::endl;
   }
@@ -91,17 +95,26 @@ void cmGlobalNixGenerator::Generate()
   this->CheckForExternalProjectUsage();
   
   // First call the parent Generate to set up targets
-  this->cmGlobalGenerator::Generate();
+  {
+    ProfileTimer parentTimer(this, "cmGlobalGenerator::Generate (parent)");
+    this->cmGlobalGenerator::Generate();
+  }
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
     std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Parent Generate() completed" << std::endl;
   }
   
   // Build dependency graph for transitive dependency resolution
-  this->BuildDependencyGraph();
+  {
+    ProfileTimer graphTimer(this, "BuildDependencyGraph");
+    this->BuildDependencyGraph();
+  }
   
   // Generate our Nix output
-  this->WriteNixFile();
+  {
+    ProfileTimer writeTimer(this, "WriteNixFile");
+    this->WriteNixFile();
+  }
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
     std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ << " Generate() completed" << std::endl;
@@ -341,6 +354,8 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
 
 void cmGlobalNixGenerator::WriteNixFile()
 {
+  ProfileTimer timer(this, "cmGlobalNixGenerator::WriteNixFile");
+  
   // Write to binary directory to support out-of-source builds
   std::string nixFile = this->GetCMakeInstance()->GetHomeOutputDirectory();
   nixFile += "/default.nix";
@@ -375,7 +390,10 @@ void cmGlobalNixGenerator::WriteNixFile()
   writer.StartLetBinding();
   
   // Write helper functions for DRY code generation
-  this->WriteNixHelperFunctions(writer);
+  {
+    ProfileTimer helperTimer(this, "WriteNixHelperFunctions");
+    this->WriteNixHelperFunctions(writer);
+  }
 
   // Collect all custom commands with proper thread safety
   // Use temporary collections to avoid race conditions
@@ -384,7 +402,9 @@ void cmGlobalNixGenerator::WriteNixFile()
   std::set<std::string> processedDerivationNames;  // Track already processed derivation names
   
   // First pass: Collect all custom commands into temporary collections
-  for (auto const& lg : this->LocalGenerators) {
+  {
+    ProfileTimer collectTimer(this, "CollectCustomCommands");
+    for (auto const& lg : this->LocalGenerators) {
     for (auto const& target : lg->GetGeneratorTargets()) {
       if (this->GetCMakeInstance()->GetDebugOutput()) {
         std::cerr << "[NIX-DEBUG] Checking target " << target->GetName() << " for custom commands" << std::endl;
@@ -444,6 +464,7 @@ void cmGlobalNixGenerator::WriteNixFile()
       }
     }
   }
+  } // End ProfileTimer collectTimer
   
   // Atomically replace the member collections with the temporary ones
   {
@@ -760,16 +781,28 @@ void cmGlobalNixGenerator::WriteNixFile()
   this->CollectInstallTargets();
 
   // Write external header derivations first (before object derivations that depend on them)
-  this->WriteExternalHeaderDerivations(nixFileStream);
+  {
+    ProfileTimer headerTimer(this, "WriteExternalHeaderDerivations");
+    this->WriteExternalHeaderDerivations(nixFileStream);
+  }
 
   // Write per-translation-unit derivations
-  this->WritePerTranslationUnitDerivations(nixFileStream);
+  {
+    ProfileTimer unitTimer(this, "WritePerTranslationUnitDerivations");
+    this->WritePerTranslationUnitDerivations(nixFileStream);
+  }
   
   // Write linking derivations
-  this->WriteLinkingDerivations(nixFileStream);
+  {
+    ProfileTimer linkTimer(this, "WriteLinkingDerivations");
+    this->WriteLinkingDerivations(nixFileStream);
+  }
   
   // Write install derivations in the let block  
-  this->WriteInstallRules(nixFileStream);
+  {
+    ProfileTimer installTimer(this, "WriteInstallRules");
+    this->WriteInstallRules(nixFileStream);
+  }
   
   // End let binding and start attribute set for outputs
   writer.EndLetBinding();
@@ -861,8 +894,13 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
           std::string const& lang = source->GetLanguage();
           if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || 
               lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
+            // Resolve symlinks to ensure the actual file is available in Nix store
+            std::string resolvedSourcePath = source->GetFullPath();
+            if (cmSystemTools::FileIsSymlink(resolvedSourcePath)) {
+              resolvedSourcePath = cmSystemTools::GetRealPath(resolvedSourcePath);
+            }
             std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
-            this->AddObjectDerivation(target->GetName(), this->GetDerivationName(target->GetName(), source->GetFullPath()), source->GetFullPath(), targetGen->GetObjectFileName(source), lang, dependencies);
+            this->AddObjectDerivation(target->GetName(), this->GetDerivationName(target->GetName(), resolvedSourcePath), resolvedSourcePath, targetGen->GetObjectFileName(source), lang, dependencies);
             this->WriteObjectDerivation(nixFileStream, target.get(), source);
           }
         }
@@ -966,9 +1004,16 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   cmGeneratedFileStream& nixFileStream, cmGeneratorTarget* target, 
   const cmSourceFile* source)
 {
+  // Don't profile individual object derivations as there can be many
+  // This would create too much output. Only profile if explicitly requested.
   cmNixWriter writer(nixFileStream);
   
   std::string sourceFile = source->GetFullPath();
+  
+  // Resolve symlinks to ensure the actual file is available in Nix store
+  if (cmSystemTools::FileIsSymlink(sourceFile)) {
+    sourceFile = cmSystemTools::GetRealPath(sourceFile);
+  }
   
   if (this->GetCMakeInstance()->GetDebugOutput()) {
     std::cerr << "[NIX-DEBUG] WriteObjectDerivation for source: " << sourceFile 
@@ -1767,9 +1812,13 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || 
         lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
       // Exclude PCH source files from linking
-      if (pchSources.find(source->GetFullPath()) == pchSources.end()) {
+      std::string resolvedSourcePath = source->GetFullPath();
+      if (cmSystemTools::FileIsSymlink(resolvedSourcePath)) {
+        resolvedSourcePath = cmSystemTools::GetRealPath(resolvedSourcePath);
+      }
+      if (pchSources.find(resolvedSourcePath) == pchSources.end()) {
         std::string objDerivName = this->GetDerivationName(
-          target->GetName(), source->GetFullPath());
+          target->GetName(), resolvedSourcePath);
         if (!firstObject) nixFileStream << " ";
         nixFileStream << objDerivName;
         firstObject = false;
@@ -2910,3 +2959,34 @@ void cmGlobalNixGenerator::GenerateSkeletonPackageFiles()
     }
   }
 } 
+
+// Profiling support implementation
+bool cmGlobalNixGenerator::GetProfilingEnabled() const
+{
+  // Check for CMAKE_NIX_PROFILE environment variable
+  const char* profile = std::getenv("CMAKE_NIX_PROFILE");
+  return profile != nullptr && std::string(profile) == "1";
+}
+
+cmGlobalNixGenerator::ProfileTimer::ProfileTimer(
+  const cmGlobalNixGenerator* gen, const std::string& name)
+  : Generator(gen), Name(name)
+{
+  if (Generator->GetProfilingEnabled()) {
+    StartTime = std::chrono::steady_clock::now();
+    std::cerr << "[NIX-PROFILE] START: " << Name << std::endl;
+  }
+}
+
+cmGlobalNixGenerator::ProfileTimer::~ProfileTimer()
+{
+  if (Generator->GetProfilingEnabled()) {
+    auto endTime = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+      endTime - StartTime);
+    double ms = duration.count() / 1000.0;
+    std::cerr << "[NIX-PROFILE] END: " << Name 
+              << " (duration: " << std::fixed << std::setprecision(3) 
+              << ms << " ms)" << std::endl;
+  }
+}

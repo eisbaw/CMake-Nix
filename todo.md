@@ -5,6 +5,9 @@ Run just dev but log stdout and stderr to a file, dev.log. Run grep -C10 on this
 
 Add profiling timing traces to Nix backend C++ source code. Only emit when a debug profiling flag is provided to cmake.
 
+Use the timestamps of the configure-time profiling traces, to determine hotspots. Then seek to optimize the C++ code of our Nix generator.
+
+
 
 # Active TODO items:
 

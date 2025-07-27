@@ -120,128 +120,62 @@ let
   };
 
 # Per-translation-unit derivations
-  benchmark_lib_generated_source1_cpp_o = cmakeNixCC {
-    name = "source1.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source1.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_lib_generated_source10_cpp_o = cmakeNixCC {
-    name = "source10.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source10.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_lib_generated_source2_cpp_o = cmakeNixCC {
-    name = "source2.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source2.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_lib_generated_source3_cpp_o = cmakeNixCC {
-    name = "source3.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source3.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_lib_generated_source4_cpp_o = cmakeNixCC {
-    name = "source4.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source4.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_lib_generated_source5_cpp_o = cmakeNixCC {
-    name = "source5.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source5.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_lib_generated_source6_cpp_o = cmakeNixCC {
-    name = "source6.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source6.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_lib_generated_source7_cpp_o = cmakeNixCC {
-    name = "source7.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source7.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_lib_generated_source8_cpp_o = cmakeNixCC {
-    name = "source8.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source8.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_lib_generated_source9_cpp_o = cmakeNixCC {
-    name = "source9.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-nix/generated/source9.cpp";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
-  };
-
-  benchmark_app_build_nix_main_cpp_o = cmakeNixCC {
+  calculator_test_multifile_main_c_o = cmakeNixCC {
     name = "main.o";
     src = ./..;
     buildInputs = [ gcc ];
-    source = "build-nix/main.cpp";
+    source = "main.c";
     compiler = gcc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
+    flags = "-O3 -DNDEBUG";
+  };
+
+  calculator_test_multifile_math_c_o = cmakeNixCC {
+    name = "math.o";
+    src = ./..;
+    buildInputs = [ gcc ];
+    source = "math.c";
+    compiler = gcc;
+    flags = "-O3 -DNDEBUG";
+  };
+
+  mathlib_test_multifile_math_c_o = cmakeNixCC {
+    name = "math.o";
+    src = ./..;
+    buildInputs = [ gcc ];
+    source = "math.c";
+    compiler = gcc;
+    flags = "-O3 -DNDEBUG";
+  };
+
+  mathlib_test_multifile_utils_c_o = cmakeNixCC {
+    name = "utils.o";
+    src = ./..;
+    buildInputs = [ gcc ];
+    source = "utils.c";
+    compiler = gcc;
+    flags = "-O3 -DNDEBUG";
   };
 
 
   # Linking derivations
-  link_benchmark_lib = cmakeNixLD {
-    name = "benchmark_lib";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ benchmark_lib_generated_source1_cpp_o benchmark_lib_generated_source10_cpp_o benchmark_lib_generated_source2_cpp_o benchmark_lib_generated_source3_cpp_o benchmark_lib_generated_source4_cpp_o benchmark_lib_generated_source5_cpp_o benchmark_lib_generated_source6_cpp_o benchmark_lib_generated_source7_cpp_o benchmark_lib_generated_source8_cpp_o benchmark_lib_generated_source9_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-  };
-
-  link_benchmark_app = cmakeNixLD {
-    name = "benchmark_app";
+  link_calculator = cmakeNixLD {
+    name = "calculator";
     type = "executable";
     buildInputs = [ gcc ];
-    objects = [ benchmark_app_build_nix_main_cpp_o ];
+    objects = [ calculator_test_multifile_main_c_o calculator_test_multifile_math_c_o ];
     compiler = gcc;
-    compilerCommand = "g++";
-    flags = "${link_benchmark_lib}";
+  };
+
+  link_mathlib = cmakeNixLD {
+    name = "mathlib";
+    type = "static";
+    buildInputs = [ gcc ];
+    objects = [ mathlib_test_multifile_math_c_o mathlib_test_multifile_utils_c_o ];
+    compiler = gcc;
   };
 
 in
 {
-  "benchmark_lib" = link_benchmark_lib;
-  "benchmark_app" = link_benchmark_app;
+  "calculator" = link_calculator;
+  "mathlib" = link_mathlib;
 }

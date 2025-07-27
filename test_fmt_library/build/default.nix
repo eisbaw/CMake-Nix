@@ -120,74 +120,27 @@ let
   };
 
 # Per-translation-unit derivations
-  config_test_build_test_config_test_cpp_o = cmakeNixCC {
-    name = "config_test.o";
+  fmt_example_test_fmt_library_main_cpp_o = cmakeNixCC {
+    name = "main.o";
     src = ./..;
     buildInputs = [ gcc ];
-    source = "build-test/config_test.cpp";
+    source = "main.cpp";
     compiler = gcc;
-    flags = "-O2 -g -DNDEBUG -std=gnu++17 -DCMAKE_BUILD_TYPE_RELWITHDEBINFO -std=c++17";
-  };
-
-  opt_lib_build_test_config_test_cpp_o = cmakeNixCC {
-    name = "config_test.o";
-    src = ./..;
-    buildInputs = [ gcc ];
-    source = "build-test/config_test.cpp";
-    compiler = gcc;
-    flags = "-O2 -g -DNDEBUG -std=gnu++17 -std=c++17";
+    flags = "-O3 -DNDEBUG";
   };
 
 
   # Linking derivations
-  link_config_test = cmakeNixLD {
-    name = "config_test";
+  link_fmt_example = cmakeNixLD {
+    name = "fmt_example";
     type = "executable";
     buildInputs = [ gcc ];
-    objects = [ config_test_build_test_config_test_cpp_o ];
+    objects = [ fmt_example_test_fmt_library_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-  };
-
-  link_opt_lib = cmakeNixLD {
-    name = "opt_lib";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ opt_lib_build_test_config_test_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-  };
-
-
-  # Install derivations
-  link_config_test_install = stdenv.mkDerivation {
-    name = "config_test-install";
-    src = link_config_test;
-    dontUnpack = true;
-    dontBuild = true;
-    dontConfigure = true;
-    installPhase = ''
-      mkdir -p $out/bin/RelWithDebInfo
-      cp $src $out/bin/RelWithDebInfo/config_test
-    '';
-  };
-
-  link_opt_lib_install = stdenv.mkDerivation {
-    name = "opt_lib-install";
-    src = link_opt_lib;
-    dontUnpack = true;
-    dontBuild = true;
-    dontConfigure = true;
-    installPhase = ''
-      mkdir -p $out/lib/RelWithDebInfo
-      cp $src $out/lib/RelWithDebInfo/libopt_lib.a
-    '';
   };
 
 in
 {
-  "config_test" = link_config_test;
-  "opt_lib" = link_opt_lib;
-  "config_test_install" = link_config_test_install;
-  "opt_lib_install" = link_opt_lib_install;
+  "fmt_example" = link_fmt_example;
 }

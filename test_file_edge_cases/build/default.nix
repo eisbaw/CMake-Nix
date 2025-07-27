@@ -174,11 +174,11 @@ let
     flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
   };
 
-  test_symlinks_test_file_edge_cases_symlinked_source_cpp_o = cmakeNixCC {
+  test_symlinks_test_file_edge_cases_special_chars_cpp_o = cmakeNixCC {
     name = "symlinked_source.o";
     src = ./..;
     buildInputs = [ gcc ];
-    source = "symlinked_source.cpp";
+    source = "special_chars.cpp";
     compiler = gcc;
     flags = "-O3 -DNDEBUG -std=gnu++17 -std=c++17";
   };
@@ -270,7 +270,7 @@ let
     name = "test_symlinks";
     type = "executable";
     buildInputs = [ gcc ];
-    objects = [ test_symlinks_test_file_edge_cases_symlinked_source_cpp_o ];
+    objects = [ test_symlinks_test_file_edge_cases_special_chars_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
   };

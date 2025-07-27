@@ -4,6 +4,7 @@
 
 #include "cmConfigure.h" // IWYU pragma: keep
 
+#include <chrono>
 #include <iosfwd>
 #include <map>
 #include <memory>
@@ -240,6 +241,19 @@ protected:
   std::string GetInstallIncludeDir() const { return "include"; }
 
 private:
+  // Profiling support
+  bool GetProfilingEnabled() const;
+  
+  // Simple profiling timer class
+  class ProfileTimer {
+  public:
+    ProfileTimer(const cmGlobalNixGenerator* gen, const std::string& name);
+    ~ProfileTimer();
+  private:
+    const cmGlobalNixGenerator* Generator;
+    std::string Name;
+    std::chrono::steady_clock::time_point StartTime;
+  };
   
   // Compiler resolution utility
   mutable std::unique_ptr<cmNixCompilerResolver> CompilerResolver;
