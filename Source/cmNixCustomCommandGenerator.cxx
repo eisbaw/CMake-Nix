@@ -11,8 +11,10 @@
 #include "cmSystemTools.h"
 #include "cmOutputConverter.h"
 #include "cmake.h"
+#include "cmNixPathUtils.h"
 #include <set>
 #include <cctype>
+#include <fstream>
 
 cmNixCustomCommandGenerator::cmNixCustomCommandGenerator(cmCustomCommand const* cc, cmLocalGenerator* lg, std::string const& config,
                                                         const std::map<std::string, std::string>* customCommandOutputs)
@@ -31,11 +33,16 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   // Check if we need any build inputs
   bool needsCoreutils = false;
   bool hasNonEchoCommands = false;
+  bool needsPython = false;
   
   // Analyze commands to determine what tools we need
   for (const auto& commandLine : this->CustomCommand->GetCommandLines()) {
     if (!commandLine.empty()) {
       const std::string& cmd = commandLine[0];
+      // Check if this command uses Python
+      if (cmd.find("/python") != std::string::npos || cmd.find("python3") != std::string::npos) {
+        needsPython = true;
+      }
       // Check if this is a cmake -E echo command with redirection
       if (commandLine.size() >= 3 && cmd.find("cmake") != std::string::npos && 
           commandLine[1] == "-E" && commandLine[2] == "echo") {
@@ -58,31 +65,30 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   
   // Only include necessary build inputs
   nixFileStream << "    buildInputs = [";
+  bool firstInput = true;
   if (needsCoreutils) {
     nixFileStream << " pkgs.coreutils";
+    firstInput = false;
+  }
+  if (needsPython) {
+    if (!firstInput) nixFileStream << " ";
+    nixFileStream << "pkgs.python3";
   }
   
   // Add dependencies on other custom commands
   std::vector<std::string> depends = this->GetDepends();
   std::set<std::string> uniqueDepends;
   for (const std::string& dep : depends) {
-    // Look up the actual derivation name from the CustomCommandOutputs map
-    std::string depDerivName;
+    // Only include custom command outputs as buildInputs
     if (this->CustomCommandOutputs) {
       auto it = this->CustomCommandOutputs->find(dep);
       if (it != this->CustomCommandOutputs->end()) {
-        depDerivName = it->second;
-      } else {
-        // Fall back to generating a name
-        depDerivName = this->GetDerivationNameForPath(dep);
+        if (uniqueDepends.insert(it->second).second) {
+          nixFileStream << " " << it->second;
+        }
       }
-    } else {
-      // No map provided, generate a name
-      depDerivName = this->GetDerivationNameForPath(dep);
-    }
-    
-    if (uniqueDepends.insert(depDerivName).second) {
-      nixFileStream << " " << depDerivName;
+      // If it's not a custom command output, it's a configuration-time file
+      // and doesn't need to be in buildInputs
     }
   }
   
@@ -95,21 +101,17 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     nixFileStream << "    buildPhase = ''\n";
     nixFileStream << "      mkdir -p $out\n";
     
-    // Copy dependent files from other custom command outputs
+    // Copy dependent files from other custom command outputs or configuration-time files
     for (const std::string& dep : depends) {
-      // Look up the actual derivation name from the CustomCommandOutputs map
+      // Check if this dependency is a custom command output
+      bool isCustomCommandOutput = false;
       std::string depDerivName;
       if (this->CustomCommandOutputs) {
         auto it = this->CustomCommandOutputs->find(dep);
         if (it != this->CustomCommandOutputs->end()) {
           depDerivName = it->second;
-        } else {
-          // Fall back to generating a name
-          depDerivName = this->GetDerivationNameForPath(dep);
+          isCustomCommandOutput = true;
         }
-      } else {
-        // No map provided, generate a name
-        depDerivName = this->GetDerivationNameForPath(dep);
       }
       
       // For multi-output custom commands, we need to use the relative path from the build directory
@@ -119,9 +121,39 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         depPath = cmSystemTools::RelativePath(buildDir, dep);
       }
       
-      // SECURITY FIX: Escape the path to prevent shell injection
-      nixFileStream << "      cp ${" << depDerivName << "}/" 
-                    << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << " .\n";
+      if (isCustomCommandOutput) {
+        // Copy from custom command output derivation
+        // SECURITY FIX: Escape the path to prevent shell injection
+        nixFileStream << "      cp ${" << depDerivName << "}/" 
+                      << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << " .\n";
+      } else {
+        // This is a configuration-time file or source file, not a custom command output
+        // Check if it's a configuration-time generated file that needs to be embedded
+        if (cmSystemTools::FileIsFullPath(dep)) {
+          std::string buildDir = this->LocalGenerator->GetCurrentBinaryDirectory();
+          std::string topBuildDir = this->LocalGenerator->GetGlobalGenerator()->GetCMakeInstance()->GetHomeOutputDirectory();
+          std::string relToBuild = cmSystemTools::RelativePath(topBuildDir, dep);
+          
+          // If it's in the build directory and exists, embed it
+          if (!cmNixPathUtils::IsPathOutsideTree(relToBuild) && cmSystemTools::FileExists(dep)) {
+            // Read and embed the file content
+            cmSystemTools::ConvertToUnixSlashes(relToBuild);
+            std::string destDir = cmSystemTools::GetFilenamePath(relToBuild);
+            if (!destDir.empty()) {
+              nixFileStream << "      mkdir -p " << cmOutputConverter::EscapeForShell(destDir, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
+            }
+            
+            // Read the file and write it
+            std::ifstream inFile(dep, std::ios::binary);
+            if (inFile) {
+              std::string content((std::istreambuf_iterator<char>(inFile)), 
+                                  std::istreambuf_iterator<char>());
+              nixFileStream << "      cat > " << cmOutputConverter::EscapeForShell(relToBuild, cmOutputConverter::Shell_Flag_IsUnix) 
+                           << " <<'EOF'\n" << content << "\nEOF\n";
+            }
+          }
+        }
+      }
     }
     
     // Execute commands with proper shell handling
@@ -164,6 +196,9 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         // Handle shell operators properly
         if (arg == ">" || arg == ">>" || arg == "<" || arg == "|" || arg == "&&" || arg == "||" || arg == ";" || arg == "&") {
           nixFileStream << arg;
+        } else if (arg.find("/python") != std::string::npos && arg.find("/bin/python") != std::string::npos) {
+          // Replace absolute python paths with Nix-provided Python
+          nixFileStream << "python3";
         } else if (arg.find("/cmake") != std::string::npos && arg.find("/bin/cmake") != std::string::npos) {
           // Replace absolute cmake paths with echo for -E echo commands
           if (commandLine.size() >= 3 && commandLine[1] == "-E" && commandLine[2] == "echo") {
