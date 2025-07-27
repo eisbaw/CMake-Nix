@@ -797,6 +797,38 @@ DONE 2. **Code Duplication in cmNixTargetGenerator.cxx** (2025-01-27):
 DONE 3. **Large Hardcoded Mapping in cmNixPackageMapper**:
    - InitializeMappings() contains 100+ hardcoded entries
    - Should be refactored to load from configuration file
+
+### Code Quality Issues Found (2025-07-27):
+
+4. **Debug Output Using std::cerr Instead of GetDebugOutput()**:
+   - cmNixCustomCommandGenerator.cxx: 5 instances of std::cerr for debug output
+   - cmNixTargetGenerator.cxx: 22 instances of std::cerr for debug output
+   - Should use GetDebugOutput() and IssueMessage like other parts of the code
+   - This inconsistency makes debug output control unreliable
+
+5. **Missing const Correctness**:
+   - Multiple getter methods return std::string instead of const std::string&
+   - Local variables that could be const are not marked as const
+   - Example: GetCompilerId(), GetCompilerPath() methods could return const references
+
+### Missing Test Coverage:
+
+6. **No Tests for Error Path Scenarios**:
+   - Out of memory conditions in ScanWithCompiler
+   - Compiler execution failures
+   - Invalid path characters handling
+   - Circular include dependencies
+
+7. **No Performance/Stress Tests**:
+   - No tests with 1000+ source files
+   - No tests for deeply nested header dependencies
+   - No benchmarks comparing with other generators
+
+8. **Edge Cases Not Tested**:
+   - Files with very long paths (>255 chars)
+   - Targets with special characters in names
+   - Projects with cyclic target dependencies
+   - Simultaneous multi-configuration builds
    - FIXED: Now loads from cmake-nix-package-mappings.json with fallback to defaults
 
 4. **Path Validation Considerations**:
