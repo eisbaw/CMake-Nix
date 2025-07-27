@@ -138,6 +138,12 @@ DONE - Fix custom command here-doc generation issue
      - Found in test_external_tools: Files containing `cmd=''` caused Nix syntax errors
      - Fixed by ensuring content ends with newline before EOF marker in here-docs
      - Improved debug output for custom command source directory detection
+     
+DONE - Fix here-doc escaping for '' sequences in Nix multiline strings (2025-01-27)
+     - Found in test_external_tools: Content with cmd='' was breaking Nix syntax
+     - The '' sequence inside a Nix multiline string needs to be escaped as ''\''
+     - Fixed by adding proper escaping in cmNixCustomCommandGenerator and cmGlobalNixGenerator
+     - All here-doc generation now properly escapes '' sequences before writing
 
 DONE - test_zephyr_rtos build issue: cmake/gen_version_h.cmake file not found in custom command
   - Found in dev.log: "CMake Error: Not a file: cmake/gen_version_h.cmake"  
