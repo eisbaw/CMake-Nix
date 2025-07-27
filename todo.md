@@ -47,6 +47,11 @@ DONE - Magic constants already properly defined
      - HASH_SUFFIX_DIGITS = 10000 in cmNixCustomCommandGenerator.h  
      - MAX_HEADER_RECURSION_DEPTH = 100 in cmNixTargetGenerator.h
 
+DONE - Fix test_file_edge_cases: Paths with spaces and unicode characters need proper escaping
+  - The WriteFilesetUnion function was not handling paths with spaces or unicode characters
+  - Fixed by checking for special characters and using string concatenation syntax (./ + "/path")
+  - All edge case tests now build successfully
+
 # Active TODO items:
 
 DONE - Zephyr RTOS build issue: The -imacros flag with absolute path to autoconf.h is not being converted to relative path properly

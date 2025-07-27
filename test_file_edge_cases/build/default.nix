@@ -125,8 +125,8 @@ let
     src = fileset.toSource {
       root = ./..;
       fileset = fileset.unions [
-        ./../source with spaces.cpp
-        ./../include with spaces
+        (./.. + "/source with spaces.cpp")
+        (./.. + "/include with spaces")
       ];
     };
     buildInputs = [ gcc ];
@@ -182,7 +182,7 @@ let
     src = fileset.toSource {
       root = ./..;
       fileset = fileset.unions [
-        ./../unicode_文件.cpp
+        (./.. + "/unicode_文件.cpp")
       ];
     };
     buildInputs = [ gcc ];
@@ -252,8 +252,8 @@ let
     src = fileset.toSource {
       root = ./..;
       fileset = fileset.unions [
-        ./../dir with spaces/file.cpp
-        ./../include with spaces
+        (./.. + "/dir with spaces/file.cpp")
+        (./.. + "/include with spaces")
       ];
     };
     buildInputs = [ gcc ];

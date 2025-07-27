@@ -3318,12 +3318,42 @@ void cmGlobalNixGenerator::WriteFilesetUnion(
   
   // Add existing files
   for (const auto& file : existingFiles) {
-    nixFileStream << "        " << rootPath << "/" << file << "\n";
+    // Check if path contains spaces, special characters, or non-ASCII characters that need quoting
+    bool needsQuoting = false;
+    for (char c : file) {
+      if (c == ' ' || c == '\'' || c == '"' || c == '$' || c == '\\' || 
+          static_cast<unsigned char>(c) > 127) {
+        needsQuoting = true;
+        break;
+      }
+    }
+    
+    if (needsQuoting) {
+      // Use string concatenation syntax for paths with special characters
+      nixFileStream << "        (" << rootPath << " + \"/" << cmNixWriter::EscapeNixString(file) << "\")\n";
+    } else {
+      nixFileStream << "        " << rootPath << "/" << file << "\n";
+    }
   }
   
   // Add generated files with maybeMissing
   for (const auto& file : generatedFiles) {
-    nixFileStream << "        (fileset.maybeMissing " << rootPath << "/" << file << ")\n";
+    // Check if path contains spaces, special characters, or non-ASCII characters that need quoting
+    bool needsQuoting = false;
+    for (char c : file) {
+      if (c == ' ' || c == '\'' || c == '"' || c == '$' || c == '\\' || 
+          static_cast<unsigned char>(c) > 127) {
+        needsQuoting = true;
+        break;
+      }
+    }
+    
+    if (needsQuoting) {
+      // Use string concatenation syntax for paths with special characters
+      nixFileStream << "        (fileset.maybeMissing (" << rootPath << " + \"/" << cmNixWriter::EscapeNixString(file) << "\"))\n";
+    } else {
+      nixFileStream << "        (fileset.maybeMissing " << rootPath << "/" << file << ")\n";
+    }
   }
   
   nixFileStream << "      ];\n";
