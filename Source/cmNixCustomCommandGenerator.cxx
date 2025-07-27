@@ -39,6 +39,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
   bool hasNonEchoCommands = false;
   bool needsPython = false;
   bool needsSourceAccess = false;
+  std::set<std::string> objectFileDeps;
   
   // Analyze commands to determine what tools we need
   // Use the expanded commands from ccGen
@@ -57,6 +58,17 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
           fullCmd.find("/zephyr/") != std::string::npos ||
           fullCmd.find("/cmake/") != std::string::npos) {
         needsSourceAccess = true;
+      }
+      // Check if command references object files
+      std::vector<std::string> cmdArgs;
+      cmSystemTools::ParseUnixCommandLine(fullCmd.c_str(), cmdArgs);
+      for (const auto& arg : cmdArgs) {
+        if (arg.find(".c.obj") != std::string::npos || 
+            arg.find(".cpp.obj") != std::string::npos ||
+            arg.find(".cxx.obj") != std::string::npos ||
+            arg.find(".o") == arg.length() - 2) {
+          objectFileDeps.insert(arg);
+        }
       }
       // Check if this is a cmake -E echo command
       if (cmd.find("cmake") != std::string::npos && fullCmd.find(" -E echo") != std::string::npos) {
@@ -123,10 +135,22 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
     nixFileStream << "    buildPhase = ''\n";
     nixFileStream << "      mkdir -p $out\n";
     
-    // If we have source access, we need to change to the source directory
-    if (needsSourceAccess) {
+    // If we have source access, we may need to change to the source directory
+    // But only if we don't have build artifact dependencies
+    bool needsBuildArtifacts = !objectFileDeps.empty() || !depends.empty();
+    
+    if (needsSourceAccess && !needsBuildArtifacts) {
       nixFileStream << "      # Change to the source directory unpacked by Nix\n";
       nixFileStream << "      cd /build/*\n";
+    } else if (needsSourceAccess && needsBuildArtifacts) {
+      // We need both source and build artifacts
+      // Copy source files to current directory instead of changing directory
+      nixFileStream << "      # Copy source files needed by the command\n";
+      nixFileStream << "      if [ -d /build/zephyr ]; then\n";
+      nixFileStream << "        cp -r /build/zephyr/scripts .\n";
+      nixFileStream << "      elif [ -d /build/* ]; then\n";
+      nixFileStream << "        cp -r /build/*/scripts .\n";  
+      nixFileStream << "      fi\n";
     }
     
     // Copy dependent files from other custom command outputs or configuration-time files
