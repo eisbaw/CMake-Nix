@@ -3177,8 +3177,21 @@ void cmGlobalNixGenerator::WriteCompositeSource(
   const std::vector<std::string>& customCommandHeaders)
 {
   // Create a composite source that includes both source files and config-time generated files
-  // Don't use buildInputs or arguments - they can cause issues with Nix's setup scripts
-  nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\" {} ''\n";
+  // Build the buildInputs list for custom command dependencies
+  nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\" {\n";
+  if (!customCommandHeaders.empty()) {
+    nixFileStream << "      buildInputs = [\n";
+    std::set<std::string> processedDerivs;
+    for (const auto& headerDeriv : customCommandHeaders) {
+      if (processedDerivs.find(headerDeriv) != processedDerivs.end()) {
+        continue;
+      }
+      processedDerivs.insert(headerDeriv);
+      nixFileStream << "        " << headerDeriv << "\n";
+    }
+    nixFileStream << "      ];\n";
+  }
+  nixFileStream << "    } ''\n";
   nixFileStream << "      mkdir -p $out\n";
   
   // Copy the source directory structure
