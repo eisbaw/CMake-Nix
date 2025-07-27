@@ -285,9 +285,16 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       
       if (isCustomCommandOutput) {
         // Copy from custom command output derivation
+        // Create directory structure if needed
+        std::string depDir = cmSystemTools::GetFilenamePath(depPath);
+        if (!depDir.empty()) {
+          nixFileStream << "      mkdir -p " << cmOutputConverter::EscapeForShell(depDir, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
+        }
         // SECURITY FIX: Escape the path to prevent shell injection
+        // Copy to the proper location, not just current directory
         nixFileStream << "      cp ${" << depDerivName << "}/" 
-                      << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << " .\n";
+                      << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << " "
+                      << cmOutputConverter::EscapeForShell(depPath, cmOutputConverter::Shell_Flag_IsUnix) << "\n";
       } else {
         // Check if it's an object file dependency
         bool isObjectFile = false;
