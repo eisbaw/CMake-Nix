@@ -655,27 +655,27 @@ DONE: Update todo.md with actual Nix generator codebase state. Review codebase. 
    - Impact: Fortran projects now build successfully with proper compiler and linker
 
 ### Additional Test Cases Needed:
-1. **Fortran Support Test**: test_fortran_project
+DONE 1. **Fortran Support Test**: test_fortran_language exists
    - Test basic Fortran compilation and linking
    - Test mixed C/Fortran projects
    - Test Fortran module dependencies
 
-2. **CUDA Support Test**: test_cuda_project
+DONE 2. **CUDA Support Test**: test_cuda_language exists
    - Test CUDA compilation with nvcc
    - Test mixed C++/CUDA projects
    - Test CUDA kernel linking
 
-3. **Thread Safety Test**: test_parallel_build
+DONE 3. **Thread Safety Test**: test_thread_safety exists
    - Test parallel builds with many targets
    - Test cache consistency under parallel access
    - Test mutex protection for shared state
 
-4. **Large Scale Test**: test_large_project
+DONE 4. **Large Scale Test**: test_scale exists
    - Test with 1000+ source files
    - Test deep dependency hierarchies
    - Test performance and memory usage
 
-5. **Security Test**: test_security_edge_cases
+DONE 5. **Security Test**: test_security_paths exists
    - Test paths with special characters (quotes, semicolons, etc.)
    - Test command injection prevention
    - Test path traversal prevention
