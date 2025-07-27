@@ -496,7 +496,7 @@ DONE - Fix test_zephyr_rtos: composite-src-with-generated.drv permission denied 
 **Code Smells Identified**:
 DONE 1. **Massive Duplication**: Every compilation derivation repeats identical boilerplate - FIXED: Refactored to use helper functions
 DONE 2. **Unused Attributes**: `propagatedInputs` is set but not actually used for dependency tracking - FIXED: Removed unused attribute
-3. **Hardcoded Patterns**: `dontFixup = true;` and `installPhase = "true";` repeated everywhere
+DONE 3. **Hardcoded Patterns**: `dontFixup = true;` and `installPhase = "true";` repeated everywhere - FIXED: Now in helper functions only
 DONE 4. **Inconsistent Output**: Some derivations use `$out` as file, others as directory - FIXED: This is correct behavior (single vs multi-file outputs)
 5. **No Error Handling**: Compilation failures not properly handled - DONE: Proper error handling added
 DONE 6. **Fragile Commands**: String concatenation for build commands is error-prone - FIXED: Using proper escaping and multi-line strings
