@@ -1790,3 +1790,30 @@ DONE - Fix test_zephyr_rtos build failures (2025-07-27):
 
 **Impact**: Significantly improved - most Zephyr RTOS components now build correctly. Only the version header generation fails due to the relative script path issue.
 
+## Code Quality Review Findings (2025-07-27)
+
+After implementing the -imacros fix for external sources:
+
+**Code Smells and Potential Improvements**:
+1. [ ] Code duplication between manual composite source generation for external sources and WriteCompositeSource method
+   - Both implement similar logic for creating composite sources with config-time generated files
+   - Should be refactored to use a common implementation
+
+2. [ ] String concatenation performance could be improved
+   - Several places use += for string building (lines 361, 598, 601, 1725, 1727, etc.)
+   - Consider using std::stringstream or pre-reserving string capacity for better performance
+
+3. [ ] Error messages could be more actionable
+   - When builds fail, provide specific suggestions for common issues
+   - Add hints about missing dependencies or configuration problems
+
+**Additional Testing Needed**:
+1. [ ] Add specific test for -imacros flag handling with configuration-time generated files
+2. [ ] Add test for external source files with config-time generated dependencies
+3. [ ] Test edge cases where multiple external sources share the same config-time files
+
+**Environment Issue Found**:
+- [ ] Investigate the mysterious "2" argument that appears to be passed to CMake and nix-build commands
+  - This is preventing proper testing of the Nix backend
+  - May be related to shell environment or CMake invocation
+
