@@ -24,6 +24,29 @@ DONE - Use the timestamps of the configure-time profiling traces, to determine h
 
 
 
+DONE - Fix static variables without synchronization
+     - cmNixWriter.cxx:308 - static vector was already const (thread-safe)
+     - cmNixPathUtils.cxx:106 - made dangerousChars fully const
+
+DONE - Fix raw new without smart pointers
+     - cmLocalNixGenerator.cxx:41 - replaced with std::make_unique
+     - cmNixTargetGenerator.cxx:35 - replaced with std::make_unique
+
+DONE - Fix inconsistent error reporting
+     - Documented clear error handling policy in cmGlobalNixGenerator.h
+     - FATAL_ERROR for configuration errors that prevent generation
+     - WARNING for recoverable issues users should know about
+     - Debug output only with GetDebugOutput() check
+
+DONE - Fix debug output that doesn't check GetDebugOutput() flag
+     - All debug output already properly wrapped with GetDebugOutput() checks
+     - Verified no unguarded debug output exists
+
+DONE - Magic constants already properly defined
+     - MAX_CYCLE_DETECTION_DEPTH = 100 in cmGlobalNixGenerator.h
+     - HASH_SUFFIX_DIGITS = 10000 in cmNixCustomCommandGenerator.h  
+     - MAX_HEADER_RECURSION_DEPTH = 100 in cmNixTargetGenerator.h
+
 # Active TODO items:
 
 DONE - Zephyr RTOS build issue: The -imacros flag with absolute path to autoconf.h is not being converted to relative path properly
