@@ -26,7 +26,6 @@
 #include "cmake.h"
 #include <regex>
 #include <fstream>
-#include <iostream>
 
 std::unique_ptr<cmNixTargetGenerator> cmNixTargetGenerator::New(
   cmGeneratorTarget* target)
@@ -42,6 +41,15 @@ cmNixTargetGenerator::cmNixTargetGenerator(cmGeneratorTarget* target)
 }
 
 cmNixTargetGenerator::~cmNixTargetGenerator() = default;
+
+void cmNixTargetGenerator::LogDebug(const std::string& message) const
+{
+  if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
+    std::ostringstream oss;
+    oss << "[NIX-DEBUG] " << message;
+    cmSystemTools::Message(oss.str());
+  }
+}
 
 bool cmNixTargetGenerator::IsCompilableLanguage(const std::string& lang) const
 {
@@ -213,32 +221,22 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
     }
   } catch (const std::bad_alloc& e) {
     // Handle out of memory specifically
-    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Out of memory in ScanWithCompiler for " 
-                << source->GetFullPath() << std::endl;
-    }
+    this->LogDebug("Out of memory in ScanWithCompiler for " + source->GetFullPath());
     // Fall back to other methods if compiler scanning fails
   } catch (const std::system_error& e) {
     // Handle system errors (file I/O, process execution)
-    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] System error in ScanWithCompiler for " 
-                << source->GetFullPath() << ": " << e.what() 
-                << " (code: " << e.code() << ")" << std::endl;
-    }
+    std::ostringstream msg;
+    msg << "System error in ScanWithCompiler for " << source->GetFullPath() 
+        << ": " << e.what() << " (code: " << e.code() << ")";
+    this->LogDebug(msg.str());
     // Fall back to other methods if compiler scanning fails
   } catch (const std::runtime_error& e) {
     // Handle runtime errors (command execution failures)
-    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Runtime error in ScanWithCompiler for " 
-                << source->GetFullPath() << ": " << e.what() << std::endl;
-    }
+    this->LogDebug("Runtime error in ScanWithCompiler for " + source->GetFullPath() + ": " + e.what());
     // Fall back to other methods if compiler scanning fails
   } catch (const std::exception& e) {
     // Handle any other standard exceptions
-    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Exception in ScanWithCompiler for " 
-                << source->GetFullPath() << ": " << e.what() << std::endl;
-    }
+    this->LogDebug("Exception in ScanWithCompiler for " + source->GetFullPath() + ": " + e.what());
     // Fall back to other methods if compiler scanning fails
   }
   
@@ -297,27 +295,36 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
   
   // Debug output before running command
   if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] ScanWithCompiler for " << source->GetFullPath() << std::endl;
+    this->LogDebug("ScanWithCompiler for " + source->GetFullPath());
     
     // Show raw compileFlags vector
-    std::cerr << "[NIX-DEBUG] Raw compileFlags (" << compileFlags.size() << " flags):" << std::endl;
+    std::ostringstream flagsMsg;
+    flagsMsg << "Raw compileFlags (" << compileFlags.size() << " flags):";
+    this->LogDebug(flagsMsg.str());
     for (size_t i = 0; i < compileFlags.size(); ++i) {
-      std::cerr << "[NIX-DEBUG]   [" << i << "] = \"" << compileFlags[i] << "\"" << std::endl;
+      std::ostringstream flagMsg;
+      flagMsg << "  [" << i << "] = \"" << compileFlags[i] << "\"";
+      this->LogDebug(flagMsg.str());
     }
     
     // Show raw includeFlags vector
-    std::cerr << "[NIX-DEBUG] Raw includeFlags (" << includeFlags.size() << " flags):" << std::endl;
+    flagsMsg.str("");
+    flagsMsg << "Raw includeFlags (" << includeFlags.size() << " flags):";
+    this->LogDebug(flagsMsg.str());
     for (size_t i = 0; i < includeFlags.size(); ++i) {
-      std::cerr << "[NIX-DEBUG]   [" << i << "] = \"" << includeFlags[i] << "\"" << std::endl;
+      std::ostringstream flagMsg;
+      flagMsg << "  [" << i << "] = \"" << includeFlags[i] << "\"";
+      this->LogDebug(flagMsg.str());
     }
     
     // Show full command being executed
-    std::cerr << "[NIX-DEBUG] Full dependency scan command:" << std::endl;
-    std::cerr << "[NIX-DEBUG]   ";
+    this->LogDebug("Full dependency scan command:");
+    std::ostringstream cmdMsg;
+    cmdMsg << "  ";
     for (const auto& arg : command) {
-      std::cerr << "\"" << arg << "\" ";
+      cmdMsg << "\"" << arg << "\" ";
     }
-    std::cerr << std::endl;
+    this->LogDebug(cmdMsg.str());
   }
   
   // Execute compiler to get dependencies
@@ -343,10 +350,10 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
       
       // Additional debug output for failed commands
       if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-        std::cerr << "[NIX-DEBUG] Dependency scan command failed!" << std::endl;
-        std::cerr << "[NIX-DEBUG] Exit code: " << result << std::endl;
-        std::cerr << "[NIX-DEBUG] Error output: " << error << std::endl;
-        std::cerr << "[NIX-DEBUG] Standard output: " << output << std::endl;
+        this->LogDebug("Dependency scan command failed!");
+        this->LogDebug("Exit code: " + std::to_string(result));
+        this->LogDebug("Error output: " + error);
+        this->LogDebug("Standard output: " + output);
       }
     }
   } else {
@@ -362,8 +369,8 @@ std::vector<std::string> cmNixTargetGenerator::ScanWithCompiler(
     
     // Additional debug output for command execution failure
     if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Failed to execute dependency scan command!" << std::endl;
-      std::cerr << "[NIX-DEBUG] Error: " << error << std::endl;
+      this->LogDebug("Failed to execute dependency scan command!");
+      this->LogDebug("Error: " + error);
     }
   }
   
@@ -955,19 +962,16 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
     } else {
       // Log compiler error without failing the build
       if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-        std::cerr << "[NIX-DEBUG] Compiler header dependency scan failed for " << filePath
-                  << " with exit code " << result << std::endl;
+        this->LogDebug("Compiler header dependency scan failed for " + filePath +
+                      " with exit code " + std::to_string(result));
         if (!error.empty()) {
-          std::cerr << "[NIX-DEBUG] Compiler error: " << error << std::endl;
+          this->LogDebug("Compiler error: " + error);
         }
       }
     }
   } else {
     // Log command execution failure
-    if (this->GetMakefile()->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Failed to execute header dependency scanning command for " 
-                << filePath << std::endl;
-    }
+    this->LogDebug("Failed to execute header dependency scanning command for " + filePath);
   }
   
   // Fallback to regex scanning if compiler method fails

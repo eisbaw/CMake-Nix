@@ -55,6 +55,9 @@ public:
     std::string const& directory, cmSourceFile const& source,
     std::string const& config) const override;
 
+  // Debug output helper - centralizes debug logging
+  void LogDebug(const std::string& message) const;
+
 protected:
   cmGeneratorTarget* GetGeneratorTarget() const
   {
