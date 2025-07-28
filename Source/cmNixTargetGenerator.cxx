@@ -817,18 +817,20 @@ bool cmNixTargetGenerator::CreateNixPackageFile(
   content << "pkgs." << nixPackage << "\n";
   
   // Write file
-  std::ofstream file(filePath);
-  if (!file.is_open()) {
-    return false;
+  {
+    std::ofstream file(filePath);
+    if (!file.is_open()) {
+      return false;
+    }
+    
+    file << content.str();
+    // File is automatically closed when it goes out of scope
   }
   
-  file << content.str();
-  file.close();
-  
-  // Check if the file was closed successfully
-  if (file.fail()) {
+  // Verify file was written successfully
+  if (!cmSystemTools::FileExists(filePath)) {
     std::ostringstream msg;
-    msg << "Failed to close file: " << filePath;
+    msg << "Failed to write file: " << filePath;
     this->Makefile->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
     return false;
   }
