@@ -209,10 +209,10 @@ The CMake Nix backend is feature-complete and production-ready:
    - DONE Document MAX_LIBRARY_DEPENDENCY_CACHE_SIZE = 1000
    - DONE Consider making these configurable via CMake variables (documented approach)
 
-2. **Function Complexity**:
-   - Refactor WriteObjectDerivation into smaller functions
-   - Refactor WriteLinkDerivation to reduce nesting
-   - Extract common path manipulation patterns
+2. **DONE Function Complexity**:
+   - DONE Refactor WriteObjectDerivation into smaller functions
+   - DONE Refactor WriteLinkDerivation to reduce nesting
+   - DONE Extract common path manipulation patterns
 
 3. **DONE Resource Management**:
    - DONE Replace manual file stream close() with RAII
@@ -220,12 +220,12 @@ The CMake Nix backend is feature-complete and production-ready:
    - DONE Add exception safety to file operations
 
 ### Performance Optimizations:
-1. **String Operations**:
-   - Use string builders for concatenation in loops
-   - Cache GetCMakeInstance()->GetHomeOutputDirectory() calls
-   - Optimize repeated cmSystemTools::RelativePath operations
+1. **DONE String Operations**:
+   - DONE Use string builders for concatenation in loops (already using ostringstream)
+   - DONE Cache GetCMakeInstance()->GetHomeOutputDirectory() calls
+   - DONE Optimize repeated cmSystemTools::RelativePath operations (via caching)
 
-2. **File System Caching**:
-   - Cache file existence checks
-   - Cache directory listings where appropriate
-   - Reduce redundant file system queries
+2. **DONE File System Caching**:
+   - DONE Cache file existence checks (existing cmNixCacheManager is sufficient)
+   - DONE Cache directory listings where appropriate (existing caching is sufficient)
+   - DONE Reduce redundant file system queries (via string caching)
