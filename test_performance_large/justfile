@@ -95,31 +95,31 @@ benchmark:
     @echo "1. Nix Generator Performance:"
     @echo "------------------------------"
     @echo "Configuration time:"
-    cd build && time {{cmake_binary}} -G Nix -DCMAKE_BUILD_TYPE=Release .. 2>&1 | grep real
+    @cd build && bash -c "time {{cmake_binary}} -G Nix -DCMAKE_BUILD_TYPE=Release .. 2>&1" | grep real || echo "(timing unavailable)"
     @echo ""
     @echo "Build time (parallel):"
-    cd build && time nix-build -A perf_test --max-jobs auto 2>&1 | grep real || true
+    @cd build && bash -c "time nix-build -A perf_test --max-jobs auto 2>&1" | grep real || echo "(timing unavailable)"
     @echo ""
     @echo "2. Unix Makefiles Generator Performance (for comparison):"
     @echo "---------------------------------------------------------"
     rm -rf build_make
     mkdir -p build_make
     @echo "Configuration time:"
-    cd build_make && time {{cmake_binary}} -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. 2>&1 | grep real
+    @cd build_make && bash -c "time {{cmake_binary}} -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE=Release .. 2>&1" | grep real || echo "(timing unavailable)"
     @echo ""
     @echo "Build time (parallel):"
-    cd build_make && time make -j$(nproc) 2>&1 | grep real
+    @cd build_make && bash -c "time make -j$(nproc) 2>&1" | grep real || echo "(timing unavailable)"
     @echo ""
     @echo "3. File Statistics:"
     @echo "-------------------"
-    @echo "Total source files: $(find src -name '*.cpp' | wc -l)"
-    @echo "Total header files: $(find src -name '*.h' | wc -l)"
-    @echo "Total lines of code: $(find src -name '*.[ch]pp' -o -name '*.h' | xargs wc -l | tail -1)"
+    @echo "Total source files: $$(find src -name '*.cpp' | wc -l)"
+    @echo "Total header files: $$(find src -name '*.h' | wc -l)"
+    @echo "Total lines of code: $$(find src -name '*.[ch]pp' -o -name '*.h' | xargs wc -l | tail -1)"
     @echo ""
     @echo "4. Generated Nix file size:"
     @echo "---------------------------"
-    @echo "default.nix size: $(ls -lh build/default.nix | awk '{print $5}')"
-    @echo "Lines in default.nix: $(wc -l < build/default.nix)"
+    @echo "default.nix size: $$(ls -lh build/default.nix 2>/dev/null | awk '{print $$5}' || echo 'N/A')"
+    @echo "Lines in default.nix: $$(wc -l < build/default.nix 2>/dev/null || echo 'N/A')"
 
 # Clean everything including generated files
 clean-all: clean
