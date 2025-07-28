@@ -1,9 +1,12 @@
 #pragma once
 
+#include <any>
 #include <functional>
 #include <map>
 #include <mutex>
+#include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <utility>
 
@@ -56,11 +59,71 @@ public:
   void ClearLibraryDependencies();
 
   /**
+   * Get or compute transitive dependencies for a source file.
+   * Thread-safe with proper locking.
+   */
+  std::vector<std::string> GetTransitiveDependencies(
+    const std::string& sourcePath,
+    std::function<std::vector<std::string>()> computeFunc);
+
+  /**
+   * Check if a derivation name is already used.
+   * Thread-safe with proper locking.
+   */
+  bool IsDerivationNameUsed(const std::string& name) const;
+
+  /**
+   * Mark a derivation name as used.
+   * Thread-safe with proper locking.
+   */
+  void MarkDerivationNameUsed(const std::string& name);
+
+  /**
+   * Get or compute compiler info for a language.
+   * Thread-safe with proper locking.
+   */
+  template<typename CompilerInfo>
+  CompilerInfo GetCompilerInfo(
+    const std::string& language,
+    std::function<CompilerInfo()> computeFunc);
+
+  /**
+   * Get or compute system paths (cached).
+   * Thread-safe with proper locking.
+   */
+  std::vector<std::string> GetSystemPaths(
+    std::function<std::vector<std::string>()> computeFunc);
+
+  /**
+   * Clear transitive dependency cache.
+   */
+  void ClearTransitiveDependencies();
+
+  /**
+   * Clear used derivation names.
+   */
+  void ClearUsedDerivationNames();
+
+  /**
+   * Clear compiler info cache.
+   */
+  void ClearCompilerInfo();
+
+  /**
+   * Clear system paths cache.
+   */
+  void ClearSystemPaths();
+
+  /**
    * Get cache statistics for debugging/monitoring.
    */
   struct CacheStats {
     size_t DerivationNameCacheSize;
     size_t LibraryDependencyCacheSize;
+    size_t TransitiveDependencyCacheSize;
+    size_t UsedDerivationNamesSize;
+    size_t CompilerInfoCacheSize;
+    size_t SystemPathsCacheSize;
     size_t TotalMemoryEstimate; // Rough estimate in bytes
   };
   CacheStats GetStats() const;
@@ -73,7 +136,20 @@ private:
   mutable std::map<std::pair<cmGeneratorTarget*, std::string>, 
                   std::vector<std::string>> LibraryDependencyCache;
   
-  // Single mutex protects all caches
+  // Cache for transitive dependencies: key is source file path
+  mutable std::map<std::string, std::vector<std::string>> TransitiveDependencyCache;
+  
+  // Set of used derivation names for uniqueness checking
+  mutable std::set<std::string> UsedDerivationNames;
+  
+  // Cache for compiler info: key is language
+  mutable std::unordered_map<std::string, std::any> CompilerInfoCache;
+  
+  // Cache for system paths
+  mutable std::vector<std::string> SystemPathsCache;
+  mutable bool SystemPathsCached = false;
+  
+  // Single mutex protects all caches - consolidates thread safety
   mutable std::mutex CacheMutex;
 
   // Maximum cache sizes (prevent unbounded growth)
@@ -97,7 +173,56 @@ private:
    */
   static constexpr size_t MAX_LIBRARY_DEPENDENCY_CACHE_SIZE = 1000;
 
+  /**
+   * Maximum number of transitive dependency results to cache.
+   * At 5,000 entries with ~200 bytes per entry (file path lists),
+   * this limits the cache to approximately 1 MB of memory.
+   * This handles large projects with many interdependent headers.
+   * 
+   * To customize: Set CMAKE_NIX_TRANSITIVE_CACHE_SIZE environment variable.
+   */
+  static constexpr size_t MAX_TRANSITIVE_DEPENDENCY_CACHE_SIZE = 5000;
+
+  /**
+   * Maximum number of unique derivation names to track.
+   * At 20,000 entries with ~50 bytes per entry (derivation name strings),
+   * this limits the set to approximately 1 MB of memory.
+   * This is sufficient for extremely large projects.
+   * 
+   * To customize: Set CMAKE_NIX_USED_NAMES_SIZE environment variable.
+   */
+  static constexpr size_t MAX_USED_DERIVATION_NAMES_SIZE = 20000;
+
   // Evict oldest entries if cache grows too large
   void EvictDerivationNamesIfNeeded();
   void EvictLibraryDependenciesIfNeeded();
+  void EvictTransitiveDependenciesIfNeeded();
+  void EvictUsedDerivationNamesIfNeeded();
 };
+
+// Template implementation must be in header
+template<typename CompilerInfo>
+CompilerInfo cmNixCacheManager::GetCompilerInfo(
+    const std::string& language,
+    std::function<CompilerInfo()> computeFunc)
+{
+  // Check cache first
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    auto it = this->CompilerInfoCache.find(language);
+    if (it != this->CompilerInfoCache.end()) {
+      return std::any_cast<CompilerInfo>(it->second);
+    }
+  }
+  
+  // Compute outside the lock
+  CompilerInfo result = computeFunc();
+  
+  // Cache the result
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    this->CompilerInfoCache[language] = result;
+  }
+  
+  return result;
+}

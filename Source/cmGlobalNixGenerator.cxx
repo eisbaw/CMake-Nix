@@ -70,6 +70,11 @@ cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
 
 cmGlobalNixGenerator::~cmGlobalNixGenerator() = default;
 
+cmNixCacheManager* cmGlobalNixGenerator::GetCacheManager() const
+{
+  return this->CacheManager.get();
+}
+
 void cmGlobalNixGenerator::LogDebug(const std::string& message) const
 {
   if (this->GetCMakeInstance()->GetDebugOutput()) {
@@ -100,10 +105,7 @@ void cmGlobalNixGenerator::Generate()
   this->LogDebug("Generate() started");
   
   // Clear the used derivation names set for fresh generation
-  {
-    std::lock_guard<std::mutex> lock(this->UsedNamesMutex);
-    this->UsedDerivationNames.clear();
-  }
+  this->CacheManager->ClearUsedDerivationNames();
   
   // Check for unsupported CMAKE_EXPORT_COMPILE_COMMANDS
   if (this->GetCMakeInstance()->GetState()->GetGlobalPropertyAsBool(
@@ -657,15 +659,12 @@ std::string cmGlobalNixGenerator::GetDerivationName(
   
   // Ensure uniqueness by checking UsedDerivationNames
   std::string finalResult = result;
-  {
-    std::lock_guard<std::mutex> lock(this->UsedNamesMutex);
-    int suffix = 2;
-    while (this->UsedDerivationNames.find(finalResult) != this->UsedDerivationNames.end()) {
-      finalResult = result + "_" + std::to_string(suffix);
-      suffix++;
-    }
-    this->UsedDerivationNames.insert(finalResult);
+  int suffix = 2;
+  while (this->CacheManager->IsDerivationNameUsed(finalResult)) {
+    finalResult = result + "_" + std::to_string(suffix);
+    suffix++;
   }
+  this->CacheManager->MarkDerivationNameUsed(finalResult);
   
       return finalResult;
     });

@@ -102,6 +102,9 @@ public:
   void EndTryCompileBatch();
 
   void AddObjectDerivation(std::string const& targetName, std::string const& derivationName, std::string const& sourceFile, std::string const& objectFileName, std::string const& language, std::vector<std::string> const& dependencies);
+  
+  // Cache manager access for other components
+  cmNixCacheManager* GetCacheManager() const;
 
 protected:
   virtual void WriteNixFile();
@@ -306,9 +309,6 @@ private:
    */
   static constexpr size_t MAX_EXTERNAL_HEADERS_PER_SOURCE = 100;
   
-  // Track used derivation names to ensure uniqueness
-  mutable std::set<std::string> UsedDerivationNames;
-  mutable std::mutex UsedNamesMutex;
   
   // Map from output file to custom command derivation name
   std::map<std::string, std::string> CustomCommandOutputs;

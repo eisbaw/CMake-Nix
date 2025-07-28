@@ -13,6 +13,7 @@
 #include "cmGeneratorTarget.h"
 #include "cmGlobalNixGenerator.h"
 #include "cmLocalNixGenerator.h"
+#include "cmNixCacheManager.h"
 #include "cmMakefile.h"
 #include "cmSourceFile.h"
 #include "cmSystemTools.h"
@@ -864,18 +865,14 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
     return dependencies;
   }
   
-  // Check cache first (with thread safety)
-  {
-    std::lock_guard<std::mutex> lock(this->TransitiveDependencyCacheMutex);
-    auto cacheIt = this->TransitiveDependencyCache.find(canonicalPath);
-    if (cacheIt != this->TransitiveDependencyCache.end()) {
-      // Return cached dependencies, but still need to mark them as visited
-      for (const auto& dep : cacheIt->second) {
-        visited.insert(dep);
-      }
-      return cacheIt->second;
-    }
-  }
+  // Get cache manager from global generator
+  auto* globalGen = static_cast<cmGlobalNixGenerator*>(
+    this->GetLocalGenerator()->GetGlobalGenerator());
+  auto* cacheManager = globalGen->GetCacheManager();
+  
+  // Use consolidated cache manager with lambda for lazy computation
+  return cacheManager->GetTransitiveDependencies(canonicalPath, 
+    [&]() -> std::vector<std::string> {
   
   // Determine the language based on file extension
   std::string ext = cmSystemTools::GetFilenameLastExtension(canonicalPath);
@@ -1033,18 +1030,13 @@ std::vector<std::string> cmNixTargetGenerator::GetTransitiveDependencies(
     dependencies.insert(dependencies.end(), transDeps.begin(), transDeps.end());
   }
   
-  // Cache the result before returning (with thread safety)
-  {
-    std::lock_guard<std::mutex> lock(this->TransitiveDependencyCacheMutex);
-    // Limit cache size to prevent unbounded growth (LRU would be better, but this is simple)
-    if (this->TransitiveDependencyCache.size() >= MAX_DEPENDENCY_CACHE_SIZE) {
-      // Simple eviction: clear the entire cache when it gets too big
-      this->TransitiveDependencyCache.clear();
-    }
-    this->TransitiveDependencyCache[canonicalPath] = dependencies;
-  }
-  
-  return dependencies;
+      // Mark all dependencies as visited before returning
+      for (const auto& dep : dependencies) {
+        visited.insert(dep);
+      }
+      
+      return dependencies;
+    }); // End of lambda
 }
 
 void cmNixTargetGenerator::WritePchDerivations()

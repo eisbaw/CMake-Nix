@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <mutex>
 
 class cmake;
 
@@ -83,6 +84,7 @@ private:
   cmake* CMakeInstance;
   mutable std::vector<std::string> CachedSystemPaths;
   mutable bool SystemPathsCached = false;
+  mutable std::mutex CacheMutex;
 
   /**
    * @brief Load system paths from configuration or defaults

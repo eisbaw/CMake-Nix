@@ -74,11 +74,79 @@ std::vector<std::string> cmNixCacheManager::GetLibraryDependencies(
   return result;
 }
 
+std::vector<std::string> cmNixCacheManager::GetTransitiveDependencies(
+  const std::string& sourcePath,
+  std::function<std::vector<std::string>()> computeFunc)
+{
+  // Check cache first
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    auto it = this->TransitiveDependencyCache.find(sourcePath);
+    if (it != this->TransitiveDependencyCache.end()) {
+      return it->second;
+    }
+  }
+  
+  // Compute outside the lock
+  std::vector<std::string> result = computeFunc();
+  
+  // Cache the result
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    this->TransitiveDependencyCache[sourcePath] = result;
+    this->EvictTransitiveDependenciesIfNeeded();
+  }
+  
+  return result;
+}
+
+bool cmNixCacheManager::IsDerivationNameUsed(const std::string& name) const
+{
+  std::lock_guard<std::mutex> lock(this->CacheMutex);
+  return this->UsedDerivationNames.find(name) != this->UsedDerivationNames.end();
+}
+
+void cmNixCacheManager::MarkDerivationNameUsed(const std::string& name)
+{
+  std::lock_guard<std::mutex> lock(this->CacheMutex);
+  this->UsedDerivationNames.insert(name);
+  this->EvictUsedDerivationNamesIfNeeded();
+}
+
+std::vector<std::string> cmNixCacheManager::GetSystemPaths(
+  std::function<std::vector<std::string>()> computeFunc)
+{
+  // Check cache first
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    if (this->SystemPathsCached) {
+      return this->SystemPathsCache;
+    }
+  }
+  
+  // Compute outside the lock
+  std::vector<std::string> result = computeFunc();
+  
+  // Cache the result
+  {
+    std::lock_guard<std::mutex> lock(this->CacheMutex);
+    this->SystemPathsCache = result;
+    this->SystemPathsCached = true;
+  }
+  
+  return result;
+}
+
 void cmNixCacheManager::ClearAll()
 {
   std::lock_guard<std::mutex> lock(this->CacheMutex);
   this->DerivationNameCache.clear();
   this->LibraryDependencyCache.clear();
+  this->TransitiveDependencyCache.clear();
+  this->UsedDerivationNames.clear();
+  this->CompilerInfoCache.clear();
+  this->SystemPathsCache.clear();
+  this->SystemPathsCached = false;
 }
 
 void cmNixCacheManager::ClearDerivationNames()
@@ -93,6 +161,31 @@ void cmNixCacheManager::ClearLibraryDependencies()
   this->LibraryDependencyCache.clear();
 }
 
+void cmNixCacheManager::ClearTransitiveDependencies()
+{
+  std::lock_guard<std::mutex> lock(this->CacheMutex);
+  this->TransitiveDependencyCache.clear();
+}
+
+void cmNixCacheManager::ClearUsedDerivationNames()
+{
+  std::lock_guard<std::mutex> lock(this->CacheMutex);
+  this->UsedDerivationNames.clear();
+}
+
+void cmNixCacheManager::ClearCompilerInfo()
+{
+  std::lock_guard<std::mutex> lock(this->CacheMutex);
+  this->CompilerInfoCache.clear();
+}
+
+void cmNixCacheManager::ClearSystemPaths()
+{
+  std::lock_guard<std::mutex> lock(this->CacheMutex);
+  this->SystemPathsCache.clear();
+  this->SystemPathsCached = false;
+}
+
 cmNixCacheManager::CacheStats cmNixCacheManager::GetStats() const
 {
   std::lock_guard<std::mutex> lock(this->CacheMutex);
@@ -100,6 +193,10 @@ cmNixCacheManager::CacheStats cmNixCacheManager::GetStats() const
   CacheStats stats;
   stats.DerivationNameCacheSize = this->DerivationNameCache.size();
   stats.LibraryDependencyCacheSize = this->LibraryDependencyCache.size();
+  stats.TransitiveDependencyCacheSize = this->TransitiveDependencyCache.size();
+  stats.UsedDerivationNamesSize = this->UsedDerivationNames.size();
+  stats.CompilerInfoCacheSize = this->CompilerInfoCache.size();
+  stats.SystemPathsCacheSize = this->SystemPathsCached ? 1 : 0;
   
   // Rough memory estimate
   size_t memoryEstimate = 0;
@@ -109,6 +206,18 @@ cmNixCacheManager::CacheStats cmNixCacheManager::GetStats() const
   
   // Library dependency cache: estimate 500 bytes per entry (vector of strings)
   memoryEstimate += stats.LibraryDependencyCacheSize * 500;
+  
+  // Transitive dependency cache: estimate 200 bytes per entry (file path lists)
+  memoryEstimate += stats.TransitiveDependencyCacheSize * 200;
+  
+  // Used derivation names: estimate 50 bytes per entry (name strings)
+  memoryEstimate += stats.UsedDerivationNamesSize * 50;
+  
+  // Compiler info cache: estimate 200 bytes per entry (compiler structs)
+  memoryEstimate += stats.CompilerInfoCacheSize * 200;
+  
+  // System paths cache: estimate 2KB for typical system path list
+  memoryEstimate += stats.SystemPathsCacheSize * 2048;
   
   stats.TotalMemoryEstimate = memoryEstimate;
   
@@ -139,6 +248,34 @@ void cmNixCacheManager::EvictLibraryDependenciesIfNeeded()
     size_t toRemove = this->LibraryDependencyCache.size() / 2;
     while (toRemove > 0 && it != this->LibraryDependencyCache.end()) {
       it = this->LibraryDependencyCache.erase(it);
+      --toRemove;
+    }
+  }
+}
+
+void cmNixCacheManager::EvictTransitiveDependenciesIfNeeded()
+{
+  // Simple eviction: clear entire cache if it gets too large
+  if (this->TransitiveDependencyCache.size() > MAX_TRANSITIVE_DEPENDENCY_CACHE_SIZE) {
+    // Clear half the cache
+    auto it = this->TransitiveDependencyCache.begin();
+    size_t toRemove = this->TransitiveDependencyCache.size() / 2;
+    while (toRemove > 0 && it != this->TransitiveDependencyCache.end()) {
+      it = this->TransitiveDependencyCache.erase(it);
+      --toRemove;
+    }
+  }
+}
+
+void cmNixCacheManager::EvictUsedDerivationNamesIfNeeded()
+{
+  // Simple eviction: clear oldest entries if it gets too large
+  if (this->UsedDerivationNames.size() > MAX_USED_DERIVATION_NAMES_SIZE) {
+    // For a set, we can't easily remove "oldest", so we clear half
+    auto it = this->UsedDerivationNames.begin();
+    size_t toRemove = this->UsedDerivationNames.size() / 2;
+    while (toRemove > 0 && it != this->UsedDerivationNames.end()) {
+      it = this->UsedDerivationNames.erase(it);
       --toRemove;
     }
   }

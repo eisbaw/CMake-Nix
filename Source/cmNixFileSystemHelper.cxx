@@ -15,6 +15,8 @@ cmNixFileSystemHelper::cmNixFileSystemHelper(cmake* cm)
 
 bool cmNixFileSystemHelper::IsSystemPath(const std::string& path) const
 {
+  std::lock_guard<std::mutex> lock(this->CacheMutex);
+  
   if (!this->SystemPathsCached) {
     this->LoadSystemPaths();
   }
@@ -118,6 +120,8 @@ bool cmNixFileSystemHelper::IsNixStorePath(const std::string& path) const
 
 std::vector<std::string> cmNixFileSystemHelper::GetSystemPathPrefixes() const
 {
+  std::lock_guard<std::mutex> lock(this->CacheMutex);
+  
   if (!this->SystemPathsCached) {
     this->LoadSystemPaths();
   }

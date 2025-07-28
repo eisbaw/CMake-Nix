@@ -116,9 +116,4 @@ private:
   static constexpr size_t MAX_DEPENDENCY_CACHE_SIZE = 10000; // Maximum entries in dependency cache
   
   cmLocalNixGenerator* LocalGenerator;
-  
-  // Cache for transitive dependencies to avoid exponential complexity
-  // Using mutable to allow caching in const methods
-  mutable std::map<std::string, std::vector<std::string>> TransitiveDependencyCache;
-  mutable std::mutex TransitiveDependencyCacheMutex;
 }; 
