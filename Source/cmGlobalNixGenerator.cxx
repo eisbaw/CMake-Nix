@@ -31,6 +31,7 @@
 #include "cmNixInstallRuleGenerator.h"
 #include "cmNixCompilerResolver.h"
 #include "cmNixBuildConfiguration.h"
+#include "cmNixFileSystemHelper.h"
 #include "cmNixPathUtils.h"
 #include "cmNixHeaderDependencyResolver.h"
 #include "cmNixCacheManager.h"
@@ -61,6 +62,7 @@ cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   , DependencyGraph(std::make_unique<cmNixDependencyGraph>())
   , HeaderDependencyResolver(std::make_unique<cmNixHeaderDependencyResolver>(this))
   , CacheManager(std::make_unique<cmNixCacheManager>())
+  , FileSystemHelper(std::make_unique<cmNixFileSystemHelper>(cm))
 {
   // Set the make program file
   this->FindMakeProgramFile = "CMakeNixFindMake.cmake";
@@ -3118,44 +3120,7 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
 
 bool cmGlobalNixGenerator::IsSystemPath(const std::string& path) const
 {
-  // Check for CMAKE_NIX_SYSTEM_PATH_PREFIXES variable
-  cmake* cm = this->GetCMakeInstance();
-  cmValue systemPaths = cm->GetCacheDefinition("CMAKE_NIX_SYSTEM_PATH_PREFIXES");
-  
-  if (systemPaths && !systemPaths->empty()) {
-    // User-defined system path prefixes (semicolon-separated)
-    std::vector<std::string> prefixes;
-    cmExpandList(*systemPaths, prefixes);
-    for (const auto& prefix : prefixes) {
-      if (cmSystemTools::IsSubDirectory(path, prefix)) {
-        return true;
-      }
-    }
-  } else {
-    // Default system paths
-    static const std::vector<std::string> defaultSystemPaths = {
-      "/usr",
-      "/nix/store",
-      "/opt",
-      "/usr/local",
-      "/System",  // macOS
-      "/Library"  // macOS
-    };
-    
-    // Also consider CMake's own modules directory as a system path
-    std::string cmakeRoot = cmSystemTools::GetCMakeRoot();
-    if (!cmakeRoot.empty() && cmSystemTools::IsSubDirectory(path, cmakeRoot)) {
-      return true;
-    }
-    
-    for (const auto& systemPath : defaultSystemPaths) {
-      if (cmSystemTools::IsSubDirectory(path, systemPath)) {
-        return true;
-      }
-    }
-  }
-  
-  return false;
+  return this->FileSystemHelper->IsSystemPath(path);
 }
 
 void cmGlobalNixGenerator::CheckForExternalProjectUsage()

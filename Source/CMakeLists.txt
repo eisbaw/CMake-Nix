@@ -809,6 +809,8 @@ add_library(
   cmNixCompilerResolver.h
   cmNixBuildConfiguration.cxx
   cmNixBuildConfiguration.h
+  cmNixFileSystemHelper.cxx
+  cmNixFileSystemHelper.h
   cmNixDerivationWriter.cxx
   cmNixDerivationWriter.h
   cmNixDependencyGraph.cxx

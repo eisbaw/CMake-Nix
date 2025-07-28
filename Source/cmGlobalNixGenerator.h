@@ -28,6 +28,7 @@ class cmNixDependencyGraph;
 class cmNixCustomCommandHandler;
 class cmNixHeaderDependencyResolver;
 class cmNixCacheManager;
+class cmNixFileSystemHelper;
 
 /**
  * \class cmGlobalNixGenerator
@@ -274,6 +275,9 @@ private:
   
   // Cache manager for performance optimization
   mutable std::unique_ptr<cmNixCacheManager> CacheManager;
+  
+  // File system helper for path operations
+  mutable std::unique_ptr<cmNixFileSystemHelper> FileSystemHelper;
   
   // Install rule tracking
   std::vector<cmGeneratorTarget*> InstallTargets;
