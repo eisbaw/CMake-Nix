@@ -958,7 +958,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         if (inFile) {
           std::ostringstream contents;
           contents << inFile.rdbuf();
-          inFile.close();
+          // File automatically closes when inFile goes out of scope (RAII)
           
           // Create parent directory if needed
           if (!destDir.empty()) {
@@ -2805,7 +2805,7 @@ void cmGlobalNixGenerator::WriteCompositeSource(
     if (inFile) {
       std::ostringstream contents;
       contents << inFile.rdbuf();
-      inFile.close();
+      // File automatically closes when inFile goes out of scope (RAII)
       
       // Create parent directory if needed
       if (!destDir.empty()) {
@@ -3188,11 +3188,13 @@ void cmGlobalNixGenerator::GenerateSkeletonPackageFiles()
             this->LogDebug("Would create: " + pkgFileName);
             
             if (!cmSystemTools::FileExists(pkgFileName)) {
-              std::ofstream pkgFile(pkgFileName);
-              pkgFile << "# Skeleton Nix package file for " << pkg.first << "\n";
-              pkgFile << "# Edit this file to specify the correct Nix package\n";
-              pkgFile << pkg.second << "\n";
-              pkgFile.close();
+              {
+                std::ofstream pkgFile(pkgFileName);
+                pkgFile << "# Skeleton Nix package file for " << pkg.first << "\n";
+                pkgFile << "# Edit this file to specify the correct Nix package\n";
+                pkgFile << pkg.second << "\n";
+                // File automatically closes when pkgFile goes out of scope (RAII)
+              }
               
               this->GetCMakeInstance()->IssueMessage(
                 MessageType::AUTHOR_WARNING,

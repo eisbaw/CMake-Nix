@@ -290,7 +290,21 @@ private:
   
   // Numeric constants
   static constexpr int MAX_CYCLE_DETECTION_DEPTH = 100; // Maximum depth for cycle detection
-  static constexpr size_t MAX_EXTERNAL_HEADERS_PER_SOURCE = 100; // Maximum headers to copy for external sources (prevents Zephyr timeout)
+  
+  /**
+   * Maximum number of external headers to include per source file.
+   * When building projects with external source files (outside the project tree),
+   * we need to copy their header dependencies. This limit prevents excessive
+   * copying for projects like Zephyr RTOS that may have thousands of headers.
+   * 
+   * A limit of 100 headers per source file is sufficient for most use cases
+   * while preventing build timeouts. Projects needing more can set
+   * CMAKE_NIX_EXTERNAL_HEADER_LIMIT to override this value.
+   * 
+   * Note: With unified header derivations, this limit is less critical as
+   * headers are shared across sources from the same directory.
+   */
+  static constexpr size_t MAX_EXTERNAL_HEADERS_PER_SOURCE = 100;
   
   // Track used derivation names to ensure uniqueness
   mutable std::set<std::string> UsedDerivationNames;
