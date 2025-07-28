@@ -57,7 +57,9 @@ bool cmNixPackageMapper::LoadMappingsFromFile(const std::string& filePath)
   std::ifstream file(filePath);
   if (!file.is_open()) {
     std::cerr << "CMake Nix Generator Warning: Failed to open package mappings file: " 
-              << filePath << std::endl;
+              << filePath << "\n"
+              << "  Ensure the file exists and has read permissions.\n"
+              << "  You can create a custom mappings file at this location to override defaults." << std::endl;
     return false;
   }
   
@@ -67,7 +69,10 @@ bool cmNixPackageMapper::LoadMappingsFromFile(const std::string& filePath)
   
   if (!Json::parseFromStream(builder, file, &root, &errors)) {
     std::cerr << "CMake Nix Generator Error: Failed to parse package mappings file: " 
-              << filePath << "\n  JSON Error: " << errors << std::endl;
+              << filePath << "\n"
+              << "  JSON parsing error: " << errors << "\n"
+              << "  Expected format: {\"packageMappings\": {\"Target::Name\": \"nixpkgs.package\"}}\n"
+              << "  Check for syntax errors like missing commas or incorrect quotes." << std::endl;
     return false;
   }
   

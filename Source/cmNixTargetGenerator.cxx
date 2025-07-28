@@ -14,6 +14,7 @@
 #include "cmGlobalNixGenerator.h"
 #include "cmLocalNixGenerator.h"
 #include "cmNixCacheManager.h"
+#include "cmNixConstants.h"
 #include "cmMakefile.h"
 #include "cmSourceFile.h"
 #include "cmSystemTools.h"
@@ -153,7 +154,7 @@ std::string cmNixTargetGenerator::GetObjectFileName(
   std::string sourcePath = source->GetFullPath();
   std::string objectName = cmSystemTools::GetFilenameWithoutLastExtension(
     cmSystemTools::GetFilenameName(sourcePath));
-  return objectName + ".o";
+  return objectName + cmNix::FilePatterns::OBJECT_FILE_SUFFIX;
 }
 
 std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(

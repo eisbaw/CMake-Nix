@@ -52,6 +52,7 @@ namespace FilePatterns {
   constexpr const char* STATIC_LIB_SUFFIX = ".a";
   constexpr const char* SHARED_LIB_PREFIX = "lib";
   constexpr const char* SHARED_LIB_SUFFIX = ".so";
+  constexpr const char* OBJECT_FILE_SUFFIX = ".o";
 }
 
 // Debug prefixes
@@ -115,6 +116,7 @@ namespace SystemPaths {
   constexpr const char* SYSTEM_LIBRARY = "/System/Library/";
   constexpr const char* LIBRARY_DEVELOPER = "/Library/Developer/";
   constexpr const char* NIX_STORE = "/nix/store/";
+  constexpr const char* BIN = "/bin/";
 }
 
 // Error messages

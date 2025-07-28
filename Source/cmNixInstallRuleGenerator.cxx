@@ -8,6 +8,7 @@
 #include "cmGeneratorTarget.h"
 #include "cmGeneratedFileStream.h"
 #include "cmLocalGenerator.h"
+#include "cmNixConstants.h"
 #include "cmOutputConverter.h"
 #include "cmStateTypes.h"
 #include "cmTarget.h"
@@ -126,5 +127,5 @@ std::string cmNixInstallRuleGenerator::GetLibraryPrefix() const
 std::string cmNixInstallRuleGenerator::GetStaticLibraryExtension() const
 {
   // Unix-style static library extension
-  return ".a";
+  return cmNix::FilePatterns::STATIC_LIB_SUFFIX;
 }

@@ -320,6 +320,8 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   writer.WriteLine("        srcFile=\"$(basename \"$src\")/$sourceFile\"");
   writer.WriteLine("      else");
   writer.WriteLine("        echo \"Error: Cannot find source file $sourceFile\"");
+  writer.WriteLine("        echo \"  Searched in: $src and $(basename \"$src\")\"");
+  writer.WriteLine("        echo \"  This may happen if the source file path is incorrect or the file was moved.\"");
   writer.WriteLine("        exit 1");
   writer.WriteLine("      fi");
   writer.WriteLine("      $compilerCmd -c ${flags} \"$srcFile\" -o \"$out\"");
@@ -1986,7 +1988,11 @@ void cmGlobalNixGenerator::WriteCompositeSource(
     } else {
       // If we can't read the file, issue a warning but continue
       std::ostringstream msg;
-      msg << "Warning: Cannot read configuration-time generated file: " << genFile;
+      msg << "Warning: Cannot read configuration-time generated file: " << genFile << "\n"
+          << "  This file was expected to be generated during CMake configuration.\n"
+          << "  The build may fail if this file is required. Check your CMakeLists.txt for:\n"
+          << "  - configure_file() commands that may have failed\n"
+          << "  - add_custom_command() with OUTPUT that didn't run";
       this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
       nixFileStream << "      # Warning: Could not read " << genFile << "\n";
     }

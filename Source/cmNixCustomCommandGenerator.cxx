@@ -8,6 +8,7 @@
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
 #include "cmMakefile.h"
+#include "cmNixConstants.h"
 #include "cmSystemTools.h"
 #include "cmOutputConverter.h"
 #include "cmake.h"
@@ -69,7 +70,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         if (arg.find(".c.obj") != std::string::npos || 
             arg.find(".cpp.obj") != std::string::npos ||
             arg.find(".cxx.obj") != std::string::npos ||
-            arg.find(".o") == arg.length() - 2) {
+            arg.find(cmNix::FilePatterns::OBJECT_FILE_SUFFIX) == arg.length() - strlen(cmNix::FilePatterns::OBJECT_FILE_SUFFIX)) {
           objectFileDeps.insert(arg);
         }
       }
@@ -81,7 +82,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
         }
       }
       // Check if this command uses cmake
-      if (cmd.find("/cmake") != std::string::npos && cmd.find("/bin/cmake") != std::string::npos) {
+      if (cmd.find("/cmake") != std::string::npos && cmd.find(std::string(cmNix::SystemPaths::BIN) + "cmake") != std::string::npos) {
         needsCMake = true;
       }
       // Check if this command uses cmake -P (script mode)
@@ -365,11 +366,11 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
       std::string processedCmd = cmd;
       
       // Replace absolute python paths with Nix-provided Python
-      if (cmd.find("/python") != std::string::npos && cmd.find("/bin/python") != std::string::npos) {
+      if (cmd.find("/python") != std::string::npos && cmd.find(std::string(cmNix::SystemPaths::BIN) + "python") != std::string::npos) {
         processedCmd = "python3";
       } 
       // Replace absolute cmake paths
-      else if (cmd.find("/cmake") != std::string::npos && cmd.find("/bin/cmake") != std::string::npos) {
+      else if (cmd.find("/cmake") != std::string::npos && cmd.find(std::string(cmNix::SystemPaths::BIN) + "cmake") != std::string::npos) {
         // Check if this is a -E echo command
         if (fullCmd.find(" -E echo") != std::string::npos) {
           // Extract everything after "-E echo" from fullCmd
@@ -383,7 +384,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
           }
         } else {
           // For other cmake commands, use cmake from nixpkgs
-          processedCmd = "${pkgs.cmake}/bin/cmake";
+          processedCmd = "${pkgs.cmake}" + std::string(cmNix::SystemPaths::BIN) + "cmake";
         }
       }
       // Handle source paths if needed
@@ -435,7 +436,7 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
           // Replace .c.obj with .o
           size_t pos = arg.rfind(".c.obj");
           if (pos != std::string::npos) {
-            arg = arg.substr(0, pos) + ".o";
+            arg = arg.substr(0, pos) + cmNix::FilePatterns::OBJECT_FILE_SUFFIX;
           }
         }
         

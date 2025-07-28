@@ -128,13 +128,13 @@ The CMake Nix backend is feature-complete and production-ready:
 2. **Technical Debt**:
    - DONE `CMAKE_NIX_IGNORE_CIRCULAR_DEPS` flag is dangerous workaround - REMOVED (was never actually implemented)
    - DONE Configuration-time file embedding could hit Nix expression limits - Added 1MB size limit check
-   - Hard-coded Unix conventions throughout
+   - DONE Hard-coded Unix conventions throughout - Fixed by extracting constants to cmNixConstants.h
 
 3. **Documentation Gaps**:
-   - Missing architectural documentation for dependency graph algorithm
-   - Caching strategy not documented
-   - Thread safety guarantees unclear
-   - Performance characteristics undocumented
+   - DONE Missing architectural documentation for dependency graph algorithm - Added in cmNixDependencyGraph.h
+   - DONE Caching strategy not documented - Added in cmNixCacheManager.h
+   - DONE Thread safety guarantees unclear - Added THREAD_SAFETY.md
+   - DONE Performance characteristics undocumented - Added PERFORMANCE.md
 
 ## New Code Quality Items (2025-07-28):
 
@@ -188,9 +188,9 @@ The CMake Nix backend is feature-complete and production-ready:
    - Consider using std::filesystem for path operations (C++17)
 
 3. **Error Messages**:
-   - Enhance error messages to include more context
-   - Add suggestions for common error scenarios
-   - Improve diagnostics for package mapping failures
+   - DONE Enhance error messages to include more context - Added detailed error messages with solutions
+   - DONE Add suggestions for common error scenarios - Added actionable suggestions in error messages
+   - DONE Improve diagnostics for package mapping failures - Added JSON format examples and troubleshooting tips
 
 ### Domain Clarity Issues (Compass Domain Expert Review):
 1. **Mixed Domain Concerns**:
