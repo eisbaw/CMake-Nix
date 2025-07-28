@@ -47,6 +47,7 @@ set(CMakeLib_TESTS
   testNixGenerator.cxx
   testNixComponentRefactoring.cxx
   testNixSecurityPaths.cxx
+  testNixThreadSafety.cxx
   )
 if(CMake_ENABLE_DEBUGGER)
   list(APPEND CMakeLib_TESTS
