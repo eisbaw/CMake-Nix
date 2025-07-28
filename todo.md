@@ -45,8 +45,8 @@ The CMake Nix backend is feature-complete and production-ready:
       - DONE Create cmNixDerivationWriter class with clean interface
       - DONE Move WriteNixHelperFunctions, WriteFilesetUnion, WriteCompositeSource methods
       - DONE Refactor WriteObjectDerivation to use the new class (partial delegation)
-      - TODO: Refactor WriteLinkDerivation to use the new class  
-      - TODO: Refactor WriteCustomCommandDerivations to use the new class
+      - DONE Refactor WriteLinkDerivation to use the new class  
+      - DONE Refactor WriteCustomCommandDerivations (already properly delegated to cmNixCustomCommandGenerator)
    
    b) Extract dependency graph management from cmGlobalNixGenerator into cmNixDependencyGraph class
       - Move BuildDependencyGraph method and DependencyGraph nested class
