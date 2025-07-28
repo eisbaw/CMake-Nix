@@ -92,8 +92,8 @@ public:
                            const std::string& srcDir,
                            const std::string& buildDir,
                            [[maybe_unused]] cmGeneratorTarget* target = nullptr,
-                           const std::string& lang = "",
-                           const std::string& config = "",
+                           [[maybe_unused]] const std::string& lang = "",
+                           [[maybe_unused]] const std::string& config = "",
                            const std::vector<std::string>& customCommandHeaders = {});
 
   /**

@@ -216,8 +216,8 @@ void NixEdgeCaseTest::CreateCircularSymlink(const std::string& path1, const std:
 {
   // Create two symlinks pointing to each other
   // Ignore return values - best effort creation
-  (void)symlink(path2.c_str(), path1.c_str());
-  (void)symlink(path1.c_str(), path2.c_str());
+  [[maybe_unused]] int result1 = symlink(path2.c_str(), path1.c_str());
+  [[maybe_unused]] int result2 = symlink(path1.c_str(), path2.c_str());
 }
 
 bool NixEdgeCaseTest::TestUnicodeInPaths()
