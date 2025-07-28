@@ -221,22 +221,34 @@ std::vector<std::string> cmNixTargetGenerator::GetSourceDependencies(
     }
   } catch (const std::bad_alloc& e) {
     // Handle out of memory specifically
-    this->LogDebug("Out of memory in ScanWithCompiler for " + source->GetFullPath());
+    std::ostringstream msg;
+    msg << "Out of memory during dependency scanning for " << source->GetFullPath();
+    this->Makefile->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    this->LogDebug(msg.str());
     // Fall back to other methods if compiler scanning fails
   } catch (const std::system_error& e) {
     // Handle system errors (file I/O, process execution)
     std::ostringstream msg;
-    msg << "System error in ScanWithCompiler for " << source->GetFullPath() 
+    msg << "System error during dependency scanning for " << source->GetFullPath() 
         << ": " << e.what() << " (code: " << e.code() << ")";
+    this->Makefile->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
     this->LogDebug(msg.str());
     // Fall back to other methods if compiler scanning fails
   } catch (const std::runtime_error& e) {
     // Handle runtime errors (command execution failures)
-    this->LogDebug("Runtime error in ScanWithCompiler for " + source->GetFullPath() + ": " + e.what());
+    std::ostringstream msg;
+    msg << "Runtime error during dependency scanning for " << source->GetFullPath() 
+        << ": " << e.what();
+    this->Makefile->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    this->LogDebug(msg.str());
     // Fall back to other methods if compiler scanning fails
   } catch (const std::exception& e) {
     // Handle any other standard exceptions
-    this->LogDebug("Exception in ScanWithCompiler for " + source->GetFullPath() + ": " + e.what());
+    std::ostringstream msg;
+    msg << "Exception during dependency scanning for " << source->GetFullPath() 
+        << ": " << e.what();
+    this->Makefile->GetCMakeInstance()->IssueMessage(MessageType::WARNING, msg.str());
+    this->LogDebug(msg.str());
     // Fall back to other methods if compiler scanning fails
   }
   
