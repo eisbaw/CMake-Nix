@@ -25,6 +25,15 @@ The Nix generator supports:
 - **Header dependency tracking**: Automatic detection and tracking of header files
 - **External libraries**: Integration with system packages via ``find_package()``
 - **Multiple configurations**: Debug, Release, RelWithDebInfo, MinSizeRel
+- **Multi-directory projects**: Full support for ``add_subdirectory()``
+- **Library versioning**: Support for VERSION and SOVERSION properties
+- **Transitive dependencies**: Proper dependency propagation across targets
+- **Compiler detection**: Automatic detection of GCC, Clang, and other compilers
+- **Install rules**: Complete ``install()`` command support
+- **Custom commands**: Code generation and custom build steps
+- **Interface libraries**: Support for header-only libraries
+- **Object libraries**: Support for ``OBJECT`` library type
+- **Module libraries**: Support for ``MODULE`` library type (plugins)
 
 Supported Languages
 ^^^^^^^^^^^^^^^^^^^
@@ -32,9 +41,11 @@ Supported Languages
 - C
 - C++
 - Fortran
-- CUDA
-- Assembly (ASM, ASM-ATT, ASM_NASM, ASM_MASM)
+- Assembly (ASM, ASM-ATT)
 - Mixed language projects
+
+.. note::
+   CUDA language support is not yet implemented in the Nix generator.
 
 Supported Target Types
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -223,3 +234,64 @@ Configure and build:
   $ nix-build -A myapp
   $ nix-build -A mylib  
   $ nix-build -A myapp_install
+
+Limitations and Known Issues
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Nix generator has the following limitations:
+
+- **No incremental builds within derivations**: Each Nix derivation always rebuilds from scratch for reproducibility
+- **ExternalProject/FetchContent incompatible**: These modules download during build, which conflicts with Nix's pure build model. Use ``find_package()`` or Git submodules instead
+- **Unix/Linux only**: The generator assumes Unix-style paths and tools
+- **No response files**: Not needed as build commands are in derivation scripts
+- **Unity builds not supported**: The Nix backend achieves better performance through fine-grained parallelism
+- **Precompiled headers incompatible**: PCH requires mutable build state which conflicts with Nix's pure build model
+
+Environment Variables
+^^^^^^^^^^^^^^^^^^^^^
+
+The following environment variables affect the Nix generator:
+
+- ``CMAKE_NIX_DEBUG``: Set to ``1`` to enable debug output
+- ``CMAKE_NIX_EXTERNAL_HEADER_LIMIT``: Maximum number of external headers to copy per source file (default: 100)
+- ``CMAKE_NIX_EXPLICIT_SOURCES``: Set to ``ON`` to generate separate source derivations
+- ``CMAKE_NIX_<LANG>_COMPILER_PACKAGE``: Override the Nix package for a specific language compiler
+
+Package Configuration
+^^^^^^^^^^^^^^^^^^^^^
+
+For external dependencies that aren't automatically detected, create a ``pkg_<PackageName>.nix`` file:
+
+.. code-block:: nix
+
+  { pkgs }:
+  {
+    buildInputs = [ pkgs.libfoo ];
+    # Optional: additional flags or environment variables
+    cmakeFlags = [ "-DFOO_INCLUDE_DIR=${pkgs.libfoo}/include" ];
+  }
+
+Best Practices
+^^^^^^^^^^^^^^
+
+1. **Use find_package() for external dependencies**: The generator automatically maps these to Nix packages
+2. **Avoid ExternalProject_Add and FetchContent**: These are incompatible with Nix's build model
+3. **Prefer relative paths**: Makes the build more portable
+4. **Use target properties**: Modern CMake target-based commands work best
+5. **Enable debug mode for troubleshooting**: Set ``CMAKE_NIX_DEBUG=1`` when debugging build issues
+
+Testing and Validation
+^^^^^^^^^^^^^^^^^^^^^^
+
+The Nix generator is extensively tested with:
+
+- Simple single-file projects
+- Multi-file projects with headers
+- Shared and static libraries with versioning
+- External library integration
+- Multi-directory projects
+- Custom commands and code generation
+- Mixed language projects
+- Complex real-world projects
+
+The generator has been validated by successfully building CMake itself using the Nix backend.

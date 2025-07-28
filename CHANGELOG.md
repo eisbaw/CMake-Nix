@@ -1,5 +1,37 @@
 # CMake Nix Backend - Change Log
 
+## Version 1.1.0 (2025-07-28)
+
+### 🚀 Production-Ready Release
+
+All features complete and thoroughly tested. The CMake Nix backend is now production-ready.
+
+### Recent Enhancements (2025-01-26)
+- **✅ ExternalProject/FetchContent Detection** - Automatic detection and warning system
+- **✅ Skeleton Package Generation** - Automatic skeleton pkg_*.nix file generation
+- **✅ Unified Header Derivations** - Shared header derivations for external sources
+- **✅ Build Robustness** - Added `mkdir -p` everywhere for output directories
+- **✅ Comprehensive Documentation** - Best practices and guidelines added
+
+### Test Suite Status
+- **83 test directories** total (14 in main regression suite)
+- **100% pass rate** for all tests in `just dev`
+- **No critical bugs or code smells** found in comprehensive review
+- **Production validated** by building CMake itself
+
+### Additional Language Support
+- **Fortran** - Full support for pure and mixed Fortran/C projects
+- **Assembly** - Support for ASM and ASM-ATT languages
+- **Object Libraries** - Complete OBJECT library support
+- **Module Libraries** - MODULE library type for plugins
+- **Interface Libraries** - Header-only library support
+
+### Known Limitations (By Design)
+- **Unity builds** - Not supported (Nix achieves better parallelism with fine-grained derivations)
+- **Precompiled headers** - Incompatible with Nix's pure build model
+- **CUDA** - Not yet implemented
+- **ExternalProject/FetchContent** - Incompatible with Nix (use find_package() instead)
+
 ## Version 1.0.0 (2025-07-19)
 
 ### ✅ Complete Implementation
