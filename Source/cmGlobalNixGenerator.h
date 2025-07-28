@@ -23,6 +23,7 @@ class cmMakefile;
 class cmake;
 class cmNixWriter;
 class cmNixCompilerResolver;
+class cmNixDerivationWriter;
 
 /**
  * \class cmGlobalNixGenerator
@@ -275,6 +276,9 @@ private:
   
   // Compiler resolution utility
   mutable std::unique_ptr<cmNixCompilerResolver> CompilerResolver;
+  
+  // Derivation writer utility
+  mutable std::unique_ptr<cmNixDerivationWriter> DerivationWriter;
   
   // Performance optimization: Cache frequently computed values
   mutable std::map<std::pair<cmGeneratorTarget*, std::string>, std::vector<std::string>> LibraryDependencyCache;

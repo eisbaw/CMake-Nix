@@ -39,6 +39,7 @@
 #include "cmNixWriter.h"
 #include "cmStringAlgorithms.h"
 #include "cmNixConstants.h"
+#include "cmNixDerivationWriter.h"
 
 // String constants for performance optimization
 const std::string cmGlobalNixGenerator::DefaultConfig = "Release";
@@ -48,6 +49,7 @@ const std::string cmGlobalNixGenerator::CXXLanguage = "CXX";
 cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   : cmGlobalCommonGenerator(cm)
   , CompilerResolver(std::make_unique<cmNixCompilerResolver>(cm))
+  , DerivationWriter(std::make_unique<cmNixDerivationWriter>())
 {
   // Set the make program file
   this->FindMakeProgramFile = "CMakeNixFindMake.cmake";
@@ -235,6 +237,21 @@ cmGlobalNixGenerator::GenerateBuildCommand(
 
 void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
 {
+  // Configure the derivation writer with platform-specific settings
+  this->DerivationWriter->SetDebugOutput(this->GetCMakeInstance()->GetDebugOutput());
+  this->DerivationWriter->SetObjectFileExtension(this->GetObjectFileExtension());
+  this->DerivationWriter->SetSharedLibraryExtension(this->GetSharedLibraryExtension());
+  this->DerivationWriter->SetStaticLibraryExtension(this->GetStaticLibraryExtension());
+  this->DerivationWriter->SetLibraryPrefix(this->GetLibraryPrefix());
+  
+  // Write helper functions from the derivation writer
+  this->DerivationWriter->WriteNixHelperFunctions(writer);
+  
+  // Keep the old implementation for now until refactoring is complete
+  // Debug: Check if we reach this point
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    std::cerr << "[NIX-DEBUG] Writing old helper functions after DerivationWriter" << std::endl;
+  }
   writer.WriteComment("Helper functions for DRY derivations");
   writer.WriteLine();
   
