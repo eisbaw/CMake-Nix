@@ -127,7 +127,7 @@ The CMake Nix backend is feature-complete and production-ready:
 
 2. **Technical Debt**:
    - DONE `CMAKE_NIX_IGNORE_CIRCULAR_DEPS` flag is dangerous workaround - REMOVED (was never actually implemented)
-   - Configuration-time file embedding could hit Nix expression limits
+   - DONE Configuration-time file embedding could hit Nix expression limits - Added 1MB size limit check
    - Hard-coded Unix conventions throughout
 
 3. **Documentation Gaps**:
