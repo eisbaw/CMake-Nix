@@ -15,15 +15,24 @@ Update documentation of Nix generator backend.
 
 ### Additional Tests Found Not in Main Test Suite (2025-07-28):
 The following test directories exist but are not included in `just dev`:
-- test_compile_commands - Basic compile_commands.json generation test
-- test_transitive_headers - Tests transitive header dependencies
-- test_try_compile - Tests try_compile functionality
 - test_abi_debug - ABI/debug information test
+- test_bullet_physics - Bullet physics integration test
+- test_cmake_self_host - CMake self-hosting test (note: in justfile but commented out)
+- test_compile_commands - Basic compile_commands.json generation test
+- test_cross_compile - Cross-compilation test
 - test_custom_command_subdir - Custom commands in subdirectories
 - test_custom_simple - Simple custom command test  
-- test_install_error_handling - Install error handling test
+- test_error_recovery - Error recovery test
 - test_external_includes - External include directories test
+- test_fortran - Fortran test (note: test_fortran_language is included instead)
+- test_install_error_handling - Install error handling test
 - test_nix_multiconfig - Nix multi-configuration test
+- test_opencv - OpenCV integration test
+- test_performance_benchmark - Performance benchmarking test
+- test_scale - Large scale test (note: mentioned as remaining in test-special)
+- test_thread_safety - Thread safety test
+- test_transitive_headers - Tests transitive header dependencies
+- test_try_compile - Tests try_compile functionality
 
 Note: These tests may be experimental, duplicative, or not ready for the main test suite. 
 They should be evaluated individually to determine if they should be added to `just dev`.
