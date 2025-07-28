@@ -295,6 +295,24 @@ void cmNixCustomCommandGenerator::Generate(cmGeneratedFileStream& nixFileStream)
             // Read the file and write it
             std::ifstream inFile(dep, std::ios::binary);
             if (inFile) {
+              // Check file size first
+              inFile.seekg(0, std::ios::end);
+              std::streamsize fileSize = inFile.tellg();
+              inFile.seekg(0, std::ios::beg);
+              
+              // Limit to 1MB for configuration-time embedded files
+              const std::streamsize maxFileSize = 1024 * 1024; // 1MB
+              if (fileSize > maxFileSize) {
+                this->LocalGenerator->GetCMakeInstance()->IssueMessage(
+                  MessageType::FATAL_ERROR,
+                  cmStrCat("Configuration-time generated file '", dep, 
+                          "' is too large to embed (", fileSize, " bytes). ",
+                          "Maximum allowed size is ", maxFileSize, " bytes (1MB). ",
+                          "Consider using a different approach for large generated files."),
+                  cmListFileBacktrace());
+                return;
+              }
+              
               std::string content((std::istreambuf_iterator<char>(inFile)), 
                                   std::istreambuf_iterator<char>());
               // Ensure content ends with a newline to avoid here-doc issues

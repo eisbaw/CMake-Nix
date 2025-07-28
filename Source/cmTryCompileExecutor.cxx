@@ -216,16 +216,6 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   // This method replicates the logic from cmMakefile::TryCompile
   // but is thread-safe and works with unique binary directories
   
-  // Get debug output setting from parent if available
-  bool debugOutput = false;
-  if (job->ParentMakefile && job->ParentMakefile->GetCMakeInstance()) {
-    debugOutput = job->ParentMakefile->GetCMakeInstance()->GetDebugOutput();
-  }
-  
-  if (debugOutput) {
-    std::cerr << "[NIX-DEBUG] ExecuteTryCompile STARTED: " << job->ProjectName << " / " << job->TargetName << std::endl;
-  }
-  
   // Ensure binary directory exists
   if (!cmSystemTools::FileIsDirectory(job->BinaryDir)) {
     cmSystemTools::MakeDirectory(job->BinaryDir);
@@ -331,33 +321,15 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   }
 
   // Configure
-  if (debugOutput) {
-    std::cerr << "[NIX-DEBUG] Starting configure..." << std::endl;
-  }
   if (cm.Configure() != 0) {
     job->Output = "Failed to configure test project build system.";
-    if (debugOutput) {
-      std::cerr << "[NIX-DEBUG] Configure failed!" << std::endl;
-    }
     return 1;
-  }
-  if (debugOutput) {
-    std::cerr << "[NIX-DEBUG] Configure succeeded" << std::endl;
   }
 
   // Generate
-  if (debugOutput) {
-    std::cerr << "[NIX-DEBUG] Starting generate..." << std::endl;
-  }
   if (cm.Generate() != 0) {
     job->Output = "Failed to generate test project build system.";
-    if (debugOutput) {
-      std::cerr << "[NIX-DEBUG] Generate failed!" << std::endl;
-    }
     return 1;
-  }
-  if (debugOutput) {
-    std::cerr << "[NIX-DEBUG] Generate succeeded" << std::endl;
   }
 
   // Build the project
@@ -371,12 +343,6 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   
   job->Output = buildOutput.str();
   
-  if (debugOutput) {
-    std::cerr << "[NIX-DEBUG] ExecuteTryCompile COMPLETED: " << job->ProjectName << " (result=" << ret << ")" << std::endl;
-    if (ret != 0) {
-      std::cerr << "[NIX-DEBUG] Build output: " << job->Output << std::endl;
-    }
-  }
   
   return ret;
 }
