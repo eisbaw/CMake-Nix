@@ -48,10 +48,10 @@ The CMake Nix backend is feature-complete and production-ready:
       - DONE Refactor WriteLinkDerivation to use the new class  
       - DONE Refactor WriteCustomCommandDerivations (already properly delegated to cmNixCustomCommandGenerator)
    
-   b) Extract dependency graph management from cmGlobalNixGenerator into cmNixDependencyGraph class
-      - Move BuildDependencyGraph method and DependencyGraph nested class
-      - Move ObjectDerivations map and related dependency tracking
-      - Implement proper graph algorithms in isolated component
+   b) DONE Extract dependency graph management from cmGlobalNixGenerator into cmNixDependencyGraph class
+      - DONE Move BuildDependencyGraph method and DependencyGraph nested class
+      - DONE Move ObjectDerivations map and related dependency tracking  
+      - DONE Implement proper graph algorithms in isolated component
    
    c) Extract custom command handling from cmGlobalNixGenerator into cmNixCustomCommandHandler class
       - Move CustomCommandInfo struct and CustomCommands vector
