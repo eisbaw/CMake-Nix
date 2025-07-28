@@ -805,6 +805,8 @@ add_library(
   cmNixCompilerResolver.h
   cmNixDerivationWriter.cxx
   cmNixDerivationWriter.h
+  cmNixDependencyGraph.cxx
+  cmNixDependencyGraph.h
 
   cm_get_date.h
   cm_get_date.c
