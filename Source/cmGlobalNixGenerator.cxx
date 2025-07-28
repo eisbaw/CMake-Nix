@@ -701,19 +701,14 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   if (detailedProfile && std::string(detailedProfile) == "1") {
     timer = std::make_unique<ProfileTimer>(this, "WriteObjectDerivation");
   }
-  cmNixWriter writer(nixFileStream);
   
-  std::string sourceFile = source->GetFullPath();
+  // Step 1: Prepare compilation context
+  SourceCompilationContext ctx = PrepareSourceCompilationContext(target, source);
   
-  // Resolve symlinks to ensure the actual file is available in Nix store
-  if (cmSystemTools::FileIsSymlink(sourceFile)) {
-    sourceFile = cmSystemTools::GetRealPath(sourceFile);
-  }
-  
-  this->LogDebug("WriteObjectDerivation for source: " + sourceFile + 
+  this->LogDebug("WriteObjectDerivation for source: " + ctx.sourceFile + 
                 " (generated: " + std::to_string(source->GetIsGenerated()) + ")");
   
-  // Validate source file
+  // Step 2: Validate source file
   std::string errorMessage;
   if (!this->ValidateSourceFile(source, target, errorMessage)) {
     this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, errorMessage);
@@ -729,95 +724,14 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       this->GetCMakeInstance()->IssueMessage(MessageType::WARNING, errorMessage);
     }
   }
-  std::string derivName = this->GetDerivationName(target->GetName(), sourceFile);
-  ObjectDerivation const& od = this->ObjectDerivations[derivName];
-
-  std::string objectName = od.ObjectFileName;
-  std::string lang = od.Language;
-  std::vector<std::string> headers = od.Dependencies;
   
-  // Get the configuration (Debug, Release, etc.)
-  std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
-  if (config.empty()) {
-    config = "Release"; // Default configuration
-  }
+  // Step 3: Get compile flags
+  std::string allCompileFlags = this->GetCompileFlags(target, source, ctx.lang, ctx.config, ctx.objectName);
   
-  // Get all compile flags using the helper method
-  std::string allCompileFlags = this->GetCompileFlags(target, source, lang, config, objectName);
+  // Step 4: Process config-time generated files
+  ProcessConfigTimeGeneratedFiles(allCompileFlags, ctx.buildDir, ctx.configTimeGeneratedFiles);
   
-  // Prepare compiler package
-  std::string compilerPackage = this->GetCompilerPackage(lang);
-  
-  // Initialize DerivationWriter configuration if needed
-  if (!this->DerivationWriter) {
-    this->DerivationWriter = std::make_unique<cmNixDerivationWriter>();
-  }
-  this->DerivationWriter->SetDebugOutput(this->GetCMakeInstance()->GetDebugOutput());
-  
-  // Determine source path - check if this source file is external
-  std::string currentSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-  std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-  std::string srcDir = this->GetCMakeInstance()->GetHomeDirectory();
-  
-  // Calculate relative path from build directory to source directory for out-of-source builds
-  std::string projectSourceRelPath = "./.";
-  if (srcDir != buildDir) {
-    projectSourceRelPath = cmSystemTools::RelativePath(buildDir, srcDir);
-    if (!projectSourceRelPath.empty()) {
-      projectSourceRelPath = "./" + projectSourceRelPath;
-      // Remove any trailing slash to avoid Nix errors
-      if (projectSourceRelPath.back() == '/') {
-        projectSourceRelPath.pop_back();
-      }
-    } else {
-      projectSourceRelPath = "./.";
-    }
-  }
-  
-  std::string initialRelativePath = cmSystemTools::RelativePath(this->GetCMakeInstance()->GetHomeDirectory(), sourceFile);
-  
-  // Check if source file is external (outside project tree)
-  bool isExternalSource = (cmNixPathUtils::IsPathOutsideTree(initialRelativePath) || cmSystemTools::FileIsFullPath(initialRelativePath));
-  
-  // Start writing the derivation using cmakeNixCC helper
-  nixFileStream << "  " << derivName << " = cmakeNixCC {\n";
-  nixFileStream << "    name = \"" << objectName << "\";\n";
-  
-  // Process files referenced by -imacros and -include flags for ALL sources (external and non-external)
-  // These files need to be embedded if they are configuration-time generated
-  std::vector<std::string> configTimeGeneratedFiles;
-  std::vector<std::string> parsedFlags;
-  cmSystemTools::ParseUnixCommandLine(allCompileFlags.c_str(), parsedFlags);
-  for (size_t i = 0; i < parsedFlags.size(); ++i) {
-    const auto& flag = parsedFlags[i];
-    if ((flag == "-imacros" || flag == "-include") && i + 1 < parsedFlags.size()) {
-      std::string filePath = parsedFlags[++i];
-      
-      // Convert relative path to absolute if needed
-      if (!cmSystemTools::FileIsFullPath(filePath)) {
-        filePath = buildDir + "/" + filePath;
-      }
-      
-      // Check if it's a build directory file (configuration-time generated)
-      std::string relToBuild = cmSystemTools::RelativePath(buildDir, filePath);
-      if (!cmNixPathUtils::IsPathOutsideTree(relToBuild) && cmSystemTools::FileExists(filePath)) {
-        // This is a configuration-time generated file that needs to be embedded
-        configTimeGeneratedFiles.push_back(filePath);
-        this->LogDebug("Added " + flag + " file to config-time generated: " + filePath);
-      }
-    }
-  }
-  
-  // Collect custom command generated headers needed by this source BEFORE creating composite
-  std::vector<std::string> customCommandHeaders;
-  
-  // Extract base name and extension for special case handling
-  std::string baseName = cmSystemTools::GetFilenameWithoutLastExtension(sourceFile);
-  std::string sourceExtension = cmSystemTools::GetFilenameLastExtension(sourceFile);
-  
-  
-  // Even without explicit dependencies, check include directories for custom command outputs
-  // This is needed for cases where generated headers are included
+  // Step 5: Extract include directories from compile flags
   std::vector<std::string> includeDirs;
   std::vector<std::string> parsedIncludeFlags;
   cmSystemTools::ParseUnixCommandLine(allCompileFlags.c_str(), parsedIncludeFlags);
@@ -828,477 +742,97 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       if (!includeDir.empty()) {
         // Ensure absolute path
         if (!cmSystemTools::FileIsFullPath(includeDir)) {
-          // Include paths can be relative to either the source or build directory
-          // Try build directory first (most common for generated files)
-          std::string topBuildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-          std::string topSrcDir = this->GetCMakeInstance()->GetHomeDirectory();
-          
           // Include paths are typically relative to the build directory
-          includeDir = topBuildDir + "/" + includeDir;
+          includeDir = ctx.buildDir + "/" + includeDir;
         }
         includeDirs.push_back(includeDir);
       }
     }
   }
   
+  // Step 6: Process custom command headers
+  ProcessCustomCommandHeaders(ctx.sourceFile, allCompileFlags, includeDirs, ctx.customCommandHeaders);
   
-  // Check all custom command outputs to see if they're in any include directories
-  for (const auto& [output, deriv] : this->CustomCommandOutputs) {
-    std::string outputDir = cmSystemTools::GetFilenamePath(output);
-    
-    // Check if this output is in any of our include directories
-    for (const std::string& includeDir : includeDirs) {
-      // Resolve both paths to handle relative paths correctly
-      std::string fullOutputDir = cmSystemTools::CollapseFullPath(outputDir);
-      std::string fullIncludeDir = cmSystemTools::CollapseFullPath(includeDir);
-      
-      if (output.find("syscall") != std::string::npos) {
-        this->LogDebug("Checking custom command output: " + output);
-        this->LogDebug("  Output dir: " + fullOutputDir);
-        this->LogDebug("  Checking against include dir: " + fullIncludeDir);
-      }
-      if (outputDir == fullIncludeDir || 
-          cmSystemTools::IsSubDirectory(output, fullIncludeDir)) {
-        
-        // This header is in an include directory, add it as a dependency
-        if (std::find(customCommandHeaders.begin(), customCommandHeaders.end(), deriv) == customCommandHeaders.end()) {
-          customCommandHeaders.push_back(deriv);
-          this->LogDebug("Found custom command header in include dir: " + output + " -> " + deriv);
-        }
-        break;
-      }
+  // Step 7: Initialize DerivationWriter if needed
+  if (!this->DerivationWriter) {
+    this->DerivationWriter = std::make_unique<cmNixDerivationWriter>();
+  }
+  this->DerivationWriter->SetDebugOutput(this->GetCMakeInstance()->GetDebugOutput());
+  
+  // Step 8: Start writing the derivation
+  nixFileStream << "  " << ctx.derivName << " = cmakeNixCC {\n";
+  nixFileStream << "    name = \"" << ctx.objectName << "\";\n";
+  
+  // Step 9: Write the src attribute
+  WriteSourceAttribute(nixFileStream, ctx, target, source);
+  
+  // Step 10: Build buildInputs list and write it
+  std::string compilerPackage = this->GetCompilerPackage(ctx.lang);
+  std::vector<std::string> buildInputs = BuildBuildInputsList(target, source, ctx.config, ctx.sourceFile, ctx.projectSourceRelPath);
+  
+  if (!buildInputs.empty()) {
+    nixFileStream << "    buildInputs = [ ";
+    for (size_t i = 0; i < buildInputs.size(); ++i) {
+      if (i > 0) nixFileStream << " ";
+      nixFileStream << buildInputs[i];
     }
+    nixFileStream << " ];\n";
   }
   
-  // Also check for headers that might be included via relative paths
-  if (source) {
-    // Read the source file to check for includes
-    std::ifstream sourceStream(sourceFile);
-    if (sourceStream) {
-      std::string line;
-      std::regex includeRegex(R"(^\s*#\s*include\s*["<]([^">]+)[">])");
-      while (std::getline(sourceStream, line)) {
-        std::smatch match;
-        if (std::regex_match(line, match, includeRegex)) {
-          std::string includedFile = match[1];
-          
-          // Build list of paths to check
-          std::vector<std::string> pathsToCheck;
-          
-          // For relative includes, check relative to source file directory
-          if (!cmSystemTools::FileIsFullPath(includedFile)) {
-            std::string sourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-            pathsToCheck.push_back(sourceDir + "/" + includedFile);
-          }
-          
-          // Also check in all include directories
-          for (const std::string& includeDir : includeDirs) {
-            pathsToCheck.push_back(includeDir + "/" + includedFile);
-          }
-          
-          // Make absolute paths
-          for (size_t i = 0; i < pathsToCheck.size(); ++i) {
-            if (!cmSystemTools::FileIsFullPath(pathsToCheck[i])) {
-              pathsToCheck[i] = cmSystemTools::CollapseFullPath(pathsToCheck[i]);
-            }
-          }
-          
-          // Check each possible path
-          for (const auto& pathToCheck : pathsToCheck) {
-            auto customIt = this->CustomCommandOutputs.find(pathToCheck);
-            if (customIt != this->CustomCommandOutputs.end()) {
-              customCommandHeaders.push_back(customIt->second);
-              this->LogDebug("Found custom command header for composite source: " + pathToCheck + " -> " + customIt->second);
-              break;
-            }
-          }
-        }
-      }
+  // Step 11: Determine source path
+  std::string sourcePath = DetermineSourcePath(ctx.sourceFile, ctx.srcDir, ctx.buildDir);
+  
+  // Step 12: Update compile flags for generated files
+  allCompileFlags = UpdateCompileFlagsForGeneratedFiles(allCompileFlags, ctx.configTimeGeneratedFiles, ctx.buildDir);
+  
+  // Step 13: Add -fPIC if needed
+  std::string allFlags = allCompileFlags;
+  if ((target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+       target->GetType() == cmStateEnums::MODULE_LIBRARY) &&
+      allFlags.find("-fPIC") == std::string::npos) {
+    if (!allFlags.empty() && allFlags.back() != ' ') {
+      allFlags += " ";
     }
+    allFlags += "-fPIC";
   }
+  
+  // Remove trailing space if any
+  if (!allFlags.empty() && allFlags.back() == ' ') {
+    allFlags.pop_back();
+  }
+  
+  // Step 14: Write remaining attributes
+  if (sourcePath.find("${") != std::string::npos) {
+    nixFileStream << "    source = \"" << sourcePath << "\";\n";
+  } else {
+    nixFileStream << "    source = \"" << cmNixWriter::EscapeNixString(sourcePath) << "\";\n";
+  }
+  
+  WriteCompilerAttribute(nixFileStream, buildInputs, compilerPackage);
+  
+  if (!allFlags.empty()) {
+    nixFileStream << "    flags = \"" << cmNixWriter::EscapeNixString(allFlags) << "\";\n";
+  }
+  
+  // Close the derivation
+  nixFileStream << "  };\n\n";
+}
 
-  // Write src attribute
-  if (isExternalSource) {
-    // For external sources, create a composite source including both project and external file
-    // If we have config-time generated files, we need to write a composite source manually
-    // since WriteCompositeSource doesn't handle external sources properly
-    if (!configTimeGeneratedFiles.empty()) {
-      // Create a composite source that includes project files, external source, and config-time generated files
-      // Now include custom command headers in buildInputs
-      nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\" {\n";
-      if (!customCommandHeaders.empty()) {
-        nixFileStream << "      buildInputs = [\n";
-        std::set<std::string> processedDerivs;
-        for (const auto& headerDeriv : customCommandHeaders) {
-          if (processedDerivs.find(headerDeriv) != processedDerivs.end()) {
-            continue;
-          }
-          processedDerivs.insert(headerDeriv);
-          nixFileStream << "        " << headerDeriv << "\n";
-        }
-        nixFileStream << "      ];\n";
-      }
-      nixFileStream << "    } ''\n";
-      nixFileStream << "      mkdir -p $out\n";
-      
-      // Copy the source directory structure
-      nixFileStream << "      # Copy source files\n";
-      nixFileStream << "      cp -rL ${" << projectSourceRelPath << "}/* $out/ 2>/dev/null || true\n";
-      
-      // Copy configuration-time generated files to their correct locations
-      nixFileStream << "      # Copy configuration-time generated files\n";
-      for (const auto& genFile : configTimeGeneratedFiles) {
-        // Calculate the relative path within the build directory
-        std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
-        std::string destDir = cmSystemTools::GetFilenamePath(relPath);
-        
-        // Read the file content and embed it directly
-        cmsys::ifstream inFile(genFile.c_str(), std::ios::in | std::ios::binary);
-        if (inFile) {
-          std::ostringstream contents;
-          contents << inFile.rdbuf();
-          // File automatically closes when inFile goes out of scope (RAII)
-          
-          // Create parent directory if needed
-          if (!destDir.empty()) {
-            nixFileStream << "      mkdir -p $out/" << destDir << "\n";
-          }
-          
-          // Write the file content directly using a here-doc with a unique delimiter
-          std::string delimiter = "NIXEOF_" + std::to_string(std::hash<std::string>{}(genFile)) + "_END";
-          nixFileStream << "      cat > $out/" << relPath << " <<'" << delimiter << "'\n";
-          
-          // Escape '' sequences in content since we're inside a Nix multiline string
-          std::string contentStr = contents.str();
-          for (size_t i = 0; i < contentStr.length(); ++i) {
-            if (i + 1 < contentStr.length() && contentStr[i] == '\'' && contentStr[i + 1] == '\'') {
-              nixFileStream << "''\\''";
-              i++; // Skip the next quote
-            } else {
-              nixFileStream << contentStr[i];
-            }
-          }
-          
-          // Ensure we end with a newline before the delimiter
-          if (!contentStr.empty() && contentStr.back() != '\n') {
-            nixFileStream << "\n";
-          }
-          nixFileStream << delimiter << "\n";
-        } else {
-          // If we can't read the file, issue a warning but continue
-          nixFileStream << "      # Warning: Could not read " << genFile << "\n";
-        }
-      }
-      
-      // Handle external include directories from compile flags
-      cmLocalGenerator* lg = target->GetLocalGenerator();
-      std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, lang, config);
-      
-      for (const auto& inc : includes) {
-        if (!inc.Value.empty()) {
-          std::string incPath = inc.Value;
-          
-          // Check if this is an absolute path outside the project tree
-          if (cmSystemTools::FileIsFullPath(incPath)) {
-            std::string relPath = cmSystemTools::RelativePath(srcDir, incPath);
-            if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
-              // This is an external include directory
-              nixFileStream << "      # Copy headers from external include directory: " << incPath << "\n";
-              
-              // Normalize the path to resolve any .. segments
-              std::string normalizedPath = cmSystemTools::CollapseFullPath(incPath);
-              
-              // Create parent directories first
-              std::string parentPath = cmSystemTools::GetFilenamePath(normalizedPath);
-              nixFileStream << "      mkdir -p $out" << parentPath << "\n";
-              
-              // Use Nix's path functionality to copy the entire directory
-              nixFileStream << "      cp -rL ${builtins.path { path = \"" << normalizedPath << "\"; }} $out" << normalizedPath << "\n";
-            }
-          }
-        }
-      }
-      
-      // Update compile flags for external include directories
-      for (const auto& inc : includes) {
-        if (!inc.Value.empty()) {
-          std::string incPath = inc.Value;
-          if (cmSystemTools::FileIsFullPath(incPath)) {
-            std::string relPath = cmSystemTools::RelativePath(srcDir, incPath);
-            if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
-              // Normalize the path
-              std::string normalizedPath = cmSystemTools::CollapseFullPath(incPath);
-              
-              // Find and replace -I<absolute_path> with -I<relative_path>
-              std::string searchStr = "-I" + normalizedPath;
-              std::string replaceStr = "-I" + normalizedPath.substr(1); // Remove leading /
-              
-              size_t pos = 0;
-              while ((pos = allCompileFlags.find(searchStr, pos)) != std::string::npos) {
-                allCompileFlags.replace(pos, searchStr.length(), replaceStr);
-                pos += replaceStr.length();
-              }
-              
-              this->LogDebug("Replaced " + searchStr + " with " + replaceStr + " in compile flags");
-            }
-          }
-        }
-      }
-      
-      // Copy the external source file
-      std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
-      nixFileStream << "      # Copy external source file\n";
-      nixFileStream << "      cp ${builtins.path { path = \"" << sourceFile << "\"; }} $out/" << fileName << "\n";
-      
-      // For ABI detection files, also copy the required header file
-      if (fileName.find("CMakeCCompilerABI.c") != std::string::npos ||
-          fileName.find("CMakeCXXCompilerABI.cpp") != std::string::npos) {
-        std::string abiSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-        std::string abiHeaderFile = abiSourceDir + "/CMakeCompilerABI.h";
-        nixFileStream << "      cp ${builtins.path { path = \"" << abiHeaderFile << "\"; }} $out/CMakeCompilerABI.h\n";
-      }
-      
-      // Handle external headers
-      auto targetGen = cmNixTargetGenerator::New(target);
-      std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
-      
-      // Collect external headers that need to be made available
-      std::vector<std::string> externalHeaders;
-      for (const std::string& dep : dependencies) {
-        std::string fullPath;
-        if (cmSystemTools::FileIsFullPath(dep)) {
-          fullPath = dep;
-        } else {
-          fullPath = this->GetCMakeInstance()->GetHomeDirectory() + "/" + dep;
-        }
-        
-        // Skip if it's a system header or in Nix store
-        if (this->IsSystemPath(fullPath)) {
-          continue;
-        }
-        
-        // Check if this header is outside the project directory
-        std::string relPath = cmSystemTools::RelativePath(
-          this->GetCMakeInstance()->GetHomeDirectory(), fullPath);
-        if (!relPath.empty() && cmNixPathUtils::IsPathOutsideTree(relPath)) {
-          externalHeaders.push_back(fullPath);
-        }
-      }
-      
-      // If we have external headers, create or update the header derivation
-      std::string headerDerivName;
-      if (!externalHeaders.empty()) {
-        std::string sourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-        headerDerivName = this->HeaderDependencyResolver->GetOrCreateHeaderDerivation(sourceDir, externalHeaders);
-        
-        // Store mapping from source file to header derivation
-        this->HeaderDependencyResolver->SetSourceHeaderDerivation(sourceFile, headerDerivName);
-        
-        // Symlink headers from the header derivation
-        nixFileStream << "      # Link headers from external header derivation\n";
-        nixFileStream << "      if [ -d ${" << headerDerivName << "} ]; then\n";
-        nixFileStream << "        cp -rL ${" << headerDerivName << "}/* $out/ 2>/dev/null || true\n";
-        nixFileStream << "      fi\n";
-      }
-      
-      // Copy custom command generated headers
-      if (!customCommandHeaders.empty()) {
-        nixFileStream << "      # Copy custom command generated headers\n";
-        // Use a set to track unique derivation names to avoid duplicates
-        std::set<std::string> processedDerivs;
-        for (const auto& headerDeriv : customCommandHeaders) {
-          if (processedDerivs.find(headerDeriv) != processedDerivs.end()) {
-            continue; // Already processed this derivation
-          }
-          processedDerivs.insert(headerDeriv);
-          
-          // Find the actual output path for this derivation
-          for (const auto& [output, deriv] : this->CustomCommandOutputs) {
-            if (deriv == headerDeriv) {
-              std::string relativePath = cmSystemTools::RelativePath(buildDir, output);
-              std::string outputDir = cmSystemTools::GetFilenamePath(relativePath);
-              if (!outputDir.empty()) {
-                nixFileStream << "      mkdir -p $out/" << outputDir << "\n";
-              }
-              nixFileStream << "      if [ -e ${" << headerDeriv << "}/" << relativePath << " ]; then\n";
-              nixFileStream << "        cp ${" << headerDeriv << "}/" << relativePath << " $out/" << relativePath << "\n";
-              nixFileStream << "      fi\n";
-              break;
-            }
-          }
-        }
-      }
-      
-      nixFileStream << "    '';\n";
-    } else {
-      // No config-time generated files, use simple approach
-      // Include custom command headers in buildInputs
-      nixFileStream << "    src = pkgs.runCommand \"composite-src\" {\n";
-      if (!customCommandHeaders.empty()) {
-        nixFileStream << "      buildInputs = [\n";
-        std::set<std::string> processedDerivs;
-        for (const auto& headerDeriv : customCommandHeaders) {
-          if (processedDerivs.find(headerDeriv) != processedDerivs.end()) {
-            continue;
-          }
-          processedDerivs.insert(headerDeriv);
-          nixFileStream << "        " << headerDeriv << "\n";
-        }
-        nixFileStream << "      ];\n";
-      }
-      nixFileStream << "    } ''\n";
-      nixFileStream << "      mkdir -p $out\n";
-      // Copy project source tree (use -L to follow symlinks and avoid permission issues)
-      nixFileStream << "      cp -rL ${" << projectSourceRelPath << "}/* $out/ 2>/dev/null || true\n";
-      
-      // Handle external include directories from compile flags
-      cmLocalGenerator* lg = target->GetLocalGenerator();
-      std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, lang, config);
-      
-      for (const auto& inc : includes) {
-        if (!inc.Value.empty()) {
-          std::string incPath = inc.Value;
-          
-          // Check if this is an absolute path outside the project tree
-          if (cmSystemTools::FileIsFullPath(incPath)) {
-            std::string relPath = cmSystemTools::RelativePath(srcDir, incPath);
-            if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
-              // This is an external include directory
-              nixFileStream << "      # Copy headers from external include directory: " << incPath << "\n";
-              
-              // Normalize the path to resolve any .. segments
-              std::string normalizedPath = cmSystemTools::CollapseFullPath(incPath);
-              
-              // Create parent directories first
-              std::string parentPath = cmSystemTools::GetFilenamePath(normalizedPath);
-              nixFileStream << "      mkdir -p $out" << parentPath << "\n";
-              
-              // Use Nix's path functionality to copy the entire directory
-              nixFileStream << "      cp -rL ${builtins.path { path = \"" << normalizedPath << "\"; }} $out" << normalizedPath << "\n";
-            }
-          }
-        }
-      }
-      
-      // Update compile flags for external include directories
-      for (const auto& inc : includes) {
-        if (!inc.Value.empty()) {
-          std::string incPath = inc.Value;
-          if (cmSystemTools::FileIsFullPath(incPath)) {
-            std::string relPath = cmSystemTools::RelativePath(srcDir, incPath);
-            if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
-              // Normalize the path
-              std::string normalizedPath = cmSystemTools::CollapseFullPath(incPath);
-              
-              // Find and replace -I<absolute_path> with -I<relative_path>
-              std::string searchStr = "-I" + normalizedPath;
-              std::string replaceStr = "-I" + normalizedPath.substr(1); // Remove leading /
-              
-              size_t pos = 0;
-              while ((pos = allCompileFlags.find(searchStr, pos)) != std::string::npos) {
-                allCompileFlags.replace(pos, searchStr.length(), replaceStr);
-                pos += replaceStr.length();
-              }
-              
-              this->LogDebug("Replaced " + searchStr + " with " + replaceStr + " in compile flags");
-            }
-          }
-        }
-      }
-      
-      // Copy external source file to build dir root
-      std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
-      // Use builtins.path for absolute paths
-      nixFileStream << "      cp ${builtins.path { path = \"" << sourceFile << "\"; }} $out/" << fileName << "\n";
-      
-      // For ABI detection files, also copy the required header file
-      if (fileName.find("CMakeCCompilerABI.c") != std::string::npos ||
-          fileName.find("CMakeCXXCompilerABI.cpp") != std::string::npos) {
-        std::string abiSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-        std::string abiHeaderFile = abiSourceDir + "/CMakeCompilerABI.h";
-        nixFileStream << "      cp ${builtins.path { path = \"" << abiHeaderFile << "\"; }} $out/CMakeCompilerABI.h\n";
-      }
-      
-      // Get header dependencies for external source
-      auto targetGen = cmNixTargetGenerator::New(target);
-      std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
-      
-      // Collect external headers that need to be made available
-      std::vector<std::string> externalHeaders;
-      for (const std::string& dep : dependencies) {
-        std::string fullPath;
-        if (cmSystemTools::FileIsFullPath(dep)) {
-          fullPath = dep;
-        } else {
-          fullPath = this->GetCMakeInstance()->GetHomeDirectory() + "/" + dep;
-        }
-        
-        // Skip if it's a system header or in Nix store
-        if (this->IsSystemPath(fullPath)) {
-          continue;
-        }
-        
-        // Check if this header is outside the project directory
-        std::string relPath = cmSystemTools::RelativePath(
-          this->GetCMakeInstance()->GetHomeDirectory(), fullPath);
-        if (!relPath.empty() && cmNixPathUtils::IsPathOutsideTree(relPath)) {
-          externalHeaders.push_back(fullPath);
-        }
-      }
-      
-      // If we have external headers, create or update the header derivation
-      std::string headerDerivName;
-      if (!externalHeaders.empty()) {
-        std::string sourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-        headerDerivName = this->HeaderDependencyResolver->GetOrCreateHeaderDerivation(sourceDir, externalHeaders);
-        
-        // Store mapping from source file to header derivation
-        this->HeaderDependencyResolver->SetSourceHeaderDerivation(sourceFile, headerDerivName);
-        
-        // Symlink headers from the header derivation
-        nixFileStream << "      # Link headers from external header derivation\n";
-        nixFileStream << "      if [ -d ${" << headerDerivName << "} ]; then\n";
-        nixFileStream << "        cp -rL ${" << headerDerivName << "}/* $out/ 2>/dev/null || true\n";
-        nixFileStream << "      fi\n";
-      }
-      
-      // Copy custom command generated headers
-      if (!customCommandHeaders.empty()) {
-        nixFileStream << "      # Copy custom command generated headers\n";
-        // Use a set to track unique derivation names to avoid duplicates
-        std::set<std::string> processedDerivs;
-        for (const auto& headerDeriv : customCommandHeaders) {
-          if (processedDerivs.find(headerDeriv) != processedDerivs.end()) {
-            continue; // Already processed this derivation
-          }
-          processedDerivs.insert(headerDeriv);
-          
-          // Find the actual output path for this derivation
-          for (const auto& [output, deriv] : this->CustomCommandOutputs) {
-            if (deriv == headerDeriv) {
-              std::string relativePath = cmSystemTools::RelativePath(buildDir, output);
-              std::string outputDir = cmSystemTools::GetFilenamePath(relativePath);
-              if (!outputDir.empty()) {
-                nixFileStream << "      mkdir -p $out/" << outputDir << "\n";
-              }
-              nixFileStream << "      if [ -e ${" << headerDeriv << "}/" << relativePath << " ]; then\n";
-              nixFileStream << "        cp ${" << headerDeriv << "}/" << relativePath << " $out/" << relativePath << "\n";
-              nixFileStream << "      fi\n";
-              break;
-            }
-          }
-        }
-      }
-      
-      nixFileStream << "    '';\n";
-    }
+void cmGlobalNixGenerator::WriteSourceAttribute(
+  cmGeneratedFileStream& nixFileStream,
+  const SourceCompilationContext& ctx,
+  cmGeneratorTarget* target,
+  const cmSourceFile* source)
+{
+  if (ctx.isExternalSource) {
+    WriteExternalSourceComposite(nixFileStream, ctx, target, source);
   } else {
     // Regular project source - always use fileset for better performance
     auto targetGen = cmNixTargetGenerator::New(target);
     std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
     
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      this->LogDebug("Source dependencies for " + sourceFile + ": " + std::to_string(dependencies.size()));
+      this->LogDebug("Source dependencies for " + ctx.sourceFile + ": " + std::to_string(dependencies.size()));
       for (const auto& dep : dependencies) {
         this->LogDebug("  Dependency: " + dep);
       }
@@ -1310,7 +844,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     
     // Add the main source file
     std::string relativeSource = cmSystemTools::RelativePath(
-      this->GetCMakeInstance()->GetHomeDirectory(), sourceFile);
+      this->GetCMakeInstance()->GetHomeDirectory(), ctx.sourceFile);
     if (!relativeSource.empty() && relativeSource.find("../") != 0) {
       if (source->GetIsGenerated()) {
         generatedFiles.push_back(relativeSource);
@@ -1320,22 +854,19 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
     
     // Process header dependencies using helper method
-    this->LogDebug("Processing headers for " + sourceFile + ": " + std::to_string(dependencies.size()) + " headers");
-    this->HeaderDependencyResolver->ProcessHeaderDependencies(dependencies, buildDir, srcDir, 
-                                   existingFiles, generatedFiles, configTimeGeneratedFiles);
+    this->LogDebug("Processing headers for " + ctx.sourceFile + ": " + std::to_string(dependencies.size()) + " headers");
+    this->HeaderDependencyResolver->ProcessHeaderDependencies(dependencies, ctx.buildDir, ctx.srcDir, 
+                                   existingFiles, generatedFiles, const_cast<std::vector<std::string>&>(ctx.configTimeGeneratedFiles));
     
-    // Note: PCH header file handling is now done in GetCompileFlags helper
-    // Note: -imacros and -include processing has been moved to the top for both external and non-external sources
-    
-    // Check if we need a composite source (for config-time generated files or external includes)
+    // Check if we need a composite source
     bool hasExternalIncludes = false;
     cmLocalGenerator* lg = target->GetLocalGenerator();
-    std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, lang, config);
+    std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, ctx.lang, ctx.config);
     for (const auto& inc : includes) {
       if (!inc.Value.empty()) {
         std::string incPath = inc.Value;
         if (cmSystemTools::FileIsFullPath(incPath)) {
-          std::string relPath = cmSystemTools::RelativePath(srcDir, incPath);
+          std::string relPath = cmSystemTools::RelativePath(ctx.srcDir, incPath);
           if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
             hasExternalIncludes = true;
             break;
@@ -1345,70 +876,21 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
     
     // Handle configuration-time generated files or external includes
-    if (!configTimeGeneratedFiles.empty() || hasExternalIncludes || !customCommandHeaders.empty()) {
-      this->WriteCompositeSource(nixFileStream, configTimeGeneratedFiles, srcDir, buildDir, target, lang, config, customCommandHeaders);
-      
-      // Note: Compile flag updating for config-time generated files is now done later for ALL sources
-      
-      // Also update compile flags for external include directories
-      if (hasExternalIncludes) {
-        for (const auto& inc : includes) {
-          if (!inc.Value.empty()) {
-            std::string incPath = inc.Value;
-            if (cmSystemTools::FileIsFullPath(incPath)) {
-              std::string relPath = cmSystemTools::RelativePath(srcDir, incPath);
-              if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
-                // Normalize the path
-                std::string normalizedPath = cmSystemTools::CollapseFullPath(incPath);
-                
-                // Find and replace -I<absolute_path> with -I<relative_path>
-                std::string searchStr = "-I" + normalizedPath;
-                std::string replaceStr = "-I" + normalizedPath.substr(1); // Remove leading /
-                
-                size_t pos = 0;
-                while ((pos = allCompileFlags.find(searchStr, pos)) != std::string::npos) {
-                  allCompileFlags.replace(pos, searchStr.length(), replaceStr);
-                  pos += replaceStr.length();
-                }
-                
-                this->LogDebug("Replaced " + searchStr + " with " + replaceStr + " in compile flags");
-              }
-            }
-          }
-        }
-      }
+    if (!ctx.configTimeGeneratedFiles.empty() || hasExternalIncludes || !ctx.customCommandHeaders.empty()) {
+      this->WriteCompositeSource(nixFileStream, ctx.configTimeGeneratedFiles, ctx.srcDir, ctx.buildDir, target, ctx.lang, ctx.config, ctx.customCommandHeaders);
     } else if (existingFiles.empty() && generatedFiles.empty()) {
       // No files detected, use whole directory
-      // Calculate relative path from build directory to source directory for out-of-source builds
-      std::string srcDirLocal2 = this->GetCMakeInstance()->GetHomeDirectory();
-      std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-      std::string rootPath = "./.";
-      if (srcDirLocal2 != bldDir) {
-        rootPath = cmSystemTools::RelativePath(bldDir, srcDirLocal2);
-        if (!rootPath.empty()) {
-          rootPath = "./" + rootPath;
-          // Remove any trailing slash to avoid Nix errors
-          if (rootPath.back() == '/') {
-            rootPath.pop_back();
-          }
-        } else {
-          rootPath = "./.";
-        }
-      }
-      nixFileStream << "    src = " << rootPath << ";\n";
+      nixFileStream << "    src = " << ctx.projectSourceRelPath << ";\n";
     } else {
       // Always use fileset union for minimal source sets to avoid unnecessary rebuilds
-      // Note: When CMAKE_NIX_EXPLICIT_SOURCES is OFF, we include the source file only
-      // (no header dependencies) but still use a fileset to minimize rebuilds
       if (!this->UseExplicitSources() && existingFiles.size() + generatedFiles.size() > 0) {
         // When not using explicit sources, only include the source file itself
-        // Clear any header dependencies to simplify the fileset
         existingFiles.clear();
         generatedFiles.clear();
         
         // Re-add just the main source file
         std::string relSource = cmSystemTools::RelativePath(
-          this->GetCMakeInstance()->GetHomeDirectory(), sourceFile);
+          this->GetCMakeInstance()->GetHomeDirectory(), ctx.sourceFile);
         if (!relSource.empty() && relSource.find("../") != 0) {
           if (source->GetIsGenerated()) {
             generatedFiles.push_back(relSource);
@@ -1417,18 +899,14 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           }
         }
         
-        // Also add include directories that are part of the project
-        // This ensures headers can be found during compilation
-        // Note: lg and includes are already defined above, reuse them
+        // Also add include directories and source directory headers
         for (const auto& inc : includes) {
           if (!inc.Value.empty()) {
             std::string incPath = inc.Value;
             // Only add project-relative include directories
             if (!cmSystemTools::FileIsFullPath(incPath)) {
-              // This is a relative path, check if it exists in the project
               std::string fullIncPath = this->GetCMakeInstance()->GetHomeDirectory() + "/" + incPath;
               if (cmSystemTools::FileExists(fullIncPath) && cmSystemTools::FileIsDirectory(fullIncPath)) {
-                // Add the include directory to the fileset
                 existingFiles.push_back(incPath);
               }
             } else {
@@ -1444,11 +922,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           }
         }
         
-        // Also add the source file's directory if it's not already included
-        // This handles cases where headers are in the same directory as sources
+        // Also add the source file's directory headers
         std::string sourceDir = cmSystemTools::GetFilenamePath(relSource);
         if (sourceDir.empty()) {
-          // Source is in the root directory
           sourceDir = ".";
         }
         
@@ -1471,7 +947,6 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
           }
           
           if (cmSystemTools::FileExists(fullSourceDir) && cmSystemTools::FileIsDirectory(fullSourceDir)) {
-            // Get all header files in the source directory
             cmsys::Directory dir;
             if (dir.Load(fullSourceDir)) {
               for (unsigned long i = 0; i < dir.GetNumberOfFiles(); ++i) {
@@ -1494,212 +969,219 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       
       // Always use fileset union for better caching
       if (existingFiles.size() + generatedFiles.size() > 0) {
-        // Calculate relative path from build directory to source directory for out-of-source builds
-        std::string srcDirLocal4 = this->GetCMakeInstance()->GetHomeDirectory();
-        std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-        std::string rootPath = "./.";
-        if (srcDirLocal4 != bldDir) {
-          rootPath = cmSystemTools::RelativePath(bldDir, srcDirLocal4);
-          if (!rootPath.empty()) {
-            rootPath = "./" + rootPath;
-            // Remove any trailing slash to avoid Nix errors
-            if (rootPath.back() == '/') {
-              rootPath.pop_back();
-            }
-          } else {
-            rootPath = "./.";
-          }
-        }
-        
-        // Use fileset union helper
-        this->WriteFilesetUnion(nixFileStream, existingFiles, generatedFiles, rootPath);
+        this->WriteFilesetUnion(nixFileStream, existingFiles, generatedFiles, ctx.projectSourceRelPath);
       } else {
         // Fallback to whole directory if no files were collected
-        // Calculate relative path from build directory to source directory for out-of-source builds
-        std::string srcDirLocal5 = this->GetCMakeInstance()->GetHomeDirectory();
-        std::string bldDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-        std::string rootPath = "./.";
-        if (srcDirLocal5 != bldDir) {
-          rootPath = cmSystemTools::RelativePath(bldDir, srcDirLocal5);
-          if (!rootPath.empty()) {
-            rootPath = "./" + rootPath;
-            // Remove any trailing slash to avoid Nix errors
-            if (rootPath.back() == '/') {
-              rootPath.pop_back();
-            }
-          } else {
-            rootPath = "./.";
-          }
-        }
-        nixFileStream << "    src = " << rootPath << ";\n";
+        nixFileStream << "    src = " << ctx.projectSourceRelPath << ";\n";
       }
     }
   }
-  
-  // Build buildInputs list using helper method
-  std::vector<std::string> buildInputs = this->BuildBuildInputsList(target, source, config, sourceFile, projectSourceRelPath);
-  
-  // Write buildInputs attribute
-  if (!buildInputs.empty()) {
-    nixFileStream << "    buildInputs = [ ";
-    for (size_t i = 0; i < buildInputs.size(); ++i) {
-      if (i > 0) nixFileStream << " ";
-      nixFileStream << buildInputs[i];
-    }
-    nixFileStream << " ];\n";
-  }
-  
-  // Filter project headers using helper method
-  std::vector<std::string> projectHeaders = this->HeaderDependencyResolver->FilterProjectHeaders(headers);
-  
-  // Note: We don't use propagatedInputs for header dependencies because:
-  // 1. Headers are already included in the fileset union for the source
-  // 2. Relative paths with .. segments in propagatedInputs cause Nix evaluation errors
-  // 3. The actual dependency tracking is handled by the fileset, not propagatedInputs
-  //
-  // The following code is commented out but kept for reference:
-  // if (!projectHeaders.empty()) {
-  //   writer.WriteComment("Header dependencies");
-  //   std::vector<std::string> propagatedInputsList;
-  //   for (const std::string& header : projectHeaders) {
-  //     if (isExternalSource) {
-  //       // For external sources, headers are copied into the composite source root
-  //       propagatedInputsList.push_back("./" + header);
-  //     } else {
-  //       // For project sources, headers are relative to the source directory
-  //       if (projectSourceRelPath.empty()) {
-  //         // Source is current directory, headers are relative to it
-  //         propagatedInputsList.push_back("./" + header);
-  //       } else {
-  //         // Source is a subdirectory (e.g., ext/opencv), headers are relative to that source directory
-  //         // Use the same source path as the derivation
-  //         propagatedInputsList.push_back(projectSourceRelPath + "/" + header);
-  //       }
-  //     }
-  //   }
-  //   writer.WriteListAttribute("propagatedInputs", propagatedInputsList);
-  // }
-  
-  // Determine the source path - always use source directory as base
-  std::string sourcePath;
-  std::string customCommandDep;
-  auto customIt = this->CustomCommandOutputs.find(sourceFile);
-  if (customIt != this->CustomCommandOutputs.end()) {
-    customCommandDep = customIt->second;
-  }
-  
-  if (!customCommandDep.empty()) {
-    // Source is generated by a custom command - reference from derivation output
-    // Use the top-level build directory as the base for consistent path resolution
-    // This matches what cmNixCustomCommandGenerator uses
-    std::string topBuildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-    std::string relativePath = cmSystemTools::RelativePath(topBuildDir, sourceFile);
-    sourcePath = "${" + customCommandDep + "}/" + relativePath;
-  } else {
-    // All files (source and generated) - use relative path from source directory
-    std::string projectSourceDir = this->GetCMakeInstance()->GetHomeDirectory();
-    std::string projectBuildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-    std::string sourceFileRelativePath = cmSystemTools::RelativePath(projectSourceDir, sourceFile);
-    
-    // Check if this is an external file (outside project tree)
-    if (cmNixPathUtils::IsPathOutsideTree(sourceFileRelativePath) || cmSystemTools::FileIsFullPath(sourceFileRelativePath)) {
-      // External file - use just the filename, it will be copied to source dir
-      std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
-      sourcePath = fileName;
-    } else {
-      // File within project tree (source or generated)
-      // Check if file is in build directory for out-of-source builds
-      if (projectSourceDir != projectBuildDir && sourceFile.find(projectBuildDir) == 0) {
-        // File is in build directory - calculate path relative to build dir
-        std::string buildRelativePath = cmSystemTools::RelativePath(projectBuildDir, sourceFile);
-        
-        // For out-of-source builds, prefix with build directory relative path
-        std::string srcToBuildRelPath = cmSystemTools::RelativePath(projectSourceDir, projectBuildDir);
-        if (!srcToBuildRelPath.empty()) {
-          sourcePath = srcToBuildRelPath + "/" + buildRelativePath;
-        } else {
-          sourcePath = buildRelativePath;
-        }
-      } else {
-        // File is in source directory
-        sourcePath = sourceFileRelativePath;
-      }
-    }
-  }
-  
-  // Update compile flags to use relative paths for embedded config-time generated files
-  // This is needed for ALL sources (external and non-external)
-  for (const auto& genFile : configTimeGeneratedFiles) {
-    std::string absPath = genFile;
-    std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
-    
-    // Replace absolute path with relative path in compile flags
-    size_t pos = 0;
-    while ((pos = allCompileFlags.find(absPath, pos)) != std::string::npos) {
-      allCompileFlags.replace(pos, absPath.length(), relPath);
-      pos += relPath.length();
-    }
-    
-    this->LogDebug("Replaced " + absPath + " with " + relPath + " in compile flags");
-  }
-  
-  // Add -fPIC for shared and module libraries if not already present
-  std::string allFlags = allCompileFlags;
-  if ((target->GetType() == cmStateEnums::SHARED_LIBRARY ||
-       target->GetType() == cmStateEnums::MODULE_LIBRARY) &&
-      allFlags.find("-fPIC") == std::string::npos) {
-    if (!allFlags.empty() && allFlags.back() != ' ') {
-      allFlags += " ";
-    }
-    allFlags += "-fPIC";
-  }
-  
-  // Remove trailing space if any
-  if (!allFlags.empty() && allFlags.back() == ' ') {
-    allFlags.pop_back();
-  }
-  
-  // Determine the src path expression
-  std::string srcExpression;
-  
-  // Extract the src expression that was written above
-  // The src is complex and was already written to nixFileStream 
-  // We need to refactor this properly to capture the src expression
-  // For now, we'll need to parse what was written or refactor the entire method
-  
-  // Actually, looking at the code above, the src was already written to nixFileStream
-  // We can't easily extract it now. Let's close the derivation manually for now
-  // and plan a more comprehensive refactoring later
-  
-  // First, we need to ensure the derivation was properly opened with cmakeNixCC
-  // The code above only wrote the src attribute, but not the derivation opening
-  // We need to back up and write the entire derivation structure
-  
-  // Note: This is a temporary fix. The proper solution is to refactor the entire method
-  // to collect all information first, then write the derivation in one go.
-  
-  // For now, the src attribute was already written above, so we continue with source path
-  if (sourcePath.find("${") != std::string::npos) {
-    nixFileStream << "    source = \"" << sourcePath << "\";\n";
-  } else {
-    nixFileStream << "    source = \"" << cmNixWriter::EscapeNixString(sourcePath) << "\";\n";
-  }
-  
-  // Write compiler attribute
+}
+
+void cmGlobalNixGenerator::WriteCompilerAttribute(
+  cmGeneratedFileStream& nixFileStream,
+  const std::vector<std::string>& buildInputs,
+  const std::string& compilerPackage)
+{
   std::string finalCompilerPackage = (!buildInputs.empty() ? buildInputs[0] : compilerPackage);
   nixFileStream << "    compiler = " << finalCompilerPackage << ";\n";
+}
+
+void cmGlobalNixGenerator::WriteExternalSourceComposite(
+  cmGeneratedFileStream& nixFileStream,
+  const SourceCompilationContext& ctx,
+  cmGeneratorTarget* target,
+  const cmSourceFile* source)
+{
+  // For external sources, create a composite source including both project and external file
   
-  // Write flags attribute
-  if (!allFlags.empty()) {
-    nixFileStream << "    flags = \"" << cmNixWriter::EscapeNixString(allFlags) << "\";\n";
+  // Start composite source derivation
+  if (!ctx.configTimeGeneratedFiles.empty()) {
+    nixFileStream << "    src = pkgs.runCommand \"composite-src-with-generated\" {\n";
+  } else {
+    nixFileStream << "    src = pkgs.runCommand \"composite-src\" {\n";
   }
   
-  // buildInputs was already written earlier in the method (around line 1957)
-  // No need to write it again
+  // Add custom command headers as buildInputs
+  if (!ctx.customCommandHeaders.empty()) {
+    nixFileStream << "      buildInputs = [\n";
+    std::set<std::string> processedDerivs;
+    for (const auto& headerDeriv : ctx.customCommandHeaders) {
+      if (processedDerivs.find(headerDeriv) != processedDerivs.end()) {
+        continue;
+      }
+      processedDerivs.insert(headerDeriv);
+      nixFileStream << "        " << headerDeriv << "\n";
+    }
+    nixFileStream << "      ];\n";
+  }
   
-  // Close the derivation
-  nixFileStream << "  };\n\n";
+  nixFileStream << "    } ''\n";
+  nixFileStream << "      mkdir -p $out\n";
+  nixFileStream << "      # Copy source files\n";
+  nixFileStream << "      cp -rL ${" << ctx.projectSourceRelPath << "}/* $out/ 2>/dev/null || true\n";
+  
+  // Handle config-time generated files if any
+  if (!ctx.configTimeGeneratedFiles.empty()) {
+    nixFileStream << "      # Copy configuration-time generated files\n";
+    for (const auto& genFile : ctx.configTimeGeneratedFiles) {
+      std::string relPath = cmSystemTools::RelativePath(ctx.buildDir, genFile);
+      std::string destDir = cmSystemTools::GetFilenamePath(relPath);
+      
+      // Read the file content and embed it directly
+      cmsys::ifstream inFile(genFile.c_str(), std::ios::in | std::ios::binary);
+      if (inFile) {
+        std::ostringstream contents;
+        contents << inFile.rdbuf();
+        
+        // Create parent directory if needed
+        if (!destDir.empty()) {
+          nixFileStream << "      mkdir -p $out/" << destDir << "\n";
+        }
+        
+        // Write the file content directly using a here-doc with a unique delimiter
+        std::string delimiter = "NIXEOF_" + std::to_string(std::hash<std::string>{}(genFile)) + "_END";
+        nixFileStream << "      cat > $out/" << relPath << " <<'" << delimiter << "'\n";
+        
+        // Escape '' sequences in content since we're inside a Nix multiline string
+        std::string contentStr = contents.str();
+        for (size_t i = 0; i < contentStr.length(); ++i) {
+          if (i + 1 < contentStr.length() && contentStr[i] == '\'' && contentStr[i + 1] == '\'') {
+            nixFileStream << "''\\''";
+            i++; // Skip the next quote
+          } else {
+            nixFileStream << contentStr[i];
+          }
+        }
+        
+        // Ensure we end with a newline before the delimiter
+        if (!contentStr.empty() && contentStr.back() != '\n') {
+          nixFileStream << "\n";
+        }
+        nixFileStream << delimiter << "\n";
+      } else {
+        // If we can't read the file, issue a warning but continue
+        nixFileStream << "      # Warning: Could not read " << genFile << "\n";
+      }
+    }
+  }
+  
+  // Handle external include directories
+  cmLocalGenerator* lg = target->GetLocalGenerator();
+  std::vector<BT<std::string>> includes = lg->GetIncludeDirectories(target, ctx.lang, ctx.config);
+  
+  for (const auto& inc : includes) {
+    if (!inc.Value.empty()) {
+      std::string incPath = inc.Value;
+      
+      // Check if this is an absolute path outside the project tree
+      if (cmSystemTools::FileIsFullPath(incPath)) {
+        std::string relPath = cmSystemTools::RelativePath(ctx.srcDir, incPath);
+        if (cmNixPathUtils::IsPathOutsideTree(relPath)) {
+          // This is an external include directory
+          nixFileStream << "      # Copy headers from external include directory: " << incPath << "\n";
+          
+          // Normalize the path to resolve any .. segments
+          std::string normalizedPath = cmSystemTools::CollapseFullPath(incPath);
+          
+          // Create parent directories first
+          std::string parentPath = cmSystemTools::GetFilenamePath(normalizedPath);
+          nixFileStream << "      mkdir -p $out" << parentPath << "\n";
+          
+          // Use Nix's path functionality to copy the entire directory
+          nixFileStream << "      cp -rL ${builtins.path { path = \"" << normalizedPath << "\"; }} $out" << normalizedPath << "\n";
+        }
+      }
+    }
+  }
+  
+  // Copy external source file
+  std::string fileName = cmSystemTools::GetFilenameName(ctx.sourceFile);
+  nixFileStream << "      # Copy external source file\n";
+  nixFileStream << "      cp ${builtins.path { path = \"" << ctx.sourceFile << "\"; }} $out/" << fileName << "\n";
+  
+  // For ABI detection files, also copy the required header file
+  if (fileName.find("CMakeCCompilerABI.c") != std::string::npos ||
+      fileName.find("CMakeCXXCompilerABI.cpp") != std::string::npos) {
+    std::string abiSourceDir = cmSystemTools::GetFilenamePath(ctx.sourceFile);
+    std::string abiHeaderFile = abiSourceDir + "/CMakeCompilerABI.h";
+    nixFileStream << "      cp ${builtins.path { path = \"" << abiHeaderFile << "\"; }} $out/CMakeCompilerABI.h\n";
+  }
+  
+  // Handle external headers
+  auto targetGen = cmNixTargetGenerator::New(target);
+  std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
+  
+  // Collect external headers that need to be made available
+  std::vector<std::string> externalHeaders;
+  for (const std::string& dep : dependencies) {
+    std::string fullPath;
+    if (cmSystemTools::FileIsFullPath(dep)) {
+      fullPath = dep;
+    } else {
+      fullPath = this->GetCMakeInstance()->GetHomeDirectory() + "/" + dep;
+    }
+    
+    // Skip if it's a system header or in Nix store
+    if (this->IsSystemPath(fullPath)) {
+      continue;
+    }
+    
+    // Check if this header is outside the project directory
+    std::string relPath = cmSystemTools::RelativePath(
+      this->GetCMakeInstance()->GetHomeDirectory(), fullPath);
+    if (!relPath.empty() && cmNixPathUtils::IsPathOutsideTree(relPath)) {
+      externalHeaders.push_back(fullPath);
+    }
+  }
+  
+  // If we have external headers, create or update the header derivation
+  if (!externalHeaders.empty()) {
+    std::string sourceDir = cmSystemTools::GetFilenamePath(ctx.sourceFile);
+    std::string headerDerivName = this->HeaderDependencyResolver->GetOrCreateHeaderDerivation(sourceDir, externalHeaders);
+    
+    // Store mapping from source file to header derivation
+    this->HeaderDependencyResolver->SetSourceHeaderDerivation(ctx.sourceFile, headerDerivName);
+    
+    // Symlink headers from the header derivation
+    nixFileStream << "      # Link headers from external header derivation\n";
+    nixFileStream << "      if [ -d ${" << headerDerivName << "} ]; then\n";
+    nixFileStream << "        cp -rL ${" << headerDerivName << "}/* $out/ 2>/dev/null || true\n";
+    nixFileStream << "      fi\n";
+  }
+  
+  // Copy custom command generated headers
+  if (!ctx.customCommandHeaders.empty()) {
+    nixFileStream << "      # Copy custom command generated headers\n";
+    std::set<std::string> processedDerivs;
+    for (const auto& headerDeriv : ctx.customCommandHeaders) {
+      if (processedDerivs.find(headerDeriv) != processedDerivs.end()) {
+        continue;
+      }
+      processedDerivs.insert(headerDeriv);
+      
+      // Find the actual output path for this derivation
+      for (const auto& [output, deriv] : this->CustomCommandOutputs) {
+        if (deriv == headerDeriv) {
+          std::string relativePath = cmSystemTools::RelativePath(ctx.buildDir, output);
+          std::string outputDir = cmSystemTools::GetFilenamePath(relativePath);
+          if (!outputDir.empty()) {
+            nixFileStream << "      mkdir -p $out/" << outputDir << "\n";
+          }
+          nixFileStream << "      if [ -e ${" << headerDeriv << "}/" << relativePath << " ]; then\n";
+          nixFileStream << "        cp ${" << headerDeriv << "}/" << relativePath << " $out/" << relativePath << "\n";
+          nixFileStream << "      fi\n";
+          break;
+        }
+      }
+    }
+  }
+  
+  nixFileStream << "    '';\n";
 }
+// [REMOVED DUPLICATE CODE - Lines 1182-1902]
+// This was the old WriteObjectDerivation implementation that has been replaced
+// by the refactored version using helper methods
 
 bool cmGlobalNixGenerator::ValidateSourceFile(const cmSourceFile* source,
                                                cmGeneratorTarget* target,
@@ -3236,4 +2718,238 @@ cmGlobalNixGenerator::ProfileTimer::~ProfileTimer()
               << " (duration: " << std::fixed << std::setprecision(3) 
               << ms << " ms)" << std::endl;
   }
+}
+
+// Helper method implementations for WriteObjectDerivation refactoring
+
+cmGlobalNixGenerator::SourceCompilationContext 
+cmGlobalNixGenerator::PrepareSourceCompilationContext(
+  cmGeneratorTarget* target,
+  const cmSourceFile* source)
+{
+  SourceCompilationContext ctx;
+  
+  // Get source file and resolve symlinks
+  ctx.sourceFile = source->GetFullPath();
+  if (cmSystemTools::FileIsSymlink(ctx.sourceFile)) {
+    ctx.sourceFile = cmSystemTools::GetRealPath(ctx.sourceFile);
+  }
+  
+  // Get derivation name and object info
+  ctx.derivName = this->GetDerivationName(target->GetName(), ctx.sourceFile);
+  const ObjectDerivation& od = this->ObjectDerivations[ctx.derivName];
+  ctx.objectName = od.ObjectFileName;
+  ctx.lang = od.Language;
+  ctx.headers = od.Dependencies;
+  
+  // Get configuration
+  ctx.config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+  if (ctx.config.empty()) {
+    ctx.config = "Release"; // Default configuration
+  }
+  
+  // Get directory paths
+  ctx.buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+  ctx.srcDir = this->GetCMakeInstance()->GetHomeDirectory();
+  
+  // Calculate project source relative path
+  ctx.projectSourceRelPath = "./.";
+  if (ctx.srcDir != ctx.buildDir) {
+    ctx.projectSourceRelPath = cmSystemTools::RelativePath(ctx.buildDir, ctx.srcDir);
+    if (!ctx.projectSourceRelPath.empty()) {
+      ctx.projectSourceRelPath = "./" + ctx.projectSourceRelPath;
+      // Remove any trailing slash to avoid Nix errors
+      if (ctx.projectSourceRelPath.back() == '/') {
+        ctx.projectSourceRelPath.pop_back();
+      }
+    } else {
+      ctx.projectSourceRelPath = "./.";
+    }
+  }
+  
+  // Check if source is external
+  std::string initialRelativePath = cmSystemTools::RelativePath(
+    this->GetCMakeInstance()->GetHomeDirectory(), ctx.sourceFile);
+  ctx.isExternalSource = (cmNixPathUtils::IsPathOutsideTree(initialRelativePath) || 
+                         cmSystemTools::FileIsFullPath(initialRelativePath));
+  
+  return ctx;
+}
+
+void cmGlobalNixGenerator::ProcessConfigTimeGeneratedFiles(
+  const std::string& allCompileFlags,
+  const std::string& buildDir,
+  std::vector<std::string>& configTimeGeneratedFiles)
+{
+  // Process files referenced by -imacros and -include flags
+  std::vector<std::string> parsedFlags;
+  cmSystemTools::ParseUnixCommandLine(allCompileFlags.c_str(), parsedFlags);
+  
+  for (size_t i = 0; i < parsedFlags.size(); ++i) {
+    const auto& flag = parsedFlags[i];
+    if ((flag == "-imacros" || flag == "-include") && i + 1 < parsedFlags.size()) {
+      std::string filePath = parsedFlags[++i];
+      
+      // Convert relative path to absolute if needed
+      if (!cmSystemTools::FileIsFullPath(filePath)) {
+        filePath = buildDir + "/" + filePath;
+      }
+      
+      // Check if it's a build directory file (configuration-time generated)
+      std::string relToBuild = cmSystemTools::RelativePath(buildDir, filePath);
+      if (!cmNixPathUtils::IsPathOutsideTree(relToBuild) && cmSystemTools::FileExists(filePath)) {
+        // This is a configuration-time generated file that needs to be embedded
+        configTimeGeneratedFiles.push_back(filePath);
+        this->LogDebug("Added " + flag + " file to config-time generated: " + filePath);
+      }
+    }
+  }
+}
+
+void cmGlobalNixGenerator::ProcessCustomCommandHeaders(
+  const std::string& sourceFile,
+  const std::string& allCompileFlags,
+  const std::vector<std::string>& includeDirs,
+  std::vector<std::string>& customCommandHeaders)
+{
+  // Check all custom command outputs to see if they're in any include directories
+  for (const auto& [output, deriv] : this->CustomCommandOutputs) {
+    std::string outputDir = cmSystemTools::GetFilenamePath(output);
+    
+    // Check if this output is in any of our include directories
+    for (const std::string& includeDir : includeDirs) {
+      // Resolve both paths to handle relative paths correctly
+      std::string fullOutputDir = cmSystemTools::CollapseFullPath(outputDir);
+      std::string fullIncludeDir = cmSystemTools::CollapseFullPath(includeDir);
+      
+      if (outputDir == fullIncludeDir || 
+          cmSystemTools::IsSubDirectory(output, fullIncludeDir)) {
+        
+        // This header is in an include directory, add it as a dependency
+        if (std::find(customCommandHeaders.begin(), customCommandHeaders.end(), deriv) == customCommandHeaders.end()) {
+          customCommandHeaders.push_back(deriv);
+          this->LogDebug("Found custom command header in include dir: " + output + " -> " + deriv);
+        }
+        break;
+      }
+    }
+  }
+  
+  // Also check for headers that might be included via relative paths
+  std::ifstream sourceStream(sourceFile);
+  if (sourceStream) {
+    std::string line;
+    std::regex includeRegex(R"(^\s*#\s*include\s*["<]([^">]+)[">])");
+    while (std::getline(sourceStream, line)) {
+      std::smatch match;
+      if (std::regex_match(line, match, includeRegex)) {
+        std::string includedFile = match[1];
+        
+        // Build list of paths to check
+        std::vector<std::string> pathsToCheck;
+        
+        // For relative includes, check relative to source file directory
+        if (!cmSystemTools::FileIsFullPath(includedFile)) {
+          std::string sourceDir = cmSystemTools::GetFilenamePath(sourceFile);
+          pathsToCheck.push_back(sourceDir + "/" + includedFile);
+        }
+        
+        // Also check in all include directories
+        for (const std::string& includeDir : includeDirs) {
+          pathsToCheck.push_back(includeDir + "/" + includedFile);
+        }
+        
+        // Make absolute paths
+        for (size_t i = 0; i < pathsToCheck.size(); ++i) {
+          if (!cmSystemTools::FileIsFullPath(pathsToCheck[i])) {
+            pathsToCheck[i] = cmSystemTools::CollapseFullPath(pathsToCheck[i]);
+          }
+        }
+        
+        // Check each possible path
+        for (const auto& pathToCheck : pathsToCheck) {
+          auto customIt = this->CustomCommandOutputs.find(pathToCheck);
+          if (customIt != this->CustomCommandOutputs.end()) {
+            customCommandHeaders.push_back(customIt->second);
+            this->LogDebug("Found custom command header for composite source: " + pathToCheck + " -> " + customIt->second);
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+std::string cmGlobalNixGenerator::DetermineSourcePath(
+  const std::string& sourceFile,
+  const std::string& projectSourceDir,
+  const std::string& projectBuildDir)
+{
+  std::string sourcePath;
+  std::string customCommandDep;
+  
+  auto customIt = this->CustomCommandOutputs.find(sourceFile);
+  if (customIt != this->CustomCommandOutputs.end()) {
+    customCommandDep = customIt->second;
+  }
+  
+  if (!customCommandDep.empty()) {
+    // Source is generated by a custom command - reference from derivation output
+    std::string topBuildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+    std::string relativePath = cmSystemTools::RelativePath(topBuildDir, sourceFile);
+    sourcePath = "${" + customCommandDep + "}/" + relativePath;
+  } else {
+    // All files (source and generated) - use relative path from source directory
+    std::string sourceFileRelativePath = cmSystemTools::RelativePath(projectSourceDir, sourceFile);
+    
+    // Check if this is an external file (outside project tree)
+    if (cmNixPathUtils::IsPathOutsideTree(sourceFileRelativePath) || cmSystemTools::FileIsFullPath(sourceFileRelativePath)) {
+      // External file - use just the filename, it will be copied to source dir
+      std::string fileName = cmSystemTools::GetFilenameName(sourceFile);
+      sourcePath = fileName;
+    } else {
+      // File within project tree (source or generated)
+      // Check if file is in build directory for out-of-source builds
+      if (projectSourceDir != projectBuildDir && sourceFile.find(projectBuildDir) == 0) {
+        // File is in build directory - calculate path relative to build dir
+        std::string buildRelativePath = cmSystemTools::RelativePath(projectBuildDir, sourceFile);
+        
+        // For out-of-source builds, prefix with build directory relative path
+        std::string srcToBuildRelPath = cmSystemTools::RelativePath(projectSourceDir, projectBuildDir);
+        if (!srcToBuildRelPath.empty()) {
+          sourcePath = srcToBuildRelPath + "/" + buildRelativePath;
+        } else {
+          sourcePath = buildRelativePath;
+        }
+      } else {
+        // File is in source directory
+        sourcePath = sourceFileRelativePath;
+      }
+    }
+  }
+  
+  return sourcePath;
+}
+
+std::string cmGlobalNixGenerator::UpdateCompileFlagsForGeneratedFiles(
+  std::string allCompileFlags,
+  const std::vector<std::string>& configTimeGeneratedFiles,
+  const std::string& buildDir)
+{
+  // Update compile flags to use relative paths for embedded config-time generated files
+  for (const auto& genFile : configTimeGeneratedFiles) {
+    std::string absPath = genFile;
+    std::string relPath = cmSystemTools::RelativePath(buildDir, genFile);
+    
+    // Replace absolute path with relative path in compile flags
+    size_t pos = 0;
+    while ((pos = allCompileFlags.find(absPath, pos)) != std::string::npos) {
+      allCompileFlags.replace(pos, absPath.length(), relPath);
+      pos += relPath.length();
+    }
+    
+    this->LogDebug("Replaced " + absPath + " with " + relPath + " in compile flags");
+  }
+  
+  return allCompileFlags;
 }

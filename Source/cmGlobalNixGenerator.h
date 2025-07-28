@@ -165,6 +165,64 @@ protected:
                                                const std::string& sourceFile,
                                                const std::string& projectSourceRelPath);
   
+  // New helper methods for better organization
+  struct SourceCompilationContext {
+    std::string sourceFile;
+    std::string derivName;
+    std::string objectName;
+    std::string lang;
+    std::string config;
+    std::vector<std::string> headers;
+    std::vector<std::string> configTimeGeneratedFiles;
+    std::vector<std::string> customCommandHeaders;
+    bool isExternalSource;
+    std::string projectSourceRelPath;
+    std::string srcDir;
+    std::string buildDir;
+  };
+  
+  SourceCompilationContext PrepareSourceCompilationContext(
+    cmGeneratorTarget* target,
+    const cmSourceFile* source);
+  
+  void ProcessConfigTimeGeneratedFiles(
+    const std::string& allCompileFlags,
+    const std::string& buildDir,
+    std::vector<std::string>& configTimeGeneratedFiles);
+  
+  void ProcessCustomCommandHeaders(
+    const std::string& sourceFile,
+    const std::string& allCompileFlags,
+    const std::vector<std::string>& includeDirs,
+    std::vector<std::string>& customCommandHeaders);
+  
+  void WriteSourceAttribute(
+    cmGeneratedFileStream& nixFileStream,
+    const SourceCompilationContext& ctx,
+    cmGeneratorTarget* target,
+    const cmSourceFile* source);
+  
+  void WriteCompilerAttribute(
+    cmGeneratedFileStream& nixFileStream,
+    const std::vector<std::string>& buildInputs,
+    const std::string& compilerPackage);
+  
+  std::string DetermineSourcePath(
+    const std::string& sourceFile,
+    const std::string& projectSourceDir,
+    const std::string& projectBuildDir);
+  
+  std::string UpdateCompileFlagsForGeneratedFiles(
+    std::string allCompileFlags,
+    const std::vector<std::string>& configTimeGeneratedFiles,
+    const std::string& buildDir);
+  
+  void WriteExternalSourceComposite(
+    cmGeneratedFileStream& nixFileStream,
+    const SourceCompilationContext& ctx,
+    cmGeneratorTarget* target,
+    const cmSourceFile* source);
+  
   // System path detection helper
   bool IsSystemPath(const std::string& path) const;
   
