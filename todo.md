@@ -73,24 +73,25 @@ The CMake Nix backend is feature-complete and production-ready:
       - DONE Implement clear cache invalidation strategies
       - DONE Add proper memory limits and eviction policies
    
-   g) Move compiler detection and configuration logic to enhanced cmNixCompilerResolver
-      - Move DetermineCompilerPackage, GetCompilerPackage, GetCompilerCommand methods
-      - Consolidate compiler-specific logic in one place
+   g) DONE Move compiler detection and configuration logic to enhanced cmNixCompilerResolver
+      - DONE Move DetermineCompilerPackage to cmNixCompilerResolver
+      - DONE GetCompilerPackage and GetCompilerCommand already delegating to resolver
+      - DONE Consolidate compiler-specific logic in one place
    
-   h) Create cmNixBuildConfiguration class to handle build config logic
-      - Move GetBuildConfiguration method
-      - Move configuration-specific flag generation
-      - Separate build configuration concerns
+   h) DONE Create cmNixBuildConfiguration class to handle build config logic
+      - DONE Move GetBuildConfiguration method
+      - DONE Add configuration-specific flag generation methods
+      - DONE Separate build configuration concerns
    
-   i) Extract file system operations into cmNixFileSystemHelper
-      - Move IsSystemPath, path validation logic
-      - Consolidate file I/O operations
-      - Add proper error handling for file operations
+   i) DONE Extract file system operations into cmNixFileSystemHelper
+      - DONE Move IsSystemPath to cmNixFileSystemHelper
+      - DONE Add path validation logic and security checks
+      - DONE Consolidate file system operations with proper error handling
    
-   j) Create integration tests for the refactored components
-      - Test each extracted component in isolation
-      - Test component interactions
-      - Ensure no regression in functionality
+   j) DONE Create integration tests for the refactored components
+      - DONE Test each extracted component in isolation
+      - DONE Test component interactions
+      - DONE Ensure no regression in functionality
 
 2. **State Management Problems**:
    - Multiple mutex-protected caches with unclear ownership
@@ -98,31 +99,31 @@ The CMake Nix backend is feature-complete and production-ready:
    - Should consolidate into single source of truth
 
 3. **MPED Principle Violations**:
-   - Silent failures in error handling (e.g., `cmNixPackageMapper::LoadMappingsFromFile`)
+   - DONE Fixed silent failures in error handling - added fail-fast error reporting to `cmNixPackageMapper::LoadMappingsFromFile`
 
 ### Test Coverage Gaps (Scout Testing Advocate Review):
 1. **Missing Critical Tests**:
-   - No integration tests for actual Nix file generation
-   - No tests for error handling and recovery scenarios
-   - Missing tests for concurrent/parallel build scenarios
-   - No property-based testing for input validation
+   - DONE Added integration tests for refactored components
+   - DONE Added tests for error handling and recovery scenarios
+   - DONE Added tests for concurrent/parallel build scenarios
+   - No property-based testing for input validation (low priority)
 
 2. **Security-Critical Path Testing**:
-   - `ValidatePathSecurity()` - untested
-   - Symlink resolution and circular symlink handling - untested
-   - Path traversal attack prevention - untested
-   - Unicode normalization in paths - untested
+   - DONE `ValidatePathSecurity()` - tested in testNixSecurityPaths
+   - DONE Symlink resolution and circular symlink handling - tested
+   - DONE Path traversal attack prevention - comprehensive tests added
+   - DONE Unicode normalization in paths - tested with dangerous patterns
 
 3. **Thread Safety Testing**:
-   - Concurrent access to singleton cmNixPackageMapper - untested
-   - Race conditions in cache access - untested
-   - Parallel header scanning - untested
+   - DONE Concurrent access to singleton - tested with multiple threads
+   - DONE Race conditions in cache access - tested with concurrent operations
+   - DONE Parallel operations - tested with thread safety tests
 
 ### Maintainability Issues (Keeper Maintainer Review):
 1. **Monolithic Implementation**:
-   - Main file over 4,500 lines with deep nesting (5+ levels)
-   - Complex dependency graph embedded in main class
-   - 300+ lines just for custom command cycle detection
+   - DONE Reduced main file size by extracting 7 major components
+   - DONE Complex dependency graph extracted to cmNixDependencyGraph class
+   - DONE Custom command cycle detection moved to cmNixCustomCommandHandler
 
 2. **Technical Debt**:
    - `CMAKE_NIX_IGNORE_CIRCULAR_DEPS` flag is dangerous workaround
