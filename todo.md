@@ -126,7 +126,7 @@ The CMake Nix backend is feature-complete and production-ready:
    - DONE Custom command cycle detection moved to cmNixCustomCommandHandler
 
 2. **Technical Debt**:
-   - `CMAKE_NIX_IGNORE_CIRCULAR_DEPS` flag is dangerous workaround
+   - DONE `CMAKE_NIX_IGNORE_CIRCULAR_DEPS` flag is dangerous workaround - REMOVED (was never actually implemented)
    - Configuration-time file embedding could hit Nix expression limits
    - Hard-coded Unix conventions throughout
 

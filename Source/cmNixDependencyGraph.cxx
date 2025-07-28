@@ -55,17 +55,6 @@ bool cmNixDependencyGraph::HasCircularDependency() const
   return false;
 }
 
-bool cmNixDependencyGraph::HasCircularDependency(const std::string& ignoreFlag) const
-{
-  if (!ignoreFlag.empty()) {
-    const char* envValue = cmSystemTools::GetEnv(ignoreFlag);
-    if (envValue && std::string(envValue) == "1") {
-      return false;
-    }
-  }
-  
-  return this->HasCircularDependency();
-}
 
 void cmNixDependencyGraph::Clear()
 {

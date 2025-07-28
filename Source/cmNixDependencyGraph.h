@@ -19,7 +19,6 @@ public:
   void AddDependency(const std::string& from, const std::string& to);
   
   bool HasCircularDependency() const;
-  bool HasCircularDependency(const std::string& ignoreFlag) const;
   
   std::vector<std::string> GetTopologicalOrder() const;
   std::vector<std::string> GetTopologicalOrderForLinking(const std::string& target) const;
