@@ -12,6 +12,49 @@
 
 class cmGeneratorTarget;
 
+/**
+ * @class cmNixDependencyGraph
+ * @brief Manages build target dependencies for the Nix backend generator
+ * 
+ * This class implements a directed acyclic graph (DAG) to represent build target
+ * dependencies in CMake projects. It provides algorithms for:
+ * - Topological sorting of targets for correct build order
+ * - Circular dependency detection using depth-first search (DFS)
+ * - Transitive dependency resolution for linking
+ * 
+ * ## Algorithm Details
+ * 
+ * ### Topological Sort Algorithm
+ * The class uses a DFS-based topological sort algorithm with three-color marking:
+ * - White (0): Unvisited node
+ * - Gray (1): Currently being processed (in recursion stack)
+ * - Black (2): Completely processed
+ * 
+ * Time Complexity: O(V + E) where V = vertices (targets), E = edges (dependencies)
+ * Space Complexity: O(V) for the recursion stack and state tracking
+ * 
+ * ### Cycle Detection Algorithm
+ * Uses DFS with a recursion stack to detect cycles:
+ * - If we encounter a node already in the recursion stack, a cycle exists
+ * - This ensures we only detect back edges, not cross edges
+ * 
+ * Time Complexity: O(V + E)
+ * Space Complexity: O(V) for visited set and recursion stack
+ * 
+ * ### Transitive Dependency Resolution
+ * Implements iterative DFS with caching for performance:
+ * - Results are cached per target to avoid recomputation
+ * - Separate methods for shared libraries vs all dependencies
+ * - Uses iterative approach to avoid stack overflow on deep graphs
+ * 
+ * Time Complexity: O(V + E) for first computation, O(1) for cached results
+ * Space Complexity: O(V) for the cache
+ * 
+ * ## Thread Safety
+ * This class is NOT thread-safe. External synchronization is required if
+ * accessed from multiple threads. The caching in GetTransitiveSharedLibraries
+ * uses mutable members which require mutex protection in multi-threaded contexts.
+ */
 class cmNixDependencyGraph
 {
 public:
