@@ -1951,13 +1951,24 @@ void cmGlobalNixGenerator::WriteCompositeSource(
         nixFileStream << "      mkdir -p $out/" << destDir << "\n";
       }
       
+      // Check file size to avoid hitting Nix expression limits
+      std::string contentStr = contents.str();
+      const size_t MAX_EMBEDDED_FILE_SIZE = 1024 * 1024; // 1MB limit for embedded files
+      if (contentStr.length() > MAX_EMBEDDED_FILE_SIZE) {
+        std::ostringstream msg;
+        msg << "Configuration-time generated file is too large to embed in Nix expression: " 
+            << genFile << " (" << contentStr.length() << " bytes, limit is " 
+            << MAX_EMBEDDED_FILE_SIZE << " bytes)";
+        this->GetCMakeInstance()->IssueMessage(MessageType::FATAL_ERROR, msg.str());
+        return;
+      }
+      
       // Write the file content directly using a here-doc with a unique delimiter
       // Use a complex delimiter to avoid conflicts with file contents
       std::string delimiter = "NIXEOF_" + std::to_string(std::hash<std::string>{}(genFile)) + "_END";
       nixFileStream << "      cat > $out/" << relPath << " <<'" << delimiter << "'\n";
       
       // Escape '' sequences in content since we're inside a Nix multiline string
-      std::string contentStr = contents.str();
       for (size_t i = 0; i < contentStr.length(); ++i) {
         if (i + 1 < contentStr.length() && contentStr[i] == '\'' && contentStr[i + 1] == '\'') {
           nixFileStream << "''\\''";
