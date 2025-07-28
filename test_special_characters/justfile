@@ -21,7 +21,7 @@ test-configure: configure
 # Try to build one of the targets
 test-build: configure
     @echo "=== Testing build of target with dots ==="
-    -nix-build -A my_test_app --no-out-link
+    -nix-build -A '"my.test.app"' --no-out-link
     @echo "=== Testing build of target with plus ==="
     -nix-build -A '"my+app"' --no-out-link
     @echo "=== Testing build of numeric target ==="
