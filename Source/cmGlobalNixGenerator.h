@@ -199,7 +199,8 @@ protected:
                                                const cmSourceFile* source,
                                                const std::string& config,
                                                const std::string& sourceFile,
-                                               const std::string& projectSourceRelPath);
+                                               const std::string& projectSourceRelPath,
+                                               const std::vector<std::string>& customCommandHeaders);
   
   // New helper methods for better organization
   struct SourceCompilationContext {

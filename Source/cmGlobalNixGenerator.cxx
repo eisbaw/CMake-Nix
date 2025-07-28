@@ -746,8 +746,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       if (!includeDir.empty()) {
         // Ensure absolute path
         if (!cmSystemTools::FileIsFullPath(includeDir)) {
-          // Include paths are typically relative to the build directory
-          includeDir = ctx.buildDir + "/" + includeDir;
+          // Include paths that were made relative to the build directory 
+          // should be resolved from the build directory
+          includeDir = cmSystemTools::CollapseFullPath(includeDir, ctx.buildDir);
         }
         includeDirs.push_back(includeDir);
       }
@@ -772,7 +773,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   // Step 10: Build buildInputs list and write it
   std::string compilerPackage = this->GetCompilerPackage(ctx.lang);
-  std::vector<std::string> buildInputs = BuildBuildInputsList(target, source, ctx.config, ctx.sourceFile, ctx.projectSourceRelPath);
+  std::vector<std::string> buildInputs = BuildBuildInputsList(target, source, ctx.config, ctx.sourceFile, ctx.projectSourceRelPath, ctx.customCommandHeaders);
   
   if (!buildInputs.empty()) {
     nixFileStream << "    buildInputs = [ ";
@@ -1366,16 +1367,23 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
         continue;
       }
       
-      // Make include path relative to source directory if possible
+      // Make include path relative if possible
       std::string relativeInclude;
       if (cmSystemTools::FileIsFullPath(incPath)) {
         // Normalize the path first to resolve any .. segments
         incPath = cmSystemTools::CollapseFullPath(incPath);
         
-        relativeInclude = cmSystemTools::RelativePath(sourceDir, incPath);
-        // If the relative path goes outside the source tree, keep absolute
-        if (cmNixPathUtils::IsPathOutsideTree(relativeInclude)) {
-          relativeInclude = "";
+        // Check if the path is in the build directory
+        if (cmSystemTools::IsSubDirectory(incPath, buildDir)) {
+          // For paths in the build directory, make them relative to the build directory
+          relativeInclude = cmSystemTools::RelativePath(buildDir, incPath);
+        } else {
+          // For paths in the source directory, make them relative to the source directory
+          relativeInclude = cmSystemTools::RelativePath(sourceDir, incPath);
+          // If the relative path goes outside the source tree, keep absolute
+          if (cmNixPathUtils::IsPathOutsideTree(relativeInclude)) {
+            relativeInclude = "";
+          }
         }
       } else {
         relativeInclude = incPath;
@@ -2020,7 +2028,7 @@ void cmGlobalNixGenerator::WriteCompositeSource(
             if (!destDir.empty()) {
               nixFileStream << "      mkdir -p $out/" << destDir << "\n";
             }
-            nixFileStream << "      cp $" << headerDeriv << "/" << relPath << " $out/" << relPath << "\n";
+            nixFileStream << "      cp ${" << headerDeriv << "}/" << relPath << " $out/" << relPath << "\n";
           }
         }
       }
@@ -2090,7 +2098,8 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
   const cmSourceFile* source,
   const std::string& config,
   const std::string& sourceFile,
-  const std::string& projectSourceRelPath)
+  const std::string& projectSourceRelPath,
+  const std::vector<std::string>& customCommandHeaders)
 {
   std::vector<std::string> buildInputs;
   
@@ -2208,6 +2217,14 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
   if (!headerDerivation.empty()) {
     buildInputs.push_back(headerDerivation);
     this->LogDebug("Found header derivation dependency for " + sourceFile + " -> " + headerDerivation);
+  }
+  
+  // Add custom command headers from ProcessCustomCommandHeaders
+  for (const auto& customHeader : customCommandHeaders) {
+    if (std::find(buildInputs.begin(), buildInputs.end(), customHeader) == buildInputs.end()) {
+      buildInputs.push_back(customHeader);
+      this->LogDebug("Added custom command header dependency: " + customHeader);
+    }
   }
   
   return buildInputs;
@@ -2491,6 +2508,19 @@ void cmGlobalNixGenerator::ProcessCustomCommandHeaders(
   const std::vector<std::string>& includeDirs,
   std::vector<std::string>& customCommandHeaders)
 {
+  // Debug: Log what we're processing
+  this->LogDebug("ProcessCustomCommandHeaders for source: " + sourceFile);
+  this->LogDebug("Include directories: ");
+  for (const auto& dir : includeDirs) {
+    this->LogDebug("  - " + dir);
+  }
+  
+  // Debug: Log all custom command outputs
+  this->LogDebug("Available custom command outputs:");
+  for (const auto& [output, deriv] : this->CustomCommandOutputs) {
+    this->LogDebug("  - " + output + " -> " + deriv);
+  }
+  
   // Check all custom command outputs to see if they're in any include directories
   for (const auto& [output, deriv] : this->CustomCommandOutputs) {
     std::string outputDir = cmSystemTools::GetFilenamePath(output);
@@ -2523,6 +2553,7 @@ void cmGlobalNixGenerator::ProcessCustomCommandHeaders(
       std::smatch match;
       if (std::regex_match(line, match, includeRegex)) {
         std::string includedFile = match[1];
+        this->LogDebug("Found include in " + sourceFile + ": " + includedFile);
         
         // Build list of paths to check
         std::vector<std::string> pathsToCheck;
@@ -2535,18 +2566,22 @@ void cmGlobalNixGenerator::ProcessCustomCommandHeaders(
         
         // Also check in all include directories
         for (const std::string& includeDir : includeDirs) {
-          pathsToCheck.push_back(includeDir + "/" + includedFile);
+          std::string includePath = includeDir + "/" + includedFile;
+          pathsToCheck.push_back(includePath);
         }
         
-        // Make absolute paths
+        // Make absolute paths - include directories might be relative to the current working directory
+        const std::string& topBuildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
         for (size_t i = 0; i < pathsToCheck.size(); ++i) {
           if (!cmSystemTools::FileIsFullPath(pathsToCheck[i])) {
-            pathsToCheck[i] = cmSystemTools::CollapseFullPath(pathsToCheck[i]);
+            // For paths from include directories, resolve relative to the build directory
+            pathsToCheck[i] = cmSystemTools::CollapseFullPath(pathsToCheck[i], topBuildDir);
           }
         }
         
         // Check each possible path
         for (const auto& pathToCheck : pathsToCheck) {
+          this->LogDebug("Checking path: " + pathToCheck);
           auto customIt = this->CustomCommandOutputs.find(pathToCheck);
           if (customIt != this->CustomCommandOutputs.end()) {
             customCommandHeaders.push_back(customIt->second);
@@ -2557,6 +2592,9 @@ void cmGlobalNixGenerator::ProcessCustomCommandHeaders(
       }
     }
   }
+  
+  this->LogDebug("ProcessCustomCommandHeaders completed. Found " + 
+                std::to_string(customCommandHeaders.size()) + " headers");
 }
 
 std::string cmGlobalNixGenerator::DetermineSourcePath(

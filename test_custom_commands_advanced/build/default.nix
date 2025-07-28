@@ -86,6 +86,8 @@ let
         srcFile="$(basename "$src")/$sourceFile"
       else
         echo "Error: Cannot find source file $sourceFile"
+        echo "  Searched in: $src and $(basename "$src")"
+        echo "  This may happen if the source file path is incorrect or the file was moved."
         exit 1
       fi
       $compilerCmd -c ${flags} "$srcFile" -o "$out"
@@ -180,17 +182,23 @@ let
 # Per-translation-unit derivations
   test_app_test_custom_commands_advanced_main_cpp_o = cmakeNixCC {
     name = "main.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../main.cpp
-        ./../build/generated
+    src = pkgs.runCommand "composite-src-with-generated" {
+      buildInputs = [
+        custom_build_generated_config_h_4826
       ];
-    };
-    buildInputs = [ stdenv.cc ];
+    } ''
+      mkdir -p $out
+      # Copy source files
+      cp -rL ${./..}/* $out/ 2>/dev/null || true
+      # Copy configuration-time generated files
+      # Copy custom command generated headers
+      mkdir -p $out/generated
+      cp ${custom_build_generated_config_h_4826}/generated/config.h $out/generated/config.h
+    '';
+    buildInputs = [ stdenv.cc custom_build_generated_config_h_4826 ];
     source = "main.cpp";
     compiler = stdenv.cc;
-    flags = "-g -Ibuild/generated";
+    flags = "-g -Igenerated";
   };
 
   custom_build_multioutput1_txt_8375_5047 = stdenv.mkDerivation {
