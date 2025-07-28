@@ -34,6 +34,25 @@ The CMake Nix backend is feature-complete and production-ready:
 
 ## Code Quality Issues from Architecture Review (2025-07-28)
 
+### Compiler Warning Fixes (2025-07-28):
+1. **DONE Fix initialization order warnings**:
+   - DONE Fixed initialization order in cmGlobalNixGenerator constructor to match declaration order
+   - DONE Resolved -Wreorder warnings
+
+2. **DONE Fix unused parameter warnings**:
+   - DONE Added [[maybe_unused]] to unused parameters in cmNixCustomCommandHandler::WriteCustomCommandDerivations
+   - DONE Added [[maybe_unused]] to unused parameters in cmGlobalNixGenerator::ProcessCustomCommandHeaders
+   - DONE Added [[maybe_unused]] to unused parameters in cmNixDerivationWriter::WriteCompositeSource
+   - DONE Updated both header and implementation files
+
+3. **DONE Fix shadow variable warning**:
+   - DONE Renamed inner linkImpl variable to directLinkImpl in ProcessLibraryDependencies
+
+4. **DONE Fix unused result warnings**:
+   - DONE Fixed symlink() unused result warnings in testNixEdgeCases.cxx
+
+## Code Quality Issues from Architecture Review (2025-07-28)
+
 ### Architecture Issues (MPED Architect Review):
 1. **God Class Anti-Pattern**:
    - `cmGlobalNixGenerator` is over 4,500 lines doing too many things
