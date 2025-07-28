@@ -73,66 +73,88 @@ void cmNixDerivationWriter::WriteObjectDerivationWithHelper(
   nixFileStream << "  };\n\n";
 }
 
-void cmNixDerivationWriter::WriteLinkDerivation(
+void cmNixDerivationWriter::WriteLinkDerivationWithHelper(
   cmGeneratedFileStream& nixFileStream,
-  cmGeneratorTarget* target,
   const std::string& derivName,
-  const std::string& outputName,
+  const std::string& targetName,
   const std::string& targetType,
   const std::vector<std::string>& buildInputs,
   const std::vector<std::string>& objects,
-  const std::string& linkCommand,
-  const std::string& config)
+  const std::string& compilerPackage,
+  const std::string& compilerCommand,
+  const std::string& flags,
+  const std::vector<std::string>& libraries,
+  const std::string& version,
+  const std::string& soversion,
+  const std::string& postBuildPhase)
 {
-  nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
-  nixFileStream << "    name = \"" << outputName << "\";\n";
+  // Start derivation using cmakeNixLD helper
+  nixFileStream << "  " << derivName << " = cmakeNixLD {\n";
+  nixFileStream << "    name = \"" << targetName << "\";\n";
+  nixFileStream << "    type = \"" << targetType << "\";\n";
   
-  // Write build inputs
+  // Write buildInputs list
   nixFileStream << "    buildInputs = [ ";
   bool first = true;
-  for (const auto& input : buildInputs) {
-    if (!first) {
-      nixFileStream << " ";
-    }
+  for (const std::string& input : buildInputs) {
+    if (!first) nixFileStream << " ";
     nixFileStream << input;
     first = false;
   }
   nixFileStream << " ];\n";
   
-  // Write objects as nativeBuildInputs for proper dependency tracking
-  if (!objects.empty()) {
-    nixFileStream << "    objects = [ ";
+  // Write objects list
+  nixFileStream << "    objects = [ ";
+  first = true;
+  for (const std::string& obj : objects) {
+    if (!first) nixFileStream << " ";
+    nixFileStream << obj;
+    first = false;
+  }
+  nixFileStream << " ];\n";
+  
+  // Write compiler package
+  nixFileStream << "    compiler = " << compilerPackage << ";\n";
+  
+  // Write compiler command if different from default
+  if (!compilerCommand.empty() && compilerCommand != compilerPackage) {
+    nixFileStream << "    compilerCommand = \"" << compilerCommand << "\";\n";
+  }
+  
+  // Write flags if not empty
+  if (!flags.empty()) {
+    nixFileStream << "    flags = \"" << cmNixWriter::EscapeNixString(flags) << "\";\n";
+  }
+  
+  // Write libraries if not empty
+  if (!libraries.empty()) {
+    nixFileStream << "    libraries = [";
     first = true;
-    for (const auto& obj : objects) {
-      if (!first) {
-        nixFileStream << " ";
-      }
-      nixFileStream << obj;
+    for (const std::string& lib : libraries) {
+      if (!first) nixFileStream << " ";
+      nixFileStream << "\"" << lib << "\"";
       first = false;
     }
     nixFileStream << " ];\n";
   }
   
-  // Write phases
-  nixFileStream << "    phases = [ \"buildPhase\" ];\n";
-  
-  // Write build phase
-  nixFileStream << "    buildPhase = ''\n";
-  nixFileStream << "      runHook preBuild\n";
-  
-  // Create output directory for libraries
-  if (targetType == "SHARED_LIBRARY" || targetType == "STATIC_LIBRARY" || 
-      targetType == "MODULE_LIBRARY") {
-    nixFileStream << "      mkdir -p $out\n";
-  } else {
-    nixFileStream << "      mkdir -p \"$(dirname \"$out\")\"\n";
+  // Write version properties for shared libraries
+  if (!version.empty()) {
+    nixFileStream << "    version = \"" << version << "\";\n";
+  }
+  if (!soversion.empty()) {
+    nixFileStream << "    soversion = \"" << soversion << "\";\n";
   }
   
-  // Write the link command
-  nixFileStream << "      " << linkCommand << "\n";
+  // Write postBuildPhase if provided
+  if (!postBuildPhase.empty()) {
+    nixFileStream << "    # Handle try_compile COPY_FILE requirement\n";
+    nixFileStream << "    postBuildPhase = ''\n";
+    nixFileStream << postBuildPhase;
+    nixFileStream << "    '';\n";
+  }
   
-  nixFileStream << "      runHook postBuild\n";
-  nixFileStream << "    '';\n";
+  // Close the cmakeNixLD helper call
   nixFileStream << "  };\n\n";
 }
 

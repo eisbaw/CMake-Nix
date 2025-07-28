@@ -41,18 +41,22 @@ public:
                                       const std::vector<std::string>& buildInputs);
 
   /**
-   * Write a link derivation for an executable or library target.
+   * Write a link derivation for an executable or library target using cmakeNixLD helper.
    * Creates a Nix derivation that links object files into the final output.
    */
-  void WriteLinkDerivation(cmGeneratedFileStream& nixFileStream,
-                          cmGeneratorTarget* target,
-                          const std::string& derivName,
-                          const std::string& outputName,
-                          const std::string& targetType,
-                          const std::vector<std::string>& buildInputs,
-                          const std::vector<std::string>& objects,
-                          const std::string& linkCommand,
-                          const std::string& config);
+  void WriteLinkDerivationWithHelper(cmGeneratedFileStream& nixFileStream,
+                                    const std::string& derivName,
+                                    const std::string& targetName,
+                                    const std::string& targetType,
+                                    const std::vector<std::string>& buildInputs,
+                                    const std::vector<std::string>& objects,
+                                    const std::string& compilerPackage,
+                                    const std::string& compilerCommand,
+                                    const std::string& flags,
+                                    const std::vector<std::string>& libraries,
+                                    const std::string& version,
+                                    const std::string& soversion,
+                                    const std::string& postBuildPhase = "");
 
   /**
    * Write a custom command derivation.

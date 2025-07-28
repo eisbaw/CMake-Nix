@@ -44,7 +44,7 @@ The CMake Nix backend is feature-complete and production-ready:
    a) DONE Extract derivation writing functionality from cmGlobalNixGenerator into separate cmNixDerivationWriter class
       - DONE Create cmNixDerivationWriter class with clean interface
       - DONE Move WriteNixHelperFunctions, WriteFilesetUnion, WriteCompositeSource methods
-      - TODO: Refactor WriteObjectDerivation to use the new class
+      - DONE Refactor WriteObjectDerivation to use the new class (partial delegation)
       - TODO: Refactor WriteLinkDerivation to use the new class  
       - TODO: Refactor WriteCustomCommandDerivations to use the new class
    
