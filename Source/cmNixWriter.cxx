@@ -8,7 +8,18 @@
 #include "cmGeneratedFileStream.h"
 
 // Constants for code formatting
+/**
+ * Number of spaces per indentation level in generated Nix code.
+ * Nix community standard is 2 spaces per indent level.
+ */
 static constexpr int SPACES_PER_INDENT = 2;
+
+/**
+ * Extra space to reserve when escaping strings.
+ * This accounts for escape characters that might be added.
+ * A reserve of 10 characters handles most common escape sequences
+ * without requiring reallocation.
+ */
 static constexpr size_t STRING_ESCAPE_RESERVE = 10;
 
 cmNixWriter::cmNixWriter(cmGeneratedFileStream& stream)

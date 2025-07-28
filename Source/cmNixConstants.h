@@ -63,9 +63,36 @@ namespace Debug {
 
 // Limits
 namespace Limits {
+  /**
+   * Maximum recursion depth for header dependency scanning.
+   * This prevents infinite loops when headers include each other cyclically.
+   * A depth of 100 is sufficient for even deeply nested header hierarchies.
+   * Most real-world projects have header inclusion depths under 20.
+   */
   constexpr int MAX_HEADER_RECURSION_DEPTH = 100;
+  
+  /**
+   * Maximum depth for cycle detection in custom command dependencies.
+   * This prevents infinite loops when analyzing circular dependencies.
+   * A depth of 100 allows for complex dependency chains while preventing
+   * stack overflow from true cycles.
+   */
   constexpr int MAX_CYCLE_DETECTION_DEPTH = 100;
+  
+  /**
+   * Maximum size for general dependency caches.
+   * At 10,000 entries, this can handle large projects while preventing
+   * unbounded memory growth. Each entry typically uses ~100-500 bytes,
+   * so this limits cache memory to approximately 1-5 MB.
+   */
   constexpr int MAX_DEPENDENCY_CACHE_SIZE = 10000;
+  
+  /**
+   * Number of digits to use for hash-based unique suffixes.
+   * Using 10,000 provides a range of 0000-9999 for suffixes,
+   * giving a very low probability of collisions while keeping
+   * derivation names readable.
+   */
   constexpr int HASH_SUFFIX_DIGITS = 10000;
 }
 
