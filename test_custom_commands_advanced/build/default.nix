@@ -155,232 +155,119 @@ let
   };
 
 # Per-translation-unit derivations
-  libA_test_circular_deps_libA_cpp_o = cmakeNixCC {
-    name = "libA.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../libA.cpp
-      ];
-    };
-    buildInputs = [ stdenv.cc ];
-    source = "libA.cpp";
-    compiler = stdenv.cc;
-    flags = "-g";
-  };
-
-  libB_test_circular_deps_libB_cpp_o = cmakeNixCC {
-    name = "libB.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../libB.cpp
-      ];
-    };
-    buildInputs = [ stdenv.cc ];
-    source = "libB.cpp";
-    compiler = stdenv.cc;
-    flags = "-g";
-  };
-
-  libX_test_circular_deps_libX_cpp_o = cmakeNixCC {
-    name = "libX.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../libX.cpp
-      ];
-    };
-    buildInputs = [ stdenv.cc ];
-    source = "libX.cpp";
-    compiler = stdenv.cc;
-    flags = "-g";
-  };
-
-  libY_test_circular_deps_libY_cpp_o = cmakeNixCC {
-    name = "libY.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../libY.cpp
-      ];
-    };
-    buildInputs = [ stdenv.cc ];
-    source = "libY.cpp";
-    compiler = stdenv.cc;
-    flags = "-g";
-  };
-
-  libZ_test_circular_deps_libZ_cpp_o = cmakeNixCC {
-    name = "libZ.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../libZ.cpp
-      ];
-    };
-    buildInputs = [ stdenv.cc ];
-    source = "libZ.cpp";
-    compiler = stdenv.cc;
-    flags = "-g";
-  };
-
-  lib1_test_circular_deps_lib1_cpp_o = cmakeNixCC {
-    name = "lib1.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../lib1.cpp
-      ];
-    };
-    buildInputs = [ stdenv.cc ];
-    source = "lib1.cpp";
-    compiler = stdenv.cc;
-    flags = "-g";
-  };
-
-  lib2_test_circular_deps_lib2_cpp_o = cmakeNixCC {
-    name = "lib2.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../lib2.cpp
-      ];
-    };
-    buildInputs = [ stdenv.cc ];
-    source = "lib2.cpp";
-    compiler = stdenv.cc;
-    flags = "-g";
-  };
-
-  lib3_test_circular_deps_lib3_cpp_o = cmakeNixCC {
-    name = "lib3.o";
-    src = fileset.toSource {
-      root = ./..;
-      fileset = fileset.unions [
-        ./../lib3.cpp
-      ];
-    };
-    buildInputs = [ stdenv.cc ];
-    source = "lib3.cpp";
-    compiler = stdenv.cc;
-    flags = "-g";
-  };
-
-  valid_app_test_circular_deps_main_cpp_o = cmakeNixCC {
+  test_app_test_custom_commands_advanced_main_cpp_o = cmakeNixCC {
     name = "main.o";
     src = fileset.toSource {
       root = ./..;
       fileset = fileset.unions [
         ./../main.cpp
+        ./../build/generated
       ];
     };
     buildInputs = [ stdenv.cc ];
     source = "main.cpp";
     compiler = stdenv.cc;
-    flags = "-g";
+    flags = "-g -Ibuild/generated";
+  };
+
+  custom_build_generated_config_h_4826 = stdenv.mkDerivation {
+    name = "custom_build_generated_config_h_4826";
+    buildInputs = [ pkgs.coreutils pkgs.cmake ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      echo "#define VERSION \"1.2.3\"" > config.h
+      mkdir -p $out/generated
+      if [ -f generated/config.h ]; then
+        cp generated/config.h $out/generated/config.h
+      elif [ -f config.h ]; then
+        cp config.h $out/generated/config.h
+      fi
+    '';
+  };
+
+  custom_build_multioutput1_txt_8375_5047 = stdenv.mkDerivation {
+    name = "custom_build_multioutput1_txt_8375_5047";
+    buildInputs = [ pkgs.coreutils pkgs.cmake ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      echo "Output 1" > /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_commands_advanced/build/multi_output1.txt
+      echo "Output 2" > /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_commands_advanced/build/multi_output2.txt
+      echo "Output 3" > /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_commands_advanced/build/multi_output3.txt
+      if [ -f multi_output1.txt ]; then
+        cp multi_output1.txt $out/multi_output1.txt
+      elif [ -f multi_output1.txt ]; then
+        cp multi_output1.txt $out/multi_output1.txt
+      fi
+      if [ -f multi_output2.txt ]; then
+        cp multi_output2.txt $out/multi_output2.txt
+      elif [ -f multi_output2.txt ]; then
+        cp multi_output2.txt $out/multi_output2.txt
+      fi
+      if [ -f multi_output3.txt ]; then
+        cp multi_output3.txt $out/multi_output3.txt
+      elif [ -f multi_output3.txt ]; then
+        cp multi_output3.txt $out/multi_output3.txt
+      fi
+    '';
+  };
+
+  custom_build_shelltest_txt_7576 = stdenv.mkDerivation {
+    name = "custom_build_shelltest_txt_7576";
+    buildInputs = [ pkgs.coreutils pkgs.cmake ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      echo "Testing shell operators: && || ; > < | \$$VAR" > /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_commands_advanced/build/shell_test.txt
+      if [ -f shell_test.txt ]; then
+        cp shell_test.txt $out/shell_test.txt
+      elif [ -f shell_test.txt ]; then
+        cp shell_test.txt $out/shell_test.txt
+      fi
+    '';
+  };
+
+  custom_build_CMakeFiles_generateall = stdenv.mkDerivation {
+    name = "custom_build_CMakeFiles_generateall";
+    buildInputs = [ custom_build_dependent_txt_7347 custom_build_generated_config_h_4826 custom_build_multioutput1_txt_8375_5047 custom_build_shelltest_txt_7576 ];
+    phases = [ "installPhase" ];
+    installPhase = ''
+      mkdir -p $out
+      mkdir -p $out/CMakeFiles
+      touch $out/CMakeFiles/generate_all
+    '';
+  };
+
+  custom_build_dependent_txt_7347 = stdenv.mkDerivation {
+    name = "custom_build_dependent_txt_7347";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_multioutput1_txt_8375_5047 ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      cp ${custom_build_multioutput1_txt_8375_5047}/multi_output1.txt multi_output1.txt
+      cp ${custom_build_multioutput1_txt_8375_5047}/multi_output2.txt multi_output2.txt
+      ${pkgs.cmake}/bin/cmake -E cat multi_output1.txt multi_output2.txt > dependent.txt
+      if [ -f dependent.txt ]; then
+        cp dependent.txt $out/dependent.txt
+      elif [ -f dependent.txt ]; then
+        cp dependent.txt $out/dependent.txt
+      fi
+    '';
   };
 
 
   # Linking derivations
-  link_libA = cmakeNixLD {
-    name = "libA";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ libA_test_circular_deps_libA_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-    libraries = ["${link_libB}" ];
-  };
-
-  link_libB = cmakeNixLD {
-    name = "libB";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ libB_test_circular_deps_libB_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-    libraries = ["${link_libA}" ];
-  };
-
-  link_libX = cmakeNixLD {
-    name = "libX";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ libX_test_circular_deps_libX_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-    libraries = ["${link_libY}" "${link_libZ}" ];
-  };
-
-  link_libY = cmakeNixLD {
-    name = "libY";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ libY_test_circular_deps_libY_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-    libraries = ["${link_libZ}" "${link_libX}" ];
-  };
-
-  link_libZ = cmakeNixLD {
-    name = "libZ";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ libZ_test_circular_deps_libZ_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-    libraries = ["${link_libX}" "${link_libY}" ];
-  };
-
-  link_lib1 = cmakeNixLD {
-    name = "lib1";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ lib1_test_circular_deps_lib1_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-    libraries = ["${link_lib2}" "${link_lib3}" ];
-  };
-
-  link_lib2 = cmakeNixLD {
-    name = "lib2";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ lib2_test_circular_deps_lib2_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-    libraries = ["${link_lib3}" ];
-  };
-
-  link_lib3 = cmakeNixLD {
-    name = "lib3";
-    type = "static";
-    buildInputs = [ gcc ];
-    objects = [ lib3_test_circular_deps_lib3_cpp_o ];
-    compiler = gcc;
-    compilerCommand = "g++";
-  };
-
-  link_valid_app = cmakeNixLD {
-    name = "valid_app";
+  link_test_app = cmakeNixLD {
+    name = "test_app";
     type = "executable";
     buildInputs = [ gcc ];
-    objects = [ valid_app_test_circular_deps_main_cpp_o ];
+    objects = [ test_app_test_custom_commands_advanced_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    libraries = ["${link_lib1}" "${link_lib2}" "${link_lib3}" ];
   };
 
 in
 {
-  "libA" = link_libA;
-  "libB" = link_libB;
-  "libX" = link_libX;
-  "libY" = link_libY;
-  "libZ" = link_libZ;
-  "lib1" = link_lib1;
-  "lib2" = link_lib2;
-  "lib3" = link_lib3;
-  "valid_app" = link_valid_app;
+  "test_app" = link_test_app;
 }

@@ -349,6 +349,8 @@ private:
     std::set<std::string> GetAllTransitiveDependencies(const std::string& target) const;
     bool HasCircularDependency() const;
     void Clear();
+    std::vector<std::string> GetTopologicalOrder() const;
+    std::vector<std::string> GetTopologicalOrderForLinking(const std::string& target) const;
   };
   
   // Dependency graph instance

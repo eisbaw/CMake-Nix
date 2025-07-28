@@ -2651,9 +2651,6 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   // Get library list for cmakeNixLD helper
   std::vector<std::string> libraries;
   
-  // Use helper method to process library dependencies
-  this->ProcessLibraryDependenciesForLinking(target, config, linkFlagsList, libraries, transitiveDeps);
-  
   // Check if target depends on any static libraries
   bool hasStaticDependencies = false;
   if (linkImpl) {
@@ -2666,9 +2663,70 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     }
   }
   
+  // Process library dependencies - but handle static libraries specially
+  std::set<std::string> directStaticLibs;
+  if (!hasStaticDependencies) {
+    // No static dependencies - process normally
+    this->ProcessLibraryDependenciesForLinking(target, config, linkFlagsList, libraries, transitiveDeps);
+  } else {
+    // Has static dependencies - process non-static libraries only
+    cmLinkImplementation const* linkImplCopy = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
+    if (linkImplCopy) {
+      auto targetGen = cmNixTargetGenerator::New(target);
+      for (const cmLinkItem& item : linkImplCopy->Libraries) {
+        if (item.Target && item.Target->IsImported()) {
+          // Imported target
+          std::string importedTargetName = item.Target->GetName();
+          std::string flags = targetGen->GetPackageMapper().GetLinkFlags(importedTargetName);
+          if (!flags.empty()) {
+            linkFlagsList.push_back(flags);
+          }
+        } else if (item.Target && !item.Target->IsImported()) {
+          // CMake target within the same project
+          if (item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
+            // Save static libraries for topological sorting
+            directStaticLibs.insert(item.Target->GetName());
+          } else {
+            // Add non-static libraries normally
+            std::string depTargetName = item.Target->GetName();
+            std::string depDerivName = this->GetDerivationName(depTargetName);
+            if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+              libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                                 depTargetName + this->GetSharedLibraryExtension());
+            } else if (item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+              libraries.push_back("${" + depDerivName + "}/" + depTargetName + 
+                                 this->GetSharedLibraryExtension());
+            }
+          }
+        } else if (!item.Target) {
+          // External library
+          std::string libName = item.AsStr();
+          linkFlagsList.push_back("-l" + libName);
+        }
+      }
+    }
+  }
+  
   // If we have static library dependencies, we need ALL transitive dependencies
   if (hasStaticDependencies) {
-    std::set<std::string> allTransitiveDeps = this->DependencyGraph.GetAllTransitiveDependencies(target->GetName());
+    // Get all targets in topological order for proper static library linking
+    std::vector<std::string> topologicalOrder = this->DependencyGraph.GetTopologicalOrderForLinking(target->GetName());
+    
+    // Also need to include direct static dependencies in the topological order
+    std::set<std::string> allStaticDeps = this->DependencyGraph.GetAllTransitiveDependencies(target->GetName());
+    allStaticDeps.insert(directStaticLibs.begin(), directStaticLibs.end());
+    
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Topological order for linking " << target->GetName() << ":" << std::endl;
+      for (const auto& t : topologicalOrder) {
+        std::cerr << "[NIX-DEBUG]   " << t << std::endl;
+      }
+      std::cerr << "[NIX-DEBUG] Direct static libs: ";
+      for (const auto& t : directStaticLibs) {
+        std::cerr << t << " ";
+      }
+      std::cerr << std::endl;
+    }
     
     // Add all transitive static libraries that aren't already in the libraries list
     std::set<std::string> alreadyAdded;
@@ -2681,9 +2739,10 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
       }
     }
     
-    // Add missing transitive dependencies in dependency order
-    for (const std::string& depTarget : allTransitiveDeps) {
-      if (alreadyAdded.find(depTarget) == alreadyAdded.end()) {
+    // Add both direct and transitive static libraries in topological order
+    for (const std::string& depTarget : topologicalOrder) {
+      // Add if it's in our set of all static dependencies and not already added
+      if (allStaticDeps.count(depTarget) > 0 && alreadyAdded.find(depTarget) == alreadyAdded.end()) {
         auto depIt = std::find_if(this->LocalGenerators.begin(), this->LocalGenerators.end(),
           [&depTarget](const std::unique_ptr<cmLocalGenerator>& lg) {
             auto const& targets = lg->GetGeneratorTargets();
@@ -3338,6 +3397,126 @@ bool cmGlobalNixGenerator::cmNixDependencyGraph::HasCircularDependency() const {
 
 void cmGlobalNixGenerator::cmNixDependencyGraph::Clear() {
   nodes.clear();
+}
+
+std::vector<std::string> cmGlobalNixGenerator::cmNixDependencyGraph::GetTopologicalOrder() const {
+  std::vector<std::string> result;
+  std::map<std::string, int> inDegree;
+  std::queue<std::string> queue;
+  
+  // Initialize in-degree for all nodes
+  for (const auto& pair : nodes) {
+    inDegree[pair.first] = 0;
+  }
+  
+  // Calculate in-degrees
+  for (const auto& pair : nodes) {
+    for (const auto& dep : pair.second.directDependencies) {
+      if (inDegree.find(dep) != inDegree.end()) {
+        inDegree[dep]++;
+      }
+    }
+  }
+  
+  // Add all nodes with in-degree 0 to queue
+  for (const auto& pair : inDegree) {
+    if (pair.second == 0) {
+      queue.push(pair.first);
+    }
+  }
+  
+  // Process queue
+  while (!queue.empty()) {
+    std::string current = queue.front();
+    queue.pop();
+    result.push_back(current);
+    
+    // Reduce in-degree of all dependencies
+    auto it = nodes.find(current);
+    if (it != nodes.end()) {
+      for (const auto& dep : it->second.directDependencies) {
+        auto depIt = inDegree.find(dep);
+        if (depIt != inDegree.end()) {
+          depIt->second--;
+          if (depIt->second == 0) {
+            queue.push(dep);
+          }
+        }
+      }
+    }
+  }
+  
+  return result;
+}
+
+std::vector<std::string> cmGlobalNixGenerator::cmNixDependencyGraph::GetTopologicalOrderForLinking(const std::string& target) const {
+  // Get all transitive dependencies of the target
+  std::set<std::string> transitiveDeps = GetAllTransitiveDependencies(target);
+  
+  // Also include the direct dependencies of the target
+  auto targetIt = nodes.find(target);
+  if (targetIt != nodes.end()) {
+    for (const auto& directDep : targetIt->second.directDependencies) {
+      transitiveDeps.insert(directDep);
+    }
+  }
+  
+  // Build a subgraph containing all dependencies
+  std::map<std::string, std::set<std::string>> subgraph;
+  std::map<std::string, int> inDegree;
+  
+  // Initialize subgraph with transitive dependencies
+  for (const auto& dep : transitiveDeps) {
+    subgraph[dep] = std::set<std::string>();
+    inDegree[dep] = 0;
+  }
+  
+  // Add edges between transitive dependencies
+  for (const auto& dep : transitiveDeps) {
+    auto it = nodes.find(dep);
+    if (it != nodes.end()) {
+      for (const auto& directDep : it->second.directDependencies) {
+        if (transitiveDeps.count(directDep) > 0) {
+          subgraph[dep].insert(directDep);
+          inDegree[directDep]++;
+        }
+      }
+    }
+  }
+  
+  // Perform topological sort on the subgraph
+  std::vector<std::string> result;
+  std::queue<std::string> queue;
+  
+  // Add all nodes with in-degree 0 to queue
+  for (const auto& pair : inDegree) {
+    if (pair.second == 0) {
+      queue.push(pair.first);
+    }
+  }
+  
+  // Process queue
+  while (!queue.empty()) {
+    std::string current = queue.front();
+    queue.pop();
+    result.push_back(current);
+    
+    // Reduce in-degree of all dependencies
+    for (const auto& dep : subgraph[current]) {
+      inDegree[dep]--;
+      if (inDegree[dep] == 0) {
+        queue.push(dep);
+      }
+    }
+  }
+  
+  // For static library linking, libraries that depend on others must come first
+  // Topological sort gives us dependencies before dependents (L0 before L1, etc)
+  // But for static linking we need dependents before dependencies (L9 before L8)
+  // So we MUST reverse the order
+  std::reverse(result.begin(), result.end());
+  
+  return result;
 }
 
 bool cmGlobalNixGenerator::UseExplicitSources() const
