@@ -193,6 +193,33 @@ let
     flags = "-O3 -DNDEBUG -std=gnu++17 -Ibuild/simple_external-prefix/src/simple_external/single_include -std=c++17";
   };
 
+  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302 = stdenv.mkDerivation {
+    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843 ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      mkdir -p simple_external-prefix/src/simple_external-stamp
+      cat > simple_external-prefix/src/simple_external-stamp/simple_external-patch-info.txt <<'EOF_635058'
+# This is a generated file and its contents are an internal implementation detail.
+# The update step will be re-executed if anything in this file changes.
+# No other meaning or use of this file is supported.
+
+command=
+work_dir=
+EOF_635058
+      mkdir -p simple_external-prefix/src/simple_external-stamp
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843}/simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected
+      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
+      mkdir -p $out/simple_external-prefix/src/simple_external-stamp
+      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected ]; then
+        cp simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected $out/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
+      elif [ -f simple_external-patch_disconnected ]; then
+        cp simple_external-patch_disconnected $out/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
+      fi
+    '';
+  };
+
   custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664 = stdenv.mkDerivation {
     name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664";
     buildInputs = [ pkgs.coreutils pkgs.cmake ];
@@ -217,46 +244,60 @@ let
     '';
   };
 
-  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965 = stdenv.mkDerivation {
-    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664 ];
-    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/.;
-    phases = [ "unpackPhase" "buildPhase" ];
+  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install_6277 = stdenv.mkDerivation {
+    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install_6277";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533 ];
+    phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      # Source tree was unpacked by unpackPhase
-      echo "Current directory after unpack: $(pwd)"
-      echo "Contents of current directory:"
-      ls -la | head -10
-      echo "Looking for cmake/gen_version_h.cmake:"
-      ls -la cmake/gen_version_h.cmake || echo "File not found"
       mkdir -p simple_external-prefix/src/simple_external-stamp
-      cat > simple_external-prefix/src/simple_external-stamp/simple_external-gitinfo.txt <<'EOF_897221'
-# This is a generated file and its contents are an internal implementation detail.
-# The download step will be re-executed if anything in this file changes.
-# No other meaning or use of this file is supported.
-
-method=git
-command=/home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/tmp/simple_external-gitclone.cmake
-source_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external
-work_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src
-repository=https://github.com/nlohmann/json.git
-remote=origin
-init_submodules=TRUE
-recurse_submodules=--recursive
-submodules=
-CMP0097=NEW
-      
-EOF_897221
-      mkdir -p simple_external-prefix/src/simple_external-stamp
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664}/simple_external-prefix/src/simple_external-stamp/simple_external-mkdir simple_external-prefix/src/simple_external-stamp/simple_external-mkdir
-      ${pkgs.cmake}/bin/cmake -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P build/simple_external-prefix/tmp/simple_external-gitclone.cmake
-      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-download
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533}/simple_external-prefix/src/simple_external-stamp/simple_external-build simple_external-prefix/src/simple_external-stamp/simple_external-build
+      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-install
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-download ]; then
-        cp simple_external-prefix/src/simple_external-stamp/simple_external-download $out/simple_external-prefix/src/simple_external-stamp/simple_external-download
-      elif [ -f simple_external-download ]; then
-        cp simple_external-download $out/simple_external-prefix/src/simple_external-stamp/simple_external-download
+      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-install ]; then
+        cp simple_external-prefix/src/simple_external-stamp/simple_external-install $out/simple_external-prefix/src/simple_external-stamp/simple_external-install
+      elif [ -f simple_external-install ]; then
+        cp simple_external-install $out/simple_external-prefix/src/simple_external-stamp/simple_external-install
+      fi
+    '';
+  };
+
+  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528 = stdenv.mkDerivation {
+    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302 ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      mkdir -p simple_external-prefix/tmp
+      cat > simple_external-prefix/tmp/simple_external-cfgcmd.txt <<'EOF_66897'
+cmd=''\''
+EOF_66897
+      mkdir -p simple_external-prefix/src/simple_external-stamp
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302}/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
+      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-configure
+      mkdir -p $out/simple_external-prefix/src/simple_external-stamp
+      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-configure ]; then
+        cp simple_external-prefix/src/simple_external-stamp/simple_external-configure $out/simple_external-prefix/src/simple_external-stamp/simple_external-configure
+      elif [ -f simple_external-configure ]; then
+        cp simple_external-configure $out/simple_external-prefix/src/simple_external-stamp/simple_external-configure
+      fi
+    '';
+  };
+
+  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533 = stdenv.mkDerivation {
+    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528 ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      mkdir -p simple_external-prefix/src/simple_external-stamp
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528}/simple_external-prefix/src/simple_external-stamp/simple_external-configure simple_external-prefix/src/simple_external-stamp/simple_external-configure
+      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-build
+      mkdir -p $out/simple_external-prefix/src/simple_external-stamp
+      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-build ]; then
+        cp simple_external-prefix/src/simple_external-stamp/simple_external-build $out/simple_external-prefix/src/simple_external-stamp/simple_external-build
+      elif [ -f simple_external-build ]; then
+        cp simple_external-build $out/simple_external-prefix/src/simple_external-stamp/simple_external-build
       fi
     '';
   };
@@ -617,87 +658,46 @@ EOF_678472
     '';
   };
 
-  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302 = stdenv.mkDerivation {
-    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843 ];
-    phases = [ "buildPhase" ];
+  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965 = stdenv.mkDerivation {
+    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_download_4965";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664 ];
+    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/.;
+    phases = [ "unpackPhase" "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
+      # Source tree was unpacked by unpackPhase
+      echo "Current directory after unpack: $(pwd)"
+      echo "Contents of current directory:"
+      ls -la | head -10
+      echo "Looking for cmake/gen_version_h.cmake:"
+      ls -la cmake/gen_version_h.cmake || echo "File not found"
       mkdir -p simple_external-prefix/src/simple_external-stamp
-      cat > simple_external-prefix/src/simple_external-stamp/simple_external-patch-info.txt <<'EOF_635058'
+      cat > simple_external-prefix/src/simple_external-stamp/simple_external-gitinfo.txt <<'EOF_897221'
 # This is a generated file and its contents are an internal implementation detail.
-# The update step will be re-executed if anything in this file changes.
+# The download step will be re-executed if anything in this file changes.
 # No other meaning or use of this file is supported.
 
-command=
-work_dir=
-EOF_635058
+method=git
+command=/home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/tmp/simple_external-gitclone.cmake
+source_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src/simple_external
+work_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/simple_external-prefix/src
+repository=https://github.com/nlohmann/json.git
+remote=origin
+init_submodules=TRUE
+recurse_submodules=--recursive
+submodules=
+CMP0097=NEW
+      
+EOF_897221
       mkdir -p simple_external-prefix/src/simple_external-stamp
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_updatedisconnected_1843}/simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected simple_external-prefix/src/simple_external-stamp/simple_external-update_disconnected
-      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
+      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_mkdir_7664}/simple_external-prefix/src/simple_external-stamp/simple_external-mkdir simple_external-prefix/src/simple_external-stamp/simple_external-mkdir
+      ${pkgs.cmake}/bin/cmake -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P build/simple_external-prefix/tmp/simple_external-gitclone.cmake
+      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-download
       mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected ]; then
-        cp simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected $out/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
-      elif [ -f simple_external-patch_disconnected ]; then
-        cp simple_external-patch_disconnected $out/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
-      fi
-    '';
-  };
-
-  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528 = stdenv.mkDerivation {
-    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302 ];
-    phases = [ "buildPhase" ];
-    buildPhase = ''
-      mkdir -p $out
-      mkdir -p simple_external-prefix/tmp
-      cat > simple_external-prefix/tmp/simple_external-cfgcmd.txt <<'EOF_66897'
-cmd=''\''
-EOF_66897
-      mkdir -p simple_external-prefix/src/simple_external-stamp
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302}/simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected simple_external-prefix/src/simple_external-stamp/simple_external-patch_disconnected
-      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-configure
-      mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-configure ]; then
-        cp simple_external-prefix/src/simple_external-stamp/simple_external-configure $out/simple_external-prefix/src/simple_external-stamp/simple_external-configure
-      elif [ -f simple_external-configure ]; then
-        cp simple_external-configure $out/simple_external-prefix/src/simple_external-stamp/simple_external-configure
-      fi
-    '';
-  };
-
-  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533 = stdenv.mkDerivation {
-    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528 ];
-    phases = [ "buildPhase" ];
-    buildPhase = ''
-      mkdir -p $out
-      mkdir -p simple_external-prefix/src/simple_external-stamp
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_configure_6528}/simple_external-prefix/src/simple_external-stamp/simple_external-configure simple_external-prefix/src/simple_external-stamp/simple_external-configure
-      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-build
-      mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-build ]; then
-        cp simple_external-prefix/src/simple_external-stamp/simple_external-build $out/simple_external-prefix/src/simple_external-stamp/simple_external-build
-      elif [ -f simple_external-build ]; then
-        cp simple_external-build $out/simple_external-prefix/src/simple_external-stamp/simple_external-build
-      fi
-    '';
-  };
-
-  custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install_6277 = stdenv.mkDerivation {
-    name = "custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_install_6277";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533 ];
-    phases = [ "buildPhase" ];
-    buildPhase = ''
-      mkdir -p $out
-      mkdir -p simple_external-prefix/src/simple_external-stamp
-      cp ${custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_build_1533}/simple_external-prefix/src/simple_external-stamp/simple_external-build simple_external-prefix/src/simple_external-stamp/simple_external-build
-      ${pkgs.cmake}/bin/cmake -E touch simple_external-prefix/src/simple_external-stamp/simple_external-install
-      mkdir -p $out/simple_external-prefix/src/simple_external-stamp
-      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-install ]; then
-        cp simple_external-prefix/src/simple_external-stamp/simple_external-install $out/simple_external-prefix/src/simple_external-stamp/simple_external-install
-      elif [ -f simple_external-install ]; then
-        cp simple_external-install $out/simple_external-prefix/src/simple_external-stamp/simple_external-install
+      if [ -f simple_external-prefix/src/simple_external-stamp/simple_external-download ]; then
+        cp simple_external-prefix/src/simple_external-stamp/simple_external-download $out/simple_external-prefix/src/simple_external-stamp/simple_external-download
+      elif [ -f simple_external-download ]; then
+        cp simple_external-download $out/simple_external-prefix/src/simple_external-stamp/simple_external-download
       fi
     '';
   };

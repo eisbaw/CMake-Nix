@@ -193,22 +193,6 @@ let
     flags = "-g -Ibuild/generated";
   };
 
-  custom_build_generated_config_h_4826 = stdenv.mkDerivation {
-    name = "custom_build_generated_config_h_4826";
-    buildInputs = [ pkgs.coreutils pkgs.cmake ];
-    phases = [ "buildPhase" ];
-    buildPhase = ''
-      mkdir -p $out
-      echo "#define VERSION \"1.2.3\"" > config.h
-      mkdir -p $out/generated
-      if [ -f generated/config.h ]; then
-        cp generated/config.h $out/generated/config.h
-      elif [ -f config.h ]; then
-        cp config.h $out/generated/config.h
-      fi
-    '';
-  };
-
   custom_build_multioutput1_txt_8375_5047 = stdenv.mkDerivation {
     name = "custom_build_multioutput1_txt_8375_5047";
     buildInputs = [ pkgs.coreutils pkgs.cmake ];
@@ -251,6 +235,22 @@ let
     '';
   };
 
+  custom_build_dependent_txt_7347 = stdenv.mkDerivation {
+    name = "custom_build_dependent_txt_7347";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_multioutput1_txt_8375_5047 ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      cp ${custom_build_multioutput1_txt_8375_5047}/multi_output1.txt multi_output1.txt
+      ${pkgs.cmake}/bin/cmake -E cat multi_output1.txt multi_output2.txt > dependent.txt
+      if [ -f dependent.txt ]; then
+        cp dependent.txt $out/dependent.txt
+      elif [ -f dependent.txt ]; then
+        cp dependent.txt $out/dependent.txt
+      fi
+    '';
+  };
+
   custom_build_CMakeFiles_generateall = stdenv.mkDerivation {
     name = "custom_build_CMakeFiles_generateall";
     buildInputs = [ custom_build_dependent_txt_7347 custom_build_generated_config_h_4826 custom_build_multioutput1_txt_8375_5047 custom_build_shelltest_txt_7576 ];
@@ -262,19 +262,18 @@ let
     '';
   };
 
-  custom_build_dependent_txt_7347 = stdenv.mkDerivation {
-    name = "custom_build_dependent_txt_7347";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_build_multioutput1_txt_8375_5047 ];
+  custom_build_generated_config_h_4826 = stdenv.mkDerivation {
+    name = "custom_build_generated_config_h_4826";
+    buildInputs = [ pkgs.coreutils pkgs.cmake ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      cp ${custom_build_multioutput1_txt_8375_5047}/multi_output1.txt multi_output1.txt
-      cp ${custom_build_multioutput1_txt_8375_5047}/multi_output2.txt multi_output2.txt
-      ${pkgs.cmake}/bin/cmake -E cat multi_output1.txt multi_output2.txt > dependent.txt
-      if [ -f dependent.txt ]; then
-        cp dependent.txt $out/dependent.txt
-      elif [ -f dependent.txt ]; then
-        cp dependent.txt $out/dependent.txt
+      echo "#define VERSION \"1.2.3\"" > config.h
+      mkdir -p $out/generated
+      if [ -f generated/config.h ]; then
+        cp generated/config.h $out/generated/config.h
+      elif [ -f config.h ]; then
+        cp config.h $out/generated/config.h
       fi
     '';
   };

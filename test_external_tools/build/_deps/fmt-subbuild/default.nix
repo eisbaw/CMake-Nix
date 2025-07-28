@@ -178,74 +178,6 @@ let
   };
 
 # Per-translation-unit derivations
-  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592 = stdenv.mkDerivation {
-    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592";
-    buildInputs = [ pkgs.coreutils pkgs.cmake ];
-    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/.;
-    phases = [ "unpackPhase" "buildPhase" ];
-    buildPhase = ''
-      mkdir -p $out
-      # Source tree was unpacked by unpackPhase
-      echo "Current directory after unpack: $(pwd)"
-      echo "Contents of current directory:"
-      ls -la | head -10
-      echo "Looking for cmake/gen_version_h.cmake:"
-      ls -la cmake/gen_version_h.cmake || echo "File not found"
-      ${pkgs.cmake}/bin/cmake -Dcfgdir= -P fmt-populate-prefix/tmp/fmt-populate-mkdirs.cmake
-      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
-      mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir ]; then
-        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
-      elif [ -f fmt-populate-mkdir ]; then
-        cp fmt-populate-mkdir $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
-      fi
-    '';
-  };
-
-  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882 = stdenv.mkDerivation {
-    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592 ];
-    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/.;
-    phases = [ "unpackPhase" "buildPhase" ];
-    buildPhase = ''
-      mkdir -p $out
-      # Source tree was unpacked by unpackPhase
-      echo "Current directory after unpack: $(pwd)"
-      echo "Contents of current directory:"
-      ls -la | head -10
-      echo "Looking for cmake/gen_version_h.cmake:"
-      ls -la cmake/gen_version_h.cmake || echo "File not found"
-      mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
-      cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-gitinfo.txt <<'EOF_679690'
-# This is a generated file and its contents are an internal implementation detail.
-# The download step will be re-executed if anything in this file changes.
-# No other meaning or use of this file is supported.
-
-method=git
-command=/home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/tmp/fmt-populate-gitclone.cmake
-source_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-src
-work_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps
-repository=https://github.com/fmtlib/fmt.git
-remote=origin
-init_submodules=TRUE
-recurse_submodules=--recursive
-submodules=
-CMP0097=NEW
-      
-EOF_679690
-      mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
-      cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
-      ${pkgs.cmake}/bin/cmake -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P fmt-populate-prefix/tmp/fmt-populate-gitclone.cmake
-      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
-      mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download ]; then
-        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
-      elif [ -f fmt-populate-download ]; then
-        cp fmt-populate-download $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
-      fi
-    '';
-  };
-
   custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_update_7392 = stdenv.mkDerivation {
     name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_update_7392";
     buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882 ];
@@ -628,42 +560,44 @@ EOF_900226
     '';
   };
 
-  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805 = stdenv.mkDerivation {
-    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch_9560 ];
-    phases = [ "buildPhase" ];
+  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592 = stdenv.mkDerivation {
+    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592";
+    buildInputs = [ pkgs.coreutils pkgs.cmake ];
+    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/.;
+    phases = [ "unpackPhase" "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
-      mkdir -p fmt-populate-prefix/tmp
-      cat > fmt-populate-prefix/tmp/fmt-populate-cfgcmd.txt <<'EOF_988356'
-cmd=''\''
-EOF_988356
-      mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
-      cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch_9560}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch
-      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
+      # Source tree was unpacked by unpackPhase
+      echo "Current directory after unpack: $(pwd)"
+      echo "Contents of current directory:"
+      ls -la | head -10
+      echo "Looking for cmake/gen_version_h.cmake:"
+      ls -la cmake/gen_version_h.cmake || echo "File not found"
+      ${pkgs.cmake}/bin/cmake -Dcfgdir= -P fmt-populate-prefix/tmp/fmt-populate-mkdirs.cmake
+      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure ]; then
-        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
-      elif [ -f fmt-populate-configure ]; then
-        cp fmt-populate-configure $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
+      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir ]; then
+        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
+      elif [ -f fmt-populate-mkdir ]; then
+        cp fmt-populate-mkdir $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
       fi
     '';
   };
 
-  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_build_2588 = stdenv.mkDerivation {
-    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_build_2588";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805 ];
+  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_test_7704 = stdenv.mkDerivation {
+    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_test_7704";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_install_6269 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
-      cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
-      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
+      cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_install_6269}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install
+      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build ]; then
-        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
-      elif [ -f fmt-populate-build ]; then
-        cp fmt-populate-build $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
+      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test ]; then
+        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
+      elif [ -f fmt-populate-test ]; then
+        cp fmt-populate-test $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
       fi
     '';
   };
@@ -682,6 +616,68 @@ EOF_988356
         cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install
       elif [ -f fmt-populate-install ]; then
         cp fmt-populate-install $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install
+      fi
+    '';
+  };
+
+  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882 = stdenv.mkDerivation {
+    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_download_5882";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592 ];
+    src = /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/.;
+    phases = [ "unpackPhase" "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      # Source tree was unpacked by unpackPhase
+      echo "Current directory after unpack: $(pwd)"
+      echo "Contents of current directory:"
+      ls -la | head -10
+      echo "Looking for cmake/gen_version_h.cmake:"
+      ls -la cmake/gen_version_h.cmake || echo "File not found"
+      mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
+      cat > fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-gitinfo.txt <<'EOF_679690'
+# This is a generated file and its contents are an internal implementation detail.
+# The download step will be re-executed if anything in this file changes.
+# No other meaning or use of this file is supported.
+
+method=git
+command=/home/mpedersen/topics/cmake_nix_backend/CMake/bin/cmake;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-subbuild/fmt-populate-prefix/tmp/fmt-populate-gitclone.cmake
+source_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps/fmt-src
+work_dir=/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_tools/build/_deps
+repository=https://github.com/fmtlib/fmt.git
+remote=origin
+init_submodules=TRUE
+recurse_submodules=--recursive
+submodules=
+CMP0097=NEW
+      
+EOF_679690
+      mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
+      cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_mkdir_3592}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-mkdir
+      ${pkgs.cmake}/bin/cmake -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P fmt-populate-prefix/tmp/fmt-populate-gitclone.cmake
+      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
+      mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
+      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download ]; then
+        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
+      elif [ -f fmt-populate-download ]; then
+        cp fmt-populate-download $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-download
+      fi
+    '';
+  };
+
+  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_build_2588 = stdenv.mkDerivation {
+    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_build_2588";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805 ];
+    phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out
+      mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
+      cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
+      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
+      mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
+      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build ]; then
+        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
+      elif [ -f fmt-populate-build ]; then
+        cp fmt-populate-build $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-build
       fi
     '';
   };
@@ -722,20 +718,24 @@ EOF_988356
     '';
   };
 
-  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_test_7704 = stdenv.mkDerivation {
-    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_test_7704";
-    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_install_6269 ];
+  custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805 = stdenv.mkDerivation {
+    name = "custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_configure_5805";
+    buildInputs = [ pkgs.coreutils pkgs.cmake custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch_9560 ];
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out
+      mkdir -p fmt-populate-prefix/tmp
+      cat > fmt-populate-prefix/tmp/fmt-populate-cfgcmd.txt <<'EOF_988356'
+cmd=''\''
+EOF_988356
       mkdir -p fmt-populate-prefix/src/fmt-populate-stamp
-      cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_install_6269}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-install
-      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
+      cp ${custom_fmt_populate_prefix_src_fmt_populate_stamp_fmt_populate_patch_9560}/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-patch
+      ${pkgs.cmake}/bin/cmake -E touch fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
       mkdir -p $out/fmt-populate-prefix/src/fmt-populate-stamp
-      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test ]; then
-        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
-      elif [ -f fmt-populate-test ]; then
-        cp fmt-populate-test $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-test
+      if [ -f fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure ]; then
+        cp fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
+      elif [ -f fmt-populate-configure ]; then
+        cp fmt-populate-configure $out/fmt-populate-prefix/src/fmt-populate-stamp/fmt-populate-configure
       fi
     '';
   };

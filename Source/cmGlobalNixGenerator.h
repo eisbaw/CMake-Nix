@@ -25,6 +25,7 @@ class cmNixWriter;
 class cmNixCompilerResolver;
 class cmNixDerivationWriter;
 class cmNixDependencyGraph;
+class cmNixCustomCommandHandler;
 
 /**
  * \class cmGlobalNixGenerator
@@ -187,9 +188,8 @@ protected:
                                      const std::string& linkFlags,
                                      const std::string& primaryLang);
 
-  // Custom command support
+  // Custom command support - delegated to cmNixCustomCommandHandler
   void WriteCustomCommandDerivations(cmGeneratedFileStream& nixFileStream);
-  std::map<std::string, std::string> CollectCustomCommands();
   
   // External header derivation support
   void WriteExternalHeaderDerivations(cmGeneratedFileStream& nixFileStream);
@@ -309,15 +309,8 @@ private:
   // Map from object file path to compilation derivation name
   std::map<std::string, std::string> ObjectFileOutputs;
   
-  // Structure to store custom command information for dependency resolution
-  struct CustomCommandInfo {
-    std::string DerivationName;
-    std::vector<std::string> Outputs;
-    std::vector<std::string> Depends;
-    cmCustomCommand const* Command;
-    cmLocalGenerator* LocalGen;
-  };
-  std::vector<CustomCommandInfo> CustomCommands;
+  // Custom command handling is delegated to cmNixCustomCommandHandler
+  std::unique_ptr<cmNixCustomCommandHandler> CustomCommandHandler;
   
   // Header derivation tracking for external sources
   struct HeaderDerivationInfo {
@@ -331,8 +324,6 @@ private:
   std::map<std::string, std::string> SourceToHeaderDerivation;
   mutable std::mutex ExternalHeaderMutex;
   
-  // Mutex to protect CustomCommands and CustomCommandOutputs
-  mutable std::mutex CustomCommandMutex;
   
   // Dependency graph instance
   mutable std::unique_ptr<cmNixDependencyGraph> DependencyGraph;

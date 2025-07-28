@@ -358,7 +358,7 @@ let
     objects = [ lib1_test_circular_deps_lib1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    libraries = ["${link_lib3}" "${link_lib2}" ];
+    libraries = ["${link_lib2}" "${link_lib3}" ];
   };
 
   link_lib2 = cmakeNixLD {
@@ -387,7 +387,7 @@ let
     objects = [ valid_app_test_circular_deps_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    libraries = ["${link_lib3}" "${link_lib2}" "${link_lib1}" ];
+    libraries = ["${link_lib1}" "${link_lib2}" "${link_lib3}" ];
   };
 
 in
