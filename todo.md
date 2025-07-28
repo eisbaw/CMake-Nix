@@ -136,6 +136,52 @@ The CMake Nix backend is feature-complete and production-ready:
    - Thread safety guarantees unclear
    - Performance characteristics undocumented
 
+## New Code Quality Items (2025-07-28):
+
+### Documentation Enhancements:
+1. **Architecture Documentation**:
+   - Document the dependency graph algorithm used in cmNixDependencyGraph
+   - Explain the topological sort and cycle detection approach
+   - Document the caching strategy and eviction policies in cmNixCacheManager
+   - Add thread safety guarantees documentation for all mutex-protected operations
+
+2. **Performance Documentation**:
+   - Document performance characteristics of the Nix backend
+   - Explain trade-offs between fine-grained parallelism and derivation overhead
+   - Document cache size limits and their impact on memory usage
+   - Add benchmarking results comparing with other generators
+
+### Missing Test Coverage:
+1. **Error Recovery Tests**:
+   - Test behavior when Nix commands fail (nix-build errors)
+   - Test handling of malformed Nix expressions
+   - Test recovery from disk full conditions during generation
+
+2. **Edge Case Tests**:
+   - Test targets with extremely long names (>255 chars)
+   - Test projects with circular symbolic links
+   - Test handling of Unicode characters in target names
+   - Test concurrent CMake runs on the same build directory
+
+3. **Performance Tests**:
+   - Add stress tests for cache eviction under memory pressure
+   - Test generation time for projects with 10,000+ files
+   - Benchmark parallel build performance vs other generators
+
+### Code Quality Improvements:
+1. **Const Correctness**:
+   - Review all getter methods in extracted components for const correctness
+   - Mark methods that don't modify state as const
+
+2. **Resource Management**:
+   - Verify all file streams use RAII properly (already mostly done)
+   - Consider using std::filesystem for path operations (C++17)
+
+3. **Error Messages**:
+   - Enhance error messages to include more context
+   - Add suggestions for common error scenarios
+   - Improve diagnostics for package mapping failures
+
 ### Domain Clarity Issues (Compass Domain Expert Review):
 1. **Mixed Domain Concerns**:
    - CMake and Nix concepts not clearly separated
