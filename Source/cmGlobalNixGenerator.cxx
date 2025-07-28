@@ -1794,17 +1794,7 @@ bool cmGlobalNixGenerator::ValidateSourceFile(const cmSourceFile* source,
 std::string cmGlobalNixGenerator::DetermineCompilerPackage(cmGeneratorTarget* target,
                                                            const cmSourceFile* source) const
 {
-  std::string lang = source->GetLanguage();
-  
-  // First check if user has set CMAKE_NIX_<LANG>_COMPILER_PACKAGE
-  std::string compilerPkgVar = "CMAKE_NIX_" + lang + "_COMPILER_PACKAGE";
-  cmValue userPkg = target->Target->GetMakefile()->GetDefinition(compilerPkgVar);
-  if (userPkg && !userPkg->empty()) {
-    return *userPkg;
-  }
-  
-  // Otherwise use default mapping
-  return this->GetCompilerPackage(lang);
+  return this->CompilerResolver->DetermineCompilerPackage(target, source);
 }
 
 std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,

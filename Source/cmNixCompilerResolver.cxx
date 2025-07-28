@@ -3,10 +3,13 @@
 #include "cmNixCompilerResolver.h"
 
 #include "cmGlobalGenerator.h"
+#include "cmGeneratorTarget.h"
 #include "cmMakefile.h"
+#include "cmSourceFile.h"
 #include "cmState.h"
 #include "cmStringAlgorithms.h"
 #include "cmSystemTools.h"
+#include "cmTarget.h"
 #include "cmValue.h"
 #include "cmake.h"
 #include "cmNixConstants.h"
@@ -226,4 +229,20 @@ std::string cmNixCompilerResolver::GetUserOverride(const std::string& lang,
   
   cmValue override = this->CMakeInstance->GetCacheDefinition(varName);
   return override ? *override : "";
+}
+
+std::string cmNixCompilerResolver::DetermineCompilerPackage(cmGeneratorTarget* target,
+                                                            const cmSourceFile* source)
+{
+  std::string lang = source->GetLanguage();
+  
+  // First check if user has set CMAKE_NIX_<LANG>_COMPILER_PACKAGE in the target's Makefile
+  std::string compilerPkgVar = "CMAKE_NIX_" + lang + "_COMPILER_PACKAGE";
+  cmValue userPkg = target->Target->GetMakefile()->GetDefinition(compilerPkgVar);
+  if (userPkg && !userPkg->empty()) {
+    return *userPkg;
+  }
+  
+  // Otherwise use default mapping
+  return this->GetCompilerPackage(lang);
 }

@@ -29,6 +29,15 @@ public:
   std::string GetCompilerPackage(const std::string& lang);
 
   /**
+   * @brief Determine compiler package for a specific target and source file
+   * @param target The target being built
+   * @param source The source file being compiled
+   * @return The Nix package name for the compiler
+   */
+  std::string DetermineCompilerPackage(class cmGeneratorTarget* target,
+                                        const class cmSourceFile* source);
+
+  /**
    * @brief Get the compiler command for a given language
    * @param lang The programming language
    * @return The compiler command (e.g., "gcc", "g++", "clang++")
