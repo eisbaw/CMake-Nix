@@ -91,7 +91,7 @@ public:
                            const std::vector<std::string>& configTimeGeneratedFiles,
                            const std::string& srcDir,
                            const std::string& buildDir,
-                           cmGeneratorTarget* target = nullptr,
+                           [[maybe_unused]] cmGeneratorTarget* target = nullptr,
                            const std::string& lang = "",
                            const std::string& config = "",
                            const std::vector<std::string>& customCommandHeaders = {});

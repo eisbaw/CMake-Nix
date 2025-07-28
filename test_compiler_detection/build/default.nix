@@ -86,6 +86,8 @@ let
         srcFile="$(basename "$src")/$sourceFile"
       else
         echo "Error: Cannot find source file $sourceFile"
+        echo "  Searched in: $src and $(basename "$src")"
+        echo "  This may happen if the source file path is incorrect or the file was moved."
         exit 1
       fi
       $compilerCmd -c ${flags} "$srcFile" -o "$out"

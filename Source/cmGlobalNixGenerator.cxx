@@ -57,12 +57,12 @@ cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   : cmGlobalCommonGenerator(cm)
   , CompilerResolver(std::make_unique<cmNixCompilerResolver>(cm))
   , DerivationWriter(std::make_unique<cmNixDerivationWriter>())
-  , CustomCommandHandler(std::make_unique<cmNixCustomCommandHandler>())
-  , InstallRuleGenerator(std::make_unique<cmNixInstallRuleGenerator>())
-  , DependencyGraph(std::make_unique<cmNixDependencyGraph>())
-  , HeaderDependencyResolver(std::make_unique<cmNixHeaderDependencyResolver>(this))
   , CacheManager(std::make_unique<cmNixCacheManager>())
   , FileSystemHelper(std::make_unique<cmNixFileSystemHelper>(cm))
+  , CustomCommandHandler(std::make_unique<cmNixCustomCommandHandler>())
+  , InstallRuleGenerator(std::make_unique<cmNixInstallRuleGenerator>())
+  , HeaderDependencyResolver(std::make_unique<cmNixHeaderDependencyResolver>(this))
+  , DependencyGraph(std::make_unique<cmNixDependencyGraph>())
 {
   // Set the make program file
   this->FindMakeProgramFile = "CMakeNixFindMake.cmake";
@@ -2487,7 +2487,7 @@ void cmGlobalNixGenerator::ProcessConfigTimeGeneratedFiles(
 
 void cmGlobalNixGenerator::ProcessCustomCommandHeaders(
   const std::string& sourceFile,
-  const std::string& allCompileFlags,
+  [[maybe_unused]] const std::string& allCompileFlags,
   const std::vector<std::string>& includeDirs,
   std::vector<std::string>& customCommandHeaders)
 {
@@ -2875,9 +2875,9 @@ void cmGlobalNixGenerator::ProcessLibraryDependencies(
     if (target->GetType() == cmStateEnums::EXECUTABLE) {
       // Track direct dependencies to avoid duplicates
       std::set<std::string> directDeps;
-      auto linkImpl = target->GetLinkImplementation(ctx.config, cmGeneratorTarget::UseTo::Compile);
-      if (linkImpl) {
-        for (const cmLinkItem& item : linkImpl->Libraries) {
+      auto directLinkImpl = target->GetLinkImplementation(ctx.config, cmGeneratorTarget::UseTo::Compile);
+      if (directLinkImpl) {
+        for (const cmLinkItem& item : directLinkImpl->Libraries) {
           if (item.Target && !item.Target->IsImported()) {
             directDeps.insert(item.Target->GetName());
           }

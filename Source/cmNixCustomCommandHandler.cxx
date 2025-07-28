@@ -195,8 +195,8 @@ void cmNixCustomCommandHandler::WriteCustomCommandDerivations(
   const std::map<std::string, std::string>* customCommandOutputs,
   const std::map<std::string, std::string>* objectFileOutputs,
   std::ostream& fout,
-  const std::string& projectSourceDir,
-  const std::string& projectBinaryDir,
+  [[maybe_unused]] const std::string& projectSourceDir,
+  [[maybe_unused]] const std::string& projectBinaryDir,
   bool debugOutput)
 {
   if (customCommands.empty()) {

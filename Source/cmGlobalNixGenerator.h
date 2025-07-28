@@ -228,7 +228,7 @@ protected:
   
   void ProcessCustomCommandHeaders(
     const std::string& sourceFile,
-    const std::string& allCompileFlags,
+    [[maybe_unused]] const std::string& allCompileFlags,
     const std::vector<std::string>& includeDirs,
     std::vector<std::string>& customCommandHeaders);
   
