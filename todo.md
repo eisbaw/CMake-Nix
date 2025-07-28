@@ -447,6 +447,24 @@ While the existing test coverage is excellent, here are some potential additiona
    - Test selective component installation
    - Current test_install_rules covers basic cases
 
+## Additional Missing Tests Found (2025-07-28)
+
+During review, found these test directories exist but are not included in `just dev`:
+
+6. **test_abi_debug** - ABI debugging test
+7. **test_bullet_physics** - Bullet physics library integration test
+8. **test_compile_commands** - Compile commands export test
+9. **test_custom_command_subdir** - Custom commands in subdirectories
+10. **test_custom_simple** - Simple custom command test
+11. **test_external_includes** - External include paths test
+12. **test_fortran** - Fortran language test (different from test_fortran_language)
+13. **test_install_error_handling** - Install error handling test
+14. **test_nix_multiconfig** - Nix-specific multi-configuration test
+15. **test_transitive_headers** - Transitive header dependency test
+16. **test_try_compile** - try_compile() command test
+
+These tests should be evaluated and potentially added to the main test suite if they provide additional coverage.
+
 6. **Header-Only Libraries** (test_header_only_libs)
    - Test INTERFACE libraries with only headers
    - Common pattern in modern C++
