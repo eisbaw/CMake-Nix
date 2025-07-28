@@ -63,10 +63,10 @@ The CMake Nix backend is feature-complete and production-ready:
       - DONE Move InstallTargets vector and related state
       - DONE Create focused install handling component
    
-   e) Extract header dependency processing from cmGlobalNixGenerator into cmNixHeaderDependencyResolver class
-      - Move ProcessHeaderDependencies, FilterProjectHeaders methods
-      - Move ExternalHeaderDerivations map and GetOrCreateHeaderDerivation
-      - Consolidate header scanning logic
+   e) DONE Extract header dependency processing from cmGlobalNixGenerator into cmNixHeaderDependencyResolver class
+      - DONE Move ProcessHeaderDependencies, FilterProjectHeaders methods
+      - DONE Move ExternalHeaderDerivations map and GetOrCreateHeaderDerivation
+      - DONE Consolidate header scanning logic
    
    f) Create cmNixCacheManager to consolidate all caching logic
       - Move DerivationNameCache, LibraryDependencyCache, TransitiveDependencyCache

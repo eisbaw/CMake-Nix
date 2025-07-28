@@ -27,6 +27,7 @@ class cmNixDerivationWriter;
 class cmNixDependencyGraph;
 class cmNixCustomCommandHandler;
 class cmNixHeaderDependencyResolver;
+class cmNixCacheManager;
 
 /**
  * \class cmGlobalNixGenerator
@@ -271,10 +272,8 @@ private:
   // Derivation writer utility
   mutable std::unique_ptr<cmNixDerivationWriter> DerivationWriter;
   
-  // Performance optimization: Cache frequently computed values
-  mutable std::map<std::pair<cmGeneratorTarget*, std::string>, std::vector<std::string>> LibraryDependencyCache;
-  mutable std::map<std::string, std::string> DerivationNameCache;
-  mutable std::mutex CacheMutex; // Protects cache maps above
+  // Cache manager for performance optimization
+  mutable std::unique_ptr<cmNixCacheManager> CacheManager;
   
   // Install rule tracking
   std::vector<cmGeneratorTarget*> InstallTargets;

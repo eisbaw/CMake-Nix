@@ -813,6 +813,8 @@ add_library(
   cmNixDependencyGraph.h
   cmNixHeaderDependencyResolver.cxx
   cmNixHeaderDependencyResolver.h
+  cmNixCacheManager.cxx
+  cmNixCacheManager.h
 
   cm_get_date.h
   cm_get_date.c

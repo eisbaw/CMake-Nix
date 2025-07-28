@@ -32,6 +32,7 @@
 #include "cmNixCompilerResolver.h"
 #include "cmNixPathUtils.h"
 #include "cmNixHeaderDependencyResolver.h"
+#include "cmNixCacheManager.h"
 #include "cmInstallGenerator.h"
 #include "cmInstallTargetGenerator.h"
 #include "cmCustomCommand.h"
@@ -58,6 +59,7 @@ cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   , InstallRuleGenerator(std::make_unique<cmNixInstallRuleGenerator>())
   , DependencyGraph(std::make_unique<cmNixDependencyGraph>())
   , HeaderDependencyResolver(std::make_unique<cmNixHeaderDependencyResolver>(this))
+  , CacheManager(std::make_unique<cmNixCacheManager>())
 {
   // Set the make program file
   this->FindMakeProgramFile = "CMakeNixFindMake.cmake";
@@ -580,13 +582,10 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         std::string config = this->GetBuildConfiguration(target.get());
         
         // Pre-compute and cache library dependencies for this target
-        std::pair<cmGeneratorTarget*, std::string> cacheKey = {target.get(), config};
-        {
-          std::lock_guard<std::mutex> lock(this->CacheMutex);
-          if (this->LibraryDependencyCache.find(cacheKey) == this->LibraryDependencyCache.end()) {
-            this->LibraryDependencyCache[cacheKey] = targetGen->GetTargetLibraryDependencies(config);
-          }
-        }
+        this->CacheManager->GetLibraryDependencies(target.get(), config,
+          [&targetGen, &config]() {
+            return targetGen->GetTargetLibraryDependencies(config);
+          });
         
         for (const cmSourceFile* source : sources) {
           // Skip Unity-generated batch files (unity_X_cxx.cxx) as we don't support Unity builds
@@ -639,19 +638,10 @@ void cmGlobalNixGenerator::WriteLinkingDerivations(
 std::string cmGlobalNixGenerator::GetDerivationName(
   std::string const& targetName, std::string const& sourceFile) const
 {
-  // Create cache key
-  std::string cacheKey = targetName + "|" + sourceFile;
-  
-  // Check cache first
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    auto it = this->DerivationNameCache.find(cacheKey);
-    if (it != this->DerivationNameCache.end()) {
-      return it->second;
-    }
-  }
-  
-  std::string result;
+  // Use cache manager to get or compute the derivation name
+  return this->CacheManager->GetDerivationName(targetName, sourceFile,
+    [this, &targetName, &sourceFile]() {
+      std::string result;
   if (sourceFile.empty()) {
     result = "link_" + targetName;
   } else {
@@ -689,12 +679,8 @@ std::string cmGlobalNixGenerator::GetDerivationName(
     this->UsedDerivationNames.insert(finalResult);
   }
   
-  // Cache the result
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    this->DerivationNameCache[cacheKey] = finalResult;
-  }
-  return finalResult;
+      return finalResult;
+    });
 }
 
 void cmGlobalNixGenerator::AddObjectDerivation(std::string const& targetName, std::string const& derivationName, std::string const& sourceFile, std::string const& objectFileName, std::string const& language, std::vector<std::string> const& dependencies)
@@ -2566,35 +2552,11 @@ std::vector<std::string> cmGlobalNixGenerator::GetCachedLibraryDependencies(
     timer = std::make_unique<ProfileTimer>(this, "GetCachedLibraryDependencies");
   }
   
-  std::pair<cmGeneratorTarget*, std::string> cacheKey = {target, config};
-  
-  // Double-checked locking pattern to prevent race condition
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    auto it = this->LibraryDependencyCache.find(cacheKey);
-    if (it != this->LibraryDependencyCache.end()) {
-      return it->second;
-    }
-  }
-  
-  // Compute dependencies outside the lock
-  auto targetGen = cmNixTargetGenerator::New(target);
-  std::vector<std::string> libraryDeps = targetGen->GetTargetLibraryDependencies(config);
-  
-  // Check again inside lock in case another thread computed it
-  {
-    std::lock_guard<std::mutex> lock(this->CacheMutex);
-    // Check if another thread already inserted while we were computing
-    auto it = this->LibraryDependencyCache.find(cacheKey);
-    if (it != this->LibraryDependencyCache.end()) {
-      // Another thread beat us, use their result
-      return it->second;
-    }
-    // We're the first, insert our result
-    this->LibraryDependencyCache[cacheKey] = libraryDeps;
-  }
-  
-  return libraryDeps;
+  return this->CacheManager->GetLibraryDependencies(target, config,
+    [target, &config]() {
+      auto targetGen = cmNixTargetGenerator::New(target);
+      return targetGen->GetTargetLibraryDependencies(config);
+    });
 }
 
 void cmGlobalNixGenerator::ProcessLibraryDependenciesForLinking(
