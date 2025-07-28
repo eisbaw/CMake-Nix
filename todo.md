@@ -13,21 +13,18 @@
    - Note: These are working correctly but could benefit from decomposition for maintainability
 
 ### Missing Tests from Main Test Suite:
-The following test directories have run targets but are not included in `just dev`:
-- test_circular_deps - Tests circular dependency detection
-- test_cmake_self_host - Tests CMake building itself with Nix generator
-- test_cuda_language - Tests CUDA support
-- test_custom_commands_advanced - Advanced custom command features
-- test_deep_dependencies - Tests deep dependency chains
-- test_fortran - Fortran language tests
-- test_generator_expressions - Generator expression tests
-- test_opencv - OpenCV integration test
-- test_performance_large - Large scale performance tests
-- test_scale - Scalability tests with configurable file counts
-- test_security_paths - Security path validation tests
-- test_special_characters - Tests special characters in target names
-
-Note: These appear to be special tests that may have longer runtimes or specific requirements.
+DONE - Added missing tests to 'just dev' command in justfile (2025-07-28)
+  - ✅ Added test_circular_deps (expected to fail, demonstrates circular dependency detection)
+  - ✅ Added test_cuda_language
+  - ✅ Added test_custom_commands_advanced  
+  - ✅ Added test_deep_dependencies
+  - ✅ Added test_generator_expressions
+  - ✅ Added test_performance_large (with skip warning due to extended runtime)
+  - ✅ Added test_security_paths
+  - ✅ Added test_special_characters
+  - Note: test_cmake_self_host and test_opencv remain separate due to resource requirements
+  - Note: test_fortran appears to not exist (test_fortran_language already included)
+  - Note: test_scale remains in test-special due to extended runtime
 
 ## Code Quality Review (2025-07-28)
 

@@ -2,7 +2,7 @@
 
 build:
     rm -f default.nix
-    cmake -G Nix .
+    ../bin/cmake -G Nix .
 
 run: build
     @echo "Note: CUDA tests will run in CPU-only mode if no GPU is available"

@@ -3,7 +3,7 @@ build_dir := "build"
 # Configure the project
 configure:
     mkdir -p {{build_dir}}/generated
-    cd {{build_dir}} && cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
+    cd {{build_dir}} && ../../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
 
 # Build and run the test
 run: configure
