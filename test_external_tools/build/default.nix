@@ -192,7 +192,7 @@ let
     buildInputs = [ stdenv.cc (import ./../pkg_fmt.nix { inherit pkgs; }) ];
     source = "main.cpp";
     compiler = stdenv.cc;
-    flags = "-O3 -DNDEBUG -std=gnu++17 -Ibuild/simple_external-prefix/src/simple_external/single_include -std=c++17";
+    flags = "-O3 -DNDEBUG -std=gnu++17 -Isimple_external-prefix/src/simple_external/single_include -std=c++17";
   };
 
   custom_build_simpleexternal_prefix_src_simpleexternal_stamp_simpleexternal_patchdisconnected_2302 = stdenv.mkDerivation {
