@@ -4,6 +4,29 @@ with pkgs;
 with lib;
 
 let
+# Helper function to create a fileset union from a list of paths
+  makeFilesetUnion = rootPath: paths:
+    let
+      # Convert a path to a fileset, handling both files and directories
+      toFileset = path:
+        if builtins.pathExists path then
+          if lib.pathIsDirectory path then
+            lib.fileset.fromSource (lib.sources.sourceByRegex rootPath ["${path}/.*"])
+          else
+            lib.fileset.fromSource (lib.sources.sourceByRegex rootPath ["${path}"])
+        else
+          lib.fileset.fromSource (lib.sources.sourceByRegex rootPath []);
+          
+      # Create filesets for all paths
+      filesets = map toFileset paths;
+      
+      # Start with an empty fileset
+      emptySet = lib.fileset.fromSource (lib.sources.sourceByRegex rootPath []);
+    in
+      # Union all filesets together
+      builtins.foldl' lib.fileset.union emptySet filesets;
+
+# Helper functions will be moved to cmNixDerivationWriter
 # Helper functions for DRY derivations
 
   cmakeNixCC = {

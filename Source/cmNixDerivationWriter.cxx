@@ -26,60 +26,50 @@ void cmNixDerivationWriter::LogDebug(const std::string& message) const
   }
 }
 
-void cmNixDerivationWriter::WriteObjectDerivation(
+void cmNixDerivationWriter::WriteObjectDerivationWithHelper(
   cmGeneratedFileStream& nixFileStream,
-  cmGeneratorTarget* target,
-  const cmSourceFile* source,
   const std::string& derivName,
   const std::string& objectName,
-  const std::string& lang,
+  const std::string& srcPath,
+  const std::string& sourcePath,
   const std::string& compilerPackage,
   const std::string& compileFlags,
-  const std::vector<std::string>& buildInputs,
-  const std::string& srcPath,
-  bool useFilesetUnion)
+  const std::vector<std::string>& buildInputs)
 {
-  nixFileStream << "  " << derivName << " = stdenv.mkDerivation {\n";
+  // Start the derivation using cmakeNixCC helper
+  nixFileStream << "  " << derivName << " = cmakeNixCC {\n";
   nixFileStream << "    name = \"" << objectName << "\";\n";
+  nixFileStream << "    src = " << srcPath << ";\n";
   
-  if (useFilesetUnion) {
-    nixFileStream << "    src = " << srcPath << ";\n";
+  // Write source path
+  if (sourcePath.find("${") != std::string::npos) {
+    nixFileStream << "    source = \"" << sourcePath << "\";\n";
   } else {
-    nixFileStream << "    src = ./.;\n";
+    nixFileStream << "    source = \"" << cmNixWriter::EscapeNixString(sourcePath) << "\";\n";
+  }
+  
+  // Write compiler
+  nixFileStream << "    compiler = " << compilerPackage << ";\n";
+  
+  // Write flags
+  if (!compileFlags.empty()) {
+    nixFileStream << "    flags = \"" << cmNixWriter::EscapeNixString(compileFlags) << "\";\n";
   }
   
   // Write build inputs
-  nixFileStream << "    buildInputs = [ " << compilerPackage;
-  for (const auto& input : buildInputs) {
-    nixFileStream << " " << input;
-  }
-  nixFileStream << " ];\n";
-  
-  // Write phases
-  nixFileStream << "    phases = [ \"unpackPhase\" \"buildPhase\" ];\n";
-  
-  // Write build phase
-  nixFileStream << "    buildPhase = ''\n";
-  nixFileStream << "      runHook preBuild\n";
-  nixFileStream << "      mkdir -p \"$(dirname \"$out\")\"\n";
-  
-  // Get source file path relative to source directory
-  std::string sourceFile = source->GetFullPath();
-  if (cmSystemTools::IsSubDirectory(sourceFile, target->GetLocalGenerator()->GetCurrentSourceDirectory())) {
-    sourceFile = cmSystemTools::RelativePath(
-      target->GetLocalGenerator()->GetCurrentSourceDirectory(), sourceFile);
+  if (!buildInputs.empty()) {
+    nixFileStream << "    buildInputs = [ ";
+    bool first = true;
+    for (const auto& input : buildInputs) {
+      if (!first) {
+        nixFileStream << " ";
+      }
+      nixFileStream << input;
+      first = false;
+    }
+    nixFileStream << " ];\n";
   }
   
-  // Write compilation command
-  std::string compilerCommand = (lang == "C") ? "gcc" : "g++";
-  if (compilerPackage.find("clang") != std::string::npos) {
-    compilerCommand = (lang == "C") ? "clang" : "clang++";
-  }
-  
-  nixFileStream << "      " << compilerCommand << " -c " << compileFlags 
-                << " \"" << sourceFile << "\" -o \"$out\"\n";
-  nixFileStream << "      runHook postBuild\n";
-  nixFileStream << "    '';\n";
   nixFileStream << "  };\n\n";
 }
 

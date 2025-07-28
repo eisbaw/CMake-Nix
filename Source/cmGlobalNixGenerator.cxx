@@ -1136,9 +1136,14 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   // Get all compile flags using the helper method
   std::string allCompileFlags = this->GetCompileFlags(target, source, lang, config, objectName);
   
-  // Start the derivation using cmakeNixCC helper
-  nixFileStream << "  " << derivName << " = cmakeNixCC {\n";
-  nixFileStream << "    name = \"" << objectName << "\";\n";
+  // Prepare compiler package
+  std::string compilerPackage = this->GetCompilerPackage(lang);
+  
+  // Initialize DerivationWriter configuration if needed
+  if (!this->DerivationWriter) {
+    this->DerivationWriter = std::make_unique<cmNixDerivationWriter>();
+  }
+  this->DerivationWriter->SetDebugOutput(this->GetCMakeInstance()->GetDebugOutput());
   
   // Determine source path - check if this source file is external
   std::string currentSourceDir = cmSystemTools::GetFilenamePath(sourceFile);
@@ -1164,6 +1169,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   
   // Check if source file is external (outside project tree)
   bool isExternalSource = (cmNixPathUtils::IsPathOutsideTree(initialRelativePath) || cmSystemTools::FileIsFullPath(initialRelativePath));
+  
+  // Start writing the derivation using cmakeNixCC helper
+  nixFileStream << "  " << derivName << " = cmakeNixCC {\n";
+  nixFileStream << "    name = \"" << objectName << "\";\n";
   
   // Process files referenced by -imacros and -include flags for ALL sources (external and non-external)
   // These files need to be embedded if they are configuration-time generated
@@ -2031,17 +2040,6 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
   }
   
-  // Don't escape Nix expressions (those containing ${...})
-  if (sourcePath.find("${") != std::string::npos) {
-    nixFileStream << "    source = \"" << sourcePath << "\";\n";
-  } else {
-    nixFileStream << "    source = \"" << cmNixWriter::EscapeNixString(sourcePath) << "\";\n";
-  }
-  
-  // Write compiler attribute (get from buildInputs[0])
-  std::string defaultCompiler = this->GetCompilerPackage(lang);
-  nixFileStream << "    compiler = " << (!buildInputs.empty() ? buildInputs[0] : defaultCompiler) << ";\n";
-  
   // Update compile flags to use relative paths for embedded config-time generated files
   // This is needed for ALL sources (external and non-external)
   for (const auto& genFile : configTimeGeneratedFiles) {
@@ -2076,10 +2074,43 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     allFlags.pop_back();
   }
   
+  // Determine the src path expression
+  std::string srcExpression;
+  
+  // Extract the src expression that was written above
+  // The src is complex and was already written to nixFileStream 
+  // We need to refactor this properly to capture the src expression
+  // For now, we'll need to parse what was written or refactor the entire method
+  
+  // Actually, looking at the code above, the src was already written to nixFileStream
+  // We can't easily extract it now. Let's close the derivation manually for now
+  // and plan a more comprehensive refactoring later
+  
+  // First, we need to ensure the derivation was properly opened with cmakeNixCC
+  // The code above only wrote the src attribute, but not the derivation opening
+  // We need to back up and write the entire derivation structure
+  
+  // Note: This is a temporary fix. The proper solution is to refactor the entire method
+  // to collect all information first, then write the derivation in one go.
+  
+  // For now, the src attribute was already written above, so we continue with source path
+  if (sourcePath.find("${") != std::string::npos) {
+    nixFileStream << "    source = \"" << sourcePath << "\";\n";
+  } else {
+    nixFileStream << "    source = \"" << cmNixWriter::EscapeNixString(sourcePath) << "\";\n";
+  }
+  
+  // Write compiler attribute
+  std::string finalCompilerPackage = (!buildInputs.empty() ? buildInputs[0] : compilerPackage);
+  nixFileStream << "    compiler = " << finalCompilerPackage << ";\n";
+  
   // Write flags attribute
   if (!allFlags.empty()) {
     nixFileStream << "    flags = \"" << cmNixWriter::EscapeNixString(allFlags) << "\";\n";
   }
+  
+  // buildInputs was already written earlier in the method (around line 1957)
+  // No need to write it again
   
   // Close the derivation
   nixFileStream << "  };\n\n";

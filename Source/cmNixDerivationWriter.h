@@ -28,20 +28,17 @@ public:
   ~cmNixDerivationWriter();
 
   /**
-   * Write an object file derivation for a single source file.
+   * Write an object file derivation for a single source file using cmakeNixCC helper.
    * Creates a fine-grained Nix derivation that compiles one translation unit.
    */
-  void WriteObjectDerivation(cmGeneratedFileStream& nixFileStream,
-                            cmGeneratorTarget* target,
-                            const cmSourceFile* source,
-                            const std::string& derivName,
-                            const std::string& objectName,
-                            const std::string& lang,
-                            const std::string& compilerPackage,
-                            const std::string& compileFlags,
-                            const std::vector<std::string>& buildInputs,
-                            const std::string& srcPath,
-                            bool useFilesetUnion = true);
+  void WriteObjectDerivationWithHelper(cmGeneratedFileStream& nixFileStream,
+                                      const std::string& derivName,
+                                      const std::string& objectName,
+                                      const std::string& srcPath,
+                                      const std::string& sourcePath,
+                                      const std::string& compilerPackage,
+                                      const std::string& compileFlags,
+                                      const std::vector<std::string>& buildInputs);
 
   /**
    * Write a link derivation for an executable or library target.
