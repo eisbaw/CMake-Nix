@@ -218,7 +218,8 @@ let
     objects = [ myapp_src_main_cpp_o myapp_src_default_utils_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_mylib} -lpthread";
+    flags = "-lpthread";
+    libraries = ["${link_mylib}" ];
   };
 
 

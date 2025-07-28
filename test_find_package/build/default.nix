@@ -169,42 +169,6 @@ let
     flags = "-O3 -DNDEBUG";
   };
 
-  compress_app_test_find_package_compress_c_o = cmakeNixCC {
-    name = "compress.o";
-    src = pkgs.runCommand "composite-src-with-generated" {
-    } ''
-      mkdir -p $out
-      # Copy source files
-      cp -rL ${./..}/* $out/ 2>/dev/null || true
-      # Copy headers from external include directory: /nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev/include
-      mkdir -p $out/nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev
-      cp -rL ${builtins.path { path = "/nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev/include"; }} $out/nix/store/cbdvjyn19y77m8l06n089x30v7irqz3j-zlib-1.3.1-dev/include
-      # Copy configuration-time generated files
-    '';
-    buildInputs = [ gcc zlib ];
-    source = "compress.c";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG";
-  };
-
-  opengl_app_test_find_package_opengl_c_o = cmakeNixCC {
-    name = "opengl.o";
-    src = pkgs.runCommand "composite-src-with-generated" {
-    } ''
-      mkdir -p $out
-      # Copy source files
-      cp -rL ${./..}/* $out/ 2>/dev/null || true
-      # Copy headers from external include directory: /nix/store/13fw0scdl9ciz5lpabi9nkxwrnn8555g-libglvnd-1.7.0-dev/include
-      mkdir -p $out/nix/store/13fw0scdl9ciz5lpabi9nkxwrnn8555g-libglvnd-1.7.0-dev
-      cp -rL ${builtins.path { path = "/nix/store/13fw0scdl9ciz5lpabi9nkxwrnn8555g-libglvnd-1.7.0-dev/include"; }} $out/nix/store/13fw0scdl9ciz5lpabi9nkxwrnn8555g-libglvnd-1.7.0-dev/include
-      # Copy configuration-time generated files
-    '';
-    buildInputs = [ gcc libGL ];
-    source = "opengl.c";
-    compiler = gcc;
-    flags = "-O3 -DNDEBUG";
-  };
-
 
   # Linking derivations
   link_threaded_app = cmakeNixLD {
@@ -216,27 +180,7 @@ let
     flags = "-lpthread";
   };
 
-  link_compress_app = cmakeNixLD {
-    name = "compress_app";
-    type = "executable";
-    buildInputs = [ gcc zlib ];
-    objects = [ compress_app_test_find_package_compress_c_o ];
-    compiler = gcc;
-    flags = "-lz";
-  };
-
-  link_opengl_app = cmakeNixLD {
-    name = "opengl_app";
-    type = "executable";
-    buildInputs = [ gcc libGL ];
-    objects = [ opengl_app_test_find_package_opengl_c_o ];
-    compiler = gcc;
-    flags = "-lGL";
-  };
-
 in
 {
   "threaded_app" = link_threaded_app;
-  "compress_app" = link_compress_app;
-  "opengl_app" = link_opengl_app;
 }

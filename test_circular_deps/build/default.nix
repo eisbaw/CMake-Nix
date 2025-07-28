@@ -310,7 +310,7 @@ let
     objects = [ libX_test_circular_deps_libX_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    libraries = ["${link_libZ}" "${link_libY}" ];
+    libraries = ["${link_libY}" "${link_libZ}" ];
   };
 
   link_libY = cmakeNixLD {
@@ -320,7 +320,7 @@ let
     objects = [ libY_test_circular_deps_libY_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    libraries = ["${link_libX}" "${link_libZ}" ];
+    libraries = ["${link_libZ}" "${link_libX}" ];
   };
 
   link_libZ = cmakeNixLD {
@@ -330,7 +330,7 @@ let
     objects = [ libZ_test_circular_deps_libZ_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    libraries = ["${link_libY}" "${link_libX}" ];
+    libraries = ["${link_libX}" "${link_libY}" ];
   };
 
   link_lib1 = cmakeNixLD {
@@ -340,7 +340,7 @@ let
     objects = [ lib1_test_circular_deps_lib1_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    libraries = ["${link_lib3}" "${link_lib2}" ];
+    libraries = ["${link_lib2}" "${link_lib3}" ];
   };
 
   link_lib2 = cmakeNixLD {
@@ -369,7 +369,7 @@ let
     objects = [ valid_app_test_circular_deps_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    libraries = ["${link_lib3}" "${link_lib2}" "${link_lib1}" ];
+    libraries = ["${link_lib1}" "${link_lib2}" "${link_lib3}" ];
   };
 
 in

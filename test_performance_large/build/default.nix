@@ -7688,7 +7688,7 @@ let
     objects = [ perf_test_src_main_cpp_o ];
     compiler = gcc;
     compilerCommand = "g++";
-    flags = "${link_modules}";
+    libraries = ["${link_modules}" ];
   };
 
 in
