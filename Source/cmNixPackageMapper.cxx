@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 
 #include <cm3p/json/json.h>
@@ -49,11 +50,14 @@ void cmNixPackageMapper::InitializeMappings()
 bool cmNixPackageMapper::LoadMappingsFromFile(const std::string& filePath)
 {
   if (!cmSystemTools::FileExists(filePath)) {
+    // Not an error - file may not exist in all configurations
     return false;
   }
   
   std::ifstream file(filePath);
   if (!file.is_open()) {
+    std::cerr << "CMake Nix Generator Warning: Failed to open package mappings file: " 
+              << filePath << std::endl;
     return false;
   }
   
@@ -62,6 +66,8 @@ bool cmNixPackageMapper::LoadMappingsFromFile(const std::string& filePath)
   std::string errors;
   
   if (!Json::parseFromStream(builder, file, &root, &errors)) {
+    std::cerr << "CMake Nix Generator Error: Failed to parse package mappings file: " 
+              << filePath << "\n  JSON Error: " << errors << std::endl;
     return false;
   }
   
