@@ -68,10 +68,10 @@ The CMake Nix backend is feature-complete and production-ready:
       - DONE Move ExternalHeaderDerivations map and GetOrCreateHeaderDerivation
       - DONE Consolidate header scanning logic
    
-   f) Create cmNixCacheManager to consolidate all caching logic
-      - Move DerivationNameCache, LibraryDependencyCache, TransitiveDependencyCache
-      - Implement clear cache invalidation strategies
-      - Add proper memory limits and eviction policies
+   f) DONE Create cmNixCacheManager to consolidate all caching logic
+      - DONE Move DerivationNameCache, LibraryDependencyCache, TransitiveDependencyCache
+      - DONE Implement clear cache invalidation strategies
+      - DONE Add proper memory limits and eviction policies
    
    g) Move compiler detection and configuration logic to enhanced cmNixCompilerResolver
       - Move DetermineCompilerPackage, GetCompilerPackage, GetCompilerCommand methods
