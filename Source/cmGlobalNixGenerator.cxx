@@ -30,6 +30,7 @@
 #include "cmNixCustomCommandHandler.h"
 #include "cmNixInstallRuleGenerator.h"
 #include "cmNixCompilerResolver.h"
+#include "cmNixBuildConfiguration.h"
 #include "cmNixPathUtils.h"
 #include "cmNixHeaderDependencyResolver.h"
 #include "cmNixCacheManager.h"
@@ -2510,26 +2511,7 @@ std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) co
 
 std::string cmGlobalNixGenerator::GetBuildConfiguration(cmGeneratorTarget* target) const
 {
-  if (target) {
-    std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
-    if (config.empty()) {
-      config = "Release"; // Default to Release if no configuration specified
-    }
-    return config;
-  }
-  
-  // When no target is provided, check the top-level makefile
-  if (!this->LocalGenerators.empty()) {
-    cmMakefile* mf = this->LocalGenerators[0]->GetMakefile();
-    std::string config = mf->GetSafeDefinition("CMAKE_BUILD_TYPE");
-    if (config.empty()) {
-      config = "Release"; // Default to Release if no configuration specified
-    }
-    return config;
-  }
-  
-  // Fallback
-  return "Release";
+  return cmNixBuildConfiguration::GetBuildConfiguration(target, this);
 }
 
 std::vector<std::string> cmGlobalNixGenerator::GetCachedLibraryDependencies(

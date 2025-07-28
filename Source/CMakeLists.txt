@@ -807,6 +807,8 @@ add_library(
   cmNixWriter.h
   cmNixCompilerResolver.cxx
   cmNixCompilerResolver.h
+  cmNixBuildConfiguration.cxx
+  cmNixBuildConfiguration.h
   cmNixDerivationWriter.cxx
   cmNixDerivationWriter.h
   cmNixDependencyGraph.cxx
