@@ -2646,3 +2646,28 @@ Based on the comprehensive review requested, the following non-critical improvem
 - Makes documentation more universal
 
 These improvements would enhance maintainability without affecting functionality. The CMake Nix backend is already production-ready and these are quality-of-life improvements.
+
+## Additional Tests Not in Main Test Suite (2025-07-28)
+
+The following test directories exist but are not included in the main `just dev` test suite:
+
+1. **test_abi_debug** - ABI/debug information test
+2. **test_bullet_physics** - Bullet physics library integration test
+3. **test_compile_commands** - compile_commands.json generation test
+4. **test_cross_compile** - Cross-compilation test (requires specific toolchain)
+5. **test_custom_command_subdir** - Custom commands in subdirectories
+6. **test_custom_simple** - Simple custom command test
+7. **test_error_recovery** - Error recovery test (may fail intentionally)
+8. **test_external_includes** - External include directories test
+9. **test_fortran** - Fortran language test (duplicate of test_fortran_language?)
+10. **test_install_error_handling** - Install error handling test
+11. **test_nix_multiconfig** - Nix multi-configuration test
+12. **test_opencv** - OpenCV integration test (resource intensive)
+13. **test_performance_benchmark** - Performance benchmarking test
+14. **test_scale** - Scale test (extended runtime)
+15. **test_spdlog** - spdlog library test (already in dev suite)
+16. **test_thread_safety** - Thread safety stress test
+17. **test_transitive_headers** - Transitive header dependencies test
+18. **test_try_compile** - try_compile functionality test
+
+Note: Some of these tests may be experimental, duplicative, or have special requirements that prevent them from being in the main test suite. They should be evaluated individually for inclusion.
