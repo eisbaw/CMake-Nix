@@ -26,6 +26,7 @@ class cmNixCompilerResolver;
 class cmNixDerivationWriter;
 class cmNixDependencyGraph;
 class cmNixCustomCommandHandler;
+class cmNixHeaderDependencyResolver;
 
 /**
  * \class cmGlobalNixGenerator
@@ -141,12 +142,6 @@ protected:
                              const std::string& objectName);
   
   // Additional helper methods for WriteObjectDerivation decomposition
-  void ProcessHeaderDependencies(const std::vector<std::string>& headers,
-                                const std::string& buildDir,
-                                const std::string& srcDir,
-                                std::vector<std::string>& existingFiles,
-                                std::vector<std::string>& generatedFiles,
-                                std::vector<std::string>& configTimeGeneratedFiles);
   void WriteCompositeSource(cmGeneratedFileStream& nixFileStream,
                            const std::vector<std::string>& configTimeGeneratedFiles,
                            const std::string& srcDir,
@@ -164,7 +159,6 @@ protected:
                                                const std::string& config,
                                                const std::string& sourceFile,
                                                const std::string& projectSourceRelPath);
-  std::vector<std::string> FilterProjectHeaders(const std::vector<std::string>& headers);
   
   // System path detection helper
   bool IsSystemPath(const std::string& path) const;
@@ -191,10 +185,6 @@ protected:
   // Custom command support - delegated to cmNixCustomCommandHandler
   void WriteCustomCommandDerivations(cmGeneratedFileStream& nixFileStream);
   
-  // External header derivation support
-  void WriteExternalHeaderDerivations(cmGeneratedFileStream& nixFileStream);
-  std::string GetOrCreateHeaderDerivation(const std::string& sourceDir, 
-                                         const std::vector<std::string>& headers);
 
   // Install rule support
   void WriteInstallRules(cmGeneratedFileStream& nixFileStream);
@@ -315,17 +305,8 @@ private:
   // Install rule handling is delegated to cmNixInstallRuleGenerator
   std::unique_ptr<class cmNixInstallRuleGenerator> InstallRuleGenerator;
   
-  // Header derivation tracking for external sources
-  struct HeaderDerivationInfo {
-    std::string DerivationName;
-    std::set<std::string> Headers;
-    std::string SourceDirectory;
-  };
-  // Map from source directory to header derivation info
-  std::map<std::string, HeaderDerivationInfo> ExternalHeaderDerivations;
-  // Map from source file to header derivation name (for easy lookup)
-  std::map<std::string, std::string> SourceToHeaderDerivation;
-  mutable std::mutex ExternalHeaderMutex;
+  // Header dependency resolver
+  mutable std::unique_ptr<cmNixHeaderDependencyResolver> HeaderDependencyResolver;
   
   
   // Dependency graph instance

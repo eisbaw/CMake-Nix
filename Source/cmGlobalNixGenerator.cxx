@@ -31,6 +31,7 @@
 #include "cmNixInstallRuleGenerator.h"
 #include "cmNixCompilerResolver.h"
 #include "cmNixPathUtils.h"
+#include "cmNixHeaderDependencyResolver.h"
 #include "cmInstallGenerator.h"
 #include "cmInstallTargetGenerator.h"
 #include "cmCustomCommand.h"
@@ -56,6 +57,7 @@ cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   , CustomCommandHandler(std::make_unique<cmNixCustomCommandHandler>())
   , InstallRuleGenerator(std::make_unique<cmNixInstallRuleGenerator>())
   , DependencyGraph(std::make_unique<cmNixDependencyGraph>())
+  , HeaderDependencyResolver(std::make_unique<cmNixHeaderDependencyResolver>(this))
 {
   // Set the make program file
   this->FindMakeProgramFile = "CMakeNixFindMake.cmake";
@@ -482,7 +484,7 @@ void cmGlobalNixGenerator::WriteNixFile()
   // Write external header derivations first (before object derivations that depend on them)
   {
     ProfileTimer headerTimer(this, "WriteExternalHeaderDerivations");
-    this->WriteExternalHeaderDerivations(nixFileStream);
+    this->HeaderDependencyResolver->WriteExternalHeaderDerivations(nixFileStream);
   }
   
   // Write per-translation-unit derivations BEFORE custom commands
@@ -1126,13 +1128,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       std::string headerDerivName;
       if (!externalHeaders.empty()) {
         std::string sourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-        headerDerivName = this->GetOrCreateHeaderDerivation(sourceDir, externalHeaders);
+        headerDerivName = this->HeaderDependencyResolver->GetOrCreateHeaderDerivation(sourceDir, externalHeaders);
         
         // Store mapping from source file to header derivation
-        {
-          std::lock_guard<std::mutex> lock(this->ExternalHeaderMutex);
-          this->SourceToHeaderDerivation[sourceFile] = headerDerivName;
-        }
+        this->HeaderDependencyResolver->SetSourceHeaderDerivation(sourceFile, headerDerivName);
         
         // Symlink headers from the header derivation
         nixFileStream << "      # Link headers from external header derivation\n";
@@ -1292,13 +1291,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       std::string headerDerivName;
       if (!externalHeaders.empty()) {
         std::string sourceDir = cmSystemTools::GetFilenamePath(sourceFile);
-        headerDerivName = this->GetOrCreateHeaderDerivation(sourceDir, externalHeaders);
+        headerDerivName = this->HeaderDependencyResolver->GetOrCreateHeaderDerivation(sourceDir, externalHeaders);
         
         // Store mapping from source file to header derivation
-        {
-          std::lock_guard<std::mutex> lock(this->ExternalHeaderMutex);
-          this->SourceToHeaderDerivation[sourceFile] = headerDerivName;
-        }
+        this->HeaderDependencyResolver->SetSourceHeaderDerivation(sourceFile, headerDerivName);
         
         // Symlink headers from the header derivation
         nixFileStream << "      # Link headers from external header derivation\n";
@@ -1368,7 +1364,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     if (this->GetCMakeInstance()->GetDebugOutput()) {
       std::cerr << "[NIX-DEBUG] Processing headers for " << sourceFile << ": " << dependencies.size() << " headers" << std::endl;
     }
-    this->ProcessHeaderDependencies(dependencies, buildDir, srcDir, 
+    this->HeaderDependencyResolver->ProcessHeaderDependencies(dependencies, buildDir, srcDir, 
                                    existingFiles, generatedFiles, configTimeGeneratedFiles);
     
     // Note: PCH header file handling is now done in GetCompileFlags helper
@@ -1599,7 +1595,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
   }
   
   // Filter project headers using helper method
-  std::vector<std::string> projectHeaders = this->FilterProjectHeaders(headers);
+  std::vector<std::string> projectHeaders = this->HeaderDependencyResolver->FilterProjectHeaders(headers);
   
   // Note: We don't use propagatedInputs for header dependencies because:
   // 1. Headers are already included in the fileset union for the source
@@ -2710,87 +2706,7 @@ void cmGlobalNixGenerator::WriteInstallOutputs(cmGeneratedFileStream& nixFileStr
     [this](const std::string& targetName) { return this->GetDerivationName(targetName); });
 }
 
-void cmGlobalNixGenerator::WriteExternalHeaderDerivations(
-  cmGeneratedFileStream& nixFileStream)
-{
-  std::lock_guard<std::mutex> lock(this->ExternalHeaderMutex);
-  
-  if (this->ExternalHeaderDerivations.empty()) {
-    return;
-  }
-  
-  cmNixWriter writer(nixFileStream);
-  writer.WriteComment("External header collection derivations");
-  
-  for (const auto& [sourceDir, headerInfo] : this->ExternalHeaderDerivations) {
-    nixFileStream << "  " << headerInfo.DerivationName << " = stdenv.mkDerivation {\n";
-    writer.WriteAttribute("name", "external-headers-" + 
-                         cmSystemTools::GetFilenameName(sourceDir));
-    
-    // Create a composite source that copies all headers
-    nixFileStream << "    postUnpack = ''\n";
-    
-    // Create directory structure for headers
-    std::set<std::string> createdDirs;
-    for (const std::string& header : headerInfo.Headers) {
-      // Get relative path from source directory
-      std::string relPath = cmSystemTools::RelativePath(sourceDir, header);
-      std::string headerDir = cmSystemTools::GetFilenamePath(relPath);
-      if (!headerDir.empty() && createdDirs.find(headerDir) == createdDirs.end()) {
-        nixFileStream << "      mkdir -p $out/" << headerDir << "\n";
-        createdDirs.insert(headerDir);
-      }
-    }
-    
-    // Copy all headers
-    for (const std::string& header : headerInfo.Headers) {
-      if (cmSystemTools::FileExists(header)) {
-        std::string normalizedPath = cmSystemTools::CollapseFullPath(header);
-        std::string relPath = cmSystemTools::RelativePath(sourceDir, header);
-        nixFileStream << "      cp -L ${builtins.path { path = \"" 
-                     << normalizedPath << "\"; }} $out/" << relPath 
-                     << " 2>/dev/null || true\n";
-      }
-    }
-    
-    nixFileStream << "    '';\n";
-    writer.WriteAttribute("dontUnpack", "true");
-    writer.WriteAttribute("dontBuild", "true");
-    writer.WriteAttribute("dontInstall", "true");
-    writer.WriteAttribute("dontFixup", "true");
-    nixFileStream << "  };\n\n";
-  }
-}
 
-std::string cmGlobalNixGenerator::GetOrCreateHeaderDerivation(
-  const std::string& sourceDir, 
-  const std::vector<std::string>& headers)
-{
-  std::lock_guard<std::mutex> lock(this->ExternalHeaderMutex);
-  
-  // Check if we already have a header derivation for this directory
-  auto it = this->ExternalHeaderDerivations.find(sourceDir);
-  if (it != this->ExternalHeaderDerivations.end()) {
-    // Add any new headers to the existing derivation
-    for (const std::string& header : headers) {
-      it->second.Headers.insert(header);
-    }
-    return it->second.DerivationName;
-  }
-  
-  // Create a new header derivation
-  HeaderDerivationInfo info;
-  info.SourceDirectory = sourceDir;
-  info.DerivationName = this->GetDerivationName("external_headers_" + 
-                        cmSystemTools::GetFilenameName(sourceDir));
-  
-  for (const std::string& header : headers) {
-    info.Headers.insert(header);
-  }
-  
-  this->ExternalHeaderDerivations[sourceDir] = info;
-  return info.DerivationName;
-}
 
 void cmGlobalNixGenerator::CollectInstallTargets()
 {
@@ -2910,97 +2826,6 @@ void cmGlobalNixGenerator::WriteExplicitSourceDerivation(
   nixFileStream << "    };\n";
 }
 
-void cmGlobalNixGenerator::ProcessHeaderDependencies(
-  const std::vector<std::string>& headers,
-  const std::string& buildDir,
-  const std::string& srcDir,
-  std::vector<std::string>& existingFiles,
-  std::vector<std::string>& generatedFiles,
-  std::vector<std::string>& configTimeGeneratedFiles)
-{
-  for (const auto& dep : headers) {
-    // Get full path for checking
-    std::string fullPath = dep;
-    if (!cmSystemTools::FileIsFullPath(dep)) {
-      fullPath = this->GetCMakeInstance()->GetHomeDirectory();
-      fullPath += "/";
-      fullPath += dep;
-    }
-    
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Processing header dependency: " << dep 
-                << " (full: " << fullPath << ")" << std::endl;
-      std::cerr << "[NIX-DEBUG] File exists: " << cmSystemTools::FileExists(fullPath) << std::endl;
-    }
-    
-    // Check if file is in build directory
-    bool isInBuildDir = (fullPath.find(buildDir) == 0);
-    bool isInSourceDir = (fullPath.find(srcDir) == 0);
-    
-    // Only consider it a config-time generated file if:
-    // 1. It's in the build directory
-    // 2. It's NOT also in the source directory (in-source builds)
-    // 3. OR the build dir and source dir are different and file is only in build dir
-    bool isConfigTimeGenerated = isInBuildDir && 
-      (buildDir != srcDir || !isInSourceDir);
-    
-    // Convert to appropriate relative path
-    std::string relDep;
-    if (isInBuildDir && buildDir != srcDir) {
-      // For build directory files, make path relative to source directory
-      // since the fileset will be rooted at the source directory
-      relDep = cmSystemTools::RelativePath(srcDir, fullPath);
-    } else if (cmSystemTools::FileIsFullPath(dep)) {
-      // For source directory files, make path relative to source dir
-      relDep = cmSystemTools::RelativePath(
-        this->GetCMakeInstance()->GetHomeDirectory(), dep);
-    } else {
-      relDep = dep;
-    }
-    
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Relative dependency path: " << relDep << std::endl;
-    }
-    
-    // Add if it's a valid relative path
-    if (!relDep.empty()) {
-      if (cmSystemTools::FileExists(fullPath)) {
-        // Check if it's a configuration-time generated file (exists in build dir)
-        if (isConfigTimeGenerated) {
-          // This is a configuration-time generated file
-          configTimeGeneratedFiles.push_back(fullPath);
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Added config-time generated header: " << fullPath << std::endl;
-          }
-        } else {
-          existingFiles.push_back(relDep);
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Added existing header to fileset: " << relDep << std::endl;
-          }
-        }
-      } else {
-        // Header might be generated during build (custom commands)
-        // Check if this header is a custom command output
-        auto customIt = this->CustomCommandOutputs.find(fullPath);
-        if (customIt != this->CustomCommandOutputs.end()) {
-          // This header is generated by a custom command
-          generatedFiles.push_back(relDep);
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Added custom command generated header: " << relDep 
-                      << " (from derivation: " << customIt->second << ")" << std::endl;
-          }
-        } else {
-          // Regular generated file (not custom command)
-          generatedFiles.push_back(relDep);
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Added build-time generated header: " << relDep 
-                      << " (full: " << fullPath << ")" << std::endl;
-          }
-        }
-      }
-    }
-  }
-}
 
 void cmGlobalNixGenerator::WriteCompositeSource(
   cmGeneratedFileStream& nixFileStream,
@@ -3344,50 +3169,18 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
   }
   
   // Check if this source file has an external header derivation dependency
-  {
-    std::lock_guard<std::mutex> lock(this->ExternalHeaderMutex);
-    auto headerIt = this->SourceToHeaderDerivation.find(sourceFile);
-    if (headerIt != this->SourceToHeaderDerivation.end() && !headerIt->second.empty()) {
-      buildInputs.push_back(headerIt->second);
-      if (this->GetCMakeInstance()->GetDebugOutput()) {
-        std::cerr << "[NIX-DEBUG] Found header derivation dependency for " << sourceFile 
-                  << " -> " << headerIt->second << std::endl;
-      }
+  std::string headerDerivation = this->HeaderDependencyResolver->GetSourceHeaderDerivation(sourceFile);
+  if (!headerDerivation.empty()) {
+    buildInputs.push_back(headerDerivation);
+    if (this->GetCMakeInstance()->GetDebugOutput()) {
+      std::cerr << "[NIX-DEBUG] Found header derivation dependency for " << sourceFile 
+                << " -> " << headerDerivation << std::endl;
     }
   }
   
   return buildInputs;
 }
 
-std::vector<std::string> cmGlobalNixGenerator::FilterProjectHeaders(
-  const std::vector<std::string>& headers)
-{
-  std::vector<std::string> projectHeaders;
-  
-  for (const std::string& header : headers) {
-    // Skip system headers
-    if (this->IsSystemPath(header)) {
-      continue;
-    }
-    // Skip absolute paths outside project (system headers)
-    if (cmSystemTools::FileIsFullPath(header)) {
-      // Check if it's in the project or build directory
-      std::string projectDir = this->GetCMakeInstance()->GetHomeDirectory();
-      std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-      if (!cmSystemTools::IsSubDirectory(header, projectDir) &&
-          !cmSystemTools::IsSubDirectory(header, buildDir)) {
-        continue;
-      }
-    }
-    // Skip configuration-time generated files that are already in composite source
-    if (header.find("build/") == 0 || header.find("./build/") == 0) {
-      continue;
-    }
-    projectHeaders.push_back(header);
-  }
-  
-  return projectHeaders;
-}
 
 bool cmGlobalNixGenerator::IsSystemPath(const std::string& path) const
 {

@@ -53,15 +53,15 @@ The CMake Nix backend is feature-complete and production-ready:
       - DONE Move ObjectDerivations map and related dependency tracking  
       - DONE Implement proper graph algorithms in isolated component
    
-   c) Extract custom command handling from cmGlobalNixGenerator into cmNixCustomCommandHandler class
-      - Move CustomCommandInfo struct and CustomCommands vector
-      - Move WriteCustomCommandDerivations and CollectCustomCommands methods
-      - Move custom command cycle detection logic (300+ lines)
+   c) DONE Extract custom command handling from cmGlobalNixGenerator into cmNixCustomCommandHandler class
+      - DONE Move CustomCommandInfo struct and CustomCommands vector
+      - DONE Move WriteCustomCommandDerivations and CollectCustomCommands methods
+      - DONE Move custom command cycle detection logic (300+ lines)
    
-   d) Extract install rule generation from cmGlobalNixGenerator into cmNixInstallRuleGenerator class
-      - Move WriteInstallRules, WriteInstallOutputs, CollectInstallTargets methods
-      - Move InstallTargets vector and related state
-      - Create focused install handling component
+   d) DONE Extract install rule generation from cmGlobalNixGenerator into cmNixInstallRuleGenerator class
+      - DONE Move WriteInstallRules, WriteInstallOutputs, CollectInstallTargets methods
+      - DONE Move InstallTargets vector and related state
+      - DONE Create focused install handling component
    
    e) Extract header dependency processing from cmGlobalNixGenerator into cmNixHeaderDependencyResolver class
       - Move ProcessHeaderDependencies, FilterProjectHeaders methods
