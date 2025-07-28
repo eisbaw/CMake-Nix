@@ -216,7 +216,15 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   // This method replicates the logic from cmMakefile::TryCompile
   // but is thread-safe and works with unique binary directories
   
-  std::cerr << "[NIX-DEBUG] ExecuteTryCompile STARTED: " << job->ProjectName << " / " << job->TargetName << std::endl;
+  // Get debug output setting from parent if available
+  bool debugOutput = false;
+  if (job->ParentMakefile && job->ParentMakefile->GetCMakeInstance()) {
+    debugOutput = job->ParentMakefile->GetCMakeInstance()->GetDebugOutput();
+  }
+  
+  if (debugOutput) {
+    std::cerr << "[NIX-DEBUG] ExecuteTryCompile STARTED: " << job->ProjectName << " / " << job->TargetName << std::endl;
+  }
   
   // Ensure binary directory exists
   if (!cmSystemTools::FileIsDirectory(job->BinaryDir)) {
@@ -247,6 +255,11 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   cm.SetGeneratorInstance(job->GeneratorInstance);
   cm.SetGeneratorPlatform(job->GeneratorPlatform);
   cm.SetGeneratorToolset(job->GeneratorToolset);
+  
+  // Copy debug output setting from parent if available
+  if (job->ParentMakefile && job->ParentMakefile->GetCMakeInstance()) {
+    cm.SetDebugOutputOn(job->ParentMakefile->GetCMakeInstance()->GetDebugOutput());
+  }
   
   // Load cache from parent project's build directory first
   if (job->ParentMakefile) {
@@ -318,22 +331,34 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   }
 
   // Configure
-  std::cerr << "[NIX-DEBUG] Starting configure..." << std::endl;
+  if (debugOutput) {
+    std::cerr << "[NIX-DEBUG] Starting configure..." << std::endl;
+  }
   if (cm.Configure() != 0) {
     job->Output = "Failed to configure test project build system.";
-    std::cerr << "[NIX-DEBUG] Configure failed!" << std::endl;
+    if (debugOutput) {
+      std::cerr << "[NIX-DEBUG] Configure failed!" << std::endl;
+    }
     return 1;
   }
-  std::cerr << "[NIX-DEBUG] Configure succeeded" << std::endl;
+  if (debugOutput) {
+    std::cerr << "[NIX-DEBUG] Configure succeeded" << std::endl;
+  }
 
   // Generate
-  std::cerr << "[NIX-DEBUG] Starting generate..." << std::endl;
+  if (debugOutput) {
+    std::cerr << "[NIX-DEBUG] Starting generate..." << std::endl;
+  }
   if (cm.Generate() != 0) {
     job->Output = "Failed to generate test project build system.";
-    std::cerr << "[NIX-DEBUG] Generate failed!" << std::endl;
+    if (debugOutput) {
+      std::cerr << "[NIX-DEBUG] Generate failed!" << std::endl;
+    }
     return 1;
   }
-  std::cerr << "[NIX-DEBUG] Generate succeeded" << std::endl;
+  if (debugOutput) {
+    std::cerr << "[NIX-DEBUG] Generate succeeded" << std::endl;
+  }
 
   // Build the project
   std::ostringstream buildOutput;
@@ -346,9 +371,11 @@ int cmTryCompileExecutor::ExecuteTryCompile(cmTryCompileJob* job)
   
   job->Output = buildOutput.str();
   
-  std::cerr << "[NIX-DEBUG] ExecuteTryCompile COMPLETED: " << job->ProjectName << " (result=" << ret << ")" << std::endl;
-  if (ret != 0) {
-    std::cerr << "[NIX-DEBUG] Build output: " << job->Output << std::endl;
+  if (debugOutput) {
+    std::cerr << "[NIX-DEBUG] ExecuteTryCompile COMPLETED: " << job->ProjectName << " (result=" << ret << ")" << std::endl;
+    if (ret != 0) {
+      std::cerr << "[NIX-DEBUG] Build output: " << job->Output << std::endl;
+    }
   }
   
   return ret;
