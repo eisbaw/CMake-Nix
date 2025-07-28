@@ -3,7 +3,7 @@
 # Stress test for deep dependency trees
 # Tests CMake Nix backend with complex dependency chains
 
-cmake_binary := "../../bin/cmake"
+cmake_binary := "../bin/cmake"
 
 # Default target
 default: run
@@ -23,8 +23,7 @@ generate:
 # Configure with CMake Nix backend
 configure:
     @echo "=== Configuring with CMake Nix backend ==="
-    mkdir -p build
-    cd build && {{cmake_binary}} -G Nix -DCMAKE_BUILD_TYPE=Release ..
+    {{cmake_binary}} -G Nix -S . -B build -DCMAKE_BUILD_TYPE=Release
 
 # Build using Nix
 build:
