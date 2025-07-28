@@ -1519,400 +1519,56 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
 {
   ProfileTimer timer(this, "WriteLinkDerivation");
   
-  std::string derivName = this->GetDerivationName(target->GetName());
-  std::string targetName = target->GetName();
-  
-  // Determine source path for subdirectory adjustment
-  std::string sourceDir = this->GetCMakeInstance()->GetHomeDirectory();
-  std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
-  std::string projectSourceRelPath = cmSystemTools::RelativePath(buildDir, sourceDir);
+  // Step 1: Prepare link context with all necessary information
+  LinkContext ctx = PrepareLinkContext(target);
   
   // Debug output
-  this->LogDebug("WriteLinkDerivation: sourceDir=" + sourceDir + 
-                ", buildDir=" + buildDir + ", projectSourceRelPath=" + projectSourceRelPath);
-  
-  // Check if this is a try_compile
-  bool isTryCompile = buildDir.find("CMakeScratch") != std::string::npos;
-  
-  this->LogDebug(std::string(__FILE__) + ":" + std::to_string(__LINE__) + 
-                " WriteLinkDerivation for target: " + targetName + 
+  std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+  this->LogDebug("WriteLinkDerivation for target: " + ctx.targetName + 
                 " buildDir: " + buildDir + 
-                " isTryCompile: " + (isTryCompile ? "true" : "false"));
+                " isTryCompile: " + (ctx.isTryCompile ? "true" : "false"));
   
-  // Use NixWriter for cleaner output
-  cmNixWriter writer(nixFileStream);
+  // Step 2: Get library dependencies
+  std::vector<std::string> libraryDeps = this->GetCachedLibraryDependencies(target, ctx.config);
   
-  // Generate appropriate name for target type
-  std::string outputName;
-  if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-    outputName = this->GetLibraryPrefix() + targetName + this->GetSharedLibraryExtension();
-  } else if (target->GetType() == cmStateEnums::MODULE_LIBRARY) {
-    outputName = targetName + this->GetSharedLibraryExtension();  // Modules typically don't have lib prefix
-  } else {
-    outputName = targetName;
+  // Step 3: Collect build inputs
+  CollectBuildInputs(ctx, target, libraryDeps);
+  
+  // Step 4: Collect object files
+  CollectObjectFiles(ctx, target);
+  
+  // Step 5: Process library dependencies
+  ProcessLibraryDependencies(ctx, target);
+  
+  // Step 6: Prepare try_compile post-build phase if needed
+  if (ctx.isTryCompile) {
+    this->LogDebug("Adding try_compile output file handling for: " + ctx.targetName);
+    ctx.postBuildPhase = PrepareTryCompilePostBuildPhase(buildDir, ctx.targetName);
   }
   
-  // Map target type to cmakeNixLD type parameter
-  std::string nixTargetType;
-  if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
-    nixTargetType = "static";
-  } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-    nixTargetType = "shared";
-  } else if (target->GetType() == cmStateEnums::MODULE_LIBRARY) {
-    nixTargetType = "module";
-  } else {
-    nixTargetType = "executable";
-  }
+  // Step 7: Extract version information
+  ExtractVersionInfo(ctx, target);
   
-  // Get external library dependencies
-  std::string config = this->GetBuildConfiguration(target);
-  std::vector<std::string> libraryDeps = this->GetCachedLibraryDependencies(target, config);
-  
-  // Get link implementation for dependency processing
-  auto linkImpl = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
-  
-  // Build buildInputs list including external libraries
-  // Determine the primary language for linking
-  std::string primaryLang = "C";
-  std::vector<cmSourceFile*> sources;
-  target->GetSourceFiles(sources, "");
-  for (cmSourceFile* source : sources) {
-    std::string lang = source->GetLanguage();
-    if (lang == "CXX") {
-      primaryLang = "CXX";
-      break;  // C++ takes precedence
-    } else if (lang == "Fortran" && primaryLang == "C") {
-      primaryLang = "Fortran";  // Fortran takes precedence over C
-    }
-  }
-  
-  // Build buildInputs list
-  std::vector<std::string> buildInputs;
-  std::string compilerPkg = this->GetCompilerPackage(primaryLang);
-  buildInputs.push_back(compilerPkg);
-  
-  // Add external library dependencies
-  this->ProcessLibraryDependenciesForBuildInputs(libraryDeps, buildInputs, projectSourceRelPath);
-  
-  // Get transitive shared library dependencies (exclude those already direct)
-  std::set<std::string> transitiveDeps = this->DependencyGraph->GetTransitiveSharedLibraries(targetName);
-  std::set<std::string> directSharedDeps;
-  
-  // Add direct CMake target dependencies (only shared libraries)
-  if (linkImpl) {
-    for (const cmLinkItem& item : linkImpl->Libraries) {
-      if (item.Target && !item.Target->IsImported()) {
-        // Only add shared and module libraries to buildInputs, not static libraries
-        if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY ||
-            item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
-          std::string depTargetName = item.Target->GetName();
-          std::string depDerivName = this->GetDerivationName(depTargetName);
-          buildInputs.push_back(depDerivName);
-          directSharedDeps.insert(depTargetName); // Track direct deps to avoid duplication
-        }
-      }
-    }
-  }
-  
-  // Add transitive shared library dependencies to buildInputs (excluding direct ones)
-  for (const std::string& depTarget : transitiveDeps) {
-    if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
-      std::string depDerivName = this->GetDerivationName(depTarget);
-      buildInputs.push_back(depDerivName);
-    }
-  }
-  
-  // Collect object file dependencies (reuse sources from above)
-  std::vector<std::string> objects;
-  
-  // Get PCH sources to exclude from linking
-  std::unordered_set<std::string> pchSources;
-  std::set<std::string> languages;
-  target->GetLanguages(languages, config);
-  for (const std::string& lang : languages) {
-    std::vector<std::string> pchArchs = target->GetPchArchs(config, lang);
-    for (const std::string& arch : pchArchs) {
-      std::string pchSource = target->GetPchSource(config, lang, arch);
-      if (!pchSource.empty()) {
-        pchSources.insert(pchSource);
-      }
-    }
-  }
-  
-  for (cmSourceFile* source : sources) {
-    // Skip Unity-generated batch files (unity_X_cxx.cxx) as we don't support Unity builds
-    // But still process the original source files
-    std::string sourcePath = source->GetFullPath();
-    if (sourcePath.find("/Unity/unity_") != std::string::npos && 
-        sourcePath.find("_cxx.cxx") != std::string::npos) {
-      continue;
-    }
-    
-    std::string const& lang = source->GetLanguage();
-    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || 
-        lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
-      // Exclude PCH source files from linking
-      std::string resolvedSourcePath = source->GetFullPath();
-      if (cmSystemTools::FileIsSymlink(resolvedSourcePath)) {
-        resolvedSourcePath = cmSystemTools::GetRealPath(resolvedSourcePath);
-      }
-      if (pchSources.find(resolvedSourcePath) == pchSources.end()) {
-        std::string objDerivName = this->GetDerivationName(
-          target->GetName(), resolvedSourcePath);
-        objects.push_back(objDerivName);
-      }
-    }
-  }
-  
-  // Add object files from OBJECT libraries referenced by $<TARGET_OBJECTS:...>
-  std::vector<cmSourceFile const*> externalObjects;
-  target->GetExternalObjects(externalObjects, config);
-  for (cmSourceFile const* source : externalObjects) {
-    // External objects come from OBJECT libraries
-    // The path ends with .o but we need to find the corresponding source file
-    std::string objectFile = source->GetFullPath();
-    
-    // Remove .o extension to get the source file path
-    std::string sourceFile = objectFile;
-    std::string objExt = this->GetObjectFileExtension();
-    if (sourceFile.size() > objExt.size() && sourceFile.substr(sourceFile.size() - objExt.size()) == objExt) {
-      sourceFile = sourceFile.substr(0, sourceFile.size() - objExt.size());
-    }
-    
-    // Find the OBJECT library that contains this source
-    for (auto const& lg : this->LocalGenerators) {
-      auto const& targets = lg->GetGeneratorTargets();
-      for (auto const& objTarget : targets) {
-        if (objTarget->GetType() == cmStateEnums::OBJECT_LIBRARY) {
-          std::vector<cmSourceFile*> objSources;
-          objTarget->GetSourceFiles(objSources, config);
-          for (cmSourceFile* objSource : objSources) {
-            if (objSource->GetFullPath() == sourceFile) {
-              // Found the OBJECT library that contains this source
-              std::string objDerivName = this->GetDerivationName(
-                objTarget->GetName(), sourceFile);
-              objects.push_back(objDerivName);
-              goto next_external_object;
-            }
-          }
-        }
-      }
-    }
-    next_external_object:;
-  }
-  
-  // Get compiler command based on primary language
-  std::string compilerCommand = this->GetCompilerCommand(primaryLang);
-  
-  // Get library link flags for build phase - use vector for efficient concatenation
-  std::vector<std::string> linkFlagsList;
-  
-  // Get library list for cmakeNixLD helper
-  std::vector<std::string> libraries;
-  
-  // Check if target depends on any static libraries
-  bool hasStaticDependencies = false;
-  if (linkImpl) {
-    for (const cmLinkItem& item : linkImpl->Libraries) {
-      if (item.Target && !item.Target->IsImported() &&
-          item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
-        hasStaticDependencies = true;
-        break;
-      }
-    }
-  }
-  
-  // Process library dependencies - but handle static libraries specially
-  std::set<std::string> directStaticLibs;
-  if (!hasStaticDependencies) {
-    // No static dependencies - process normally
-    this->ProcessLibraryDependenciesForLinking(target, config, linkFlagsList, libraries, transitiveDeps);
-  } else {
-    // Has static dependencies - process non-static libraries only
-    cmLinkImplementation const* linkImplCopy = target->GetLinkImplementation(config, cmGeneratorTarget::UseTo::Compile);
-    if (linkImplCopy) {
-      auto targetGen = cmNixTargetGenerator::New(target);
-      for (const cmLinkItem& item : linkImplCopy->Libraries) {
-        if (item.Target && item.Target->IsImported()) {
-          // Imported target
-          std::string importedTargetName = item.Target->GetName();
-          std::string flags = targetGen->GetPackageMapper().GetLinkFlags(importedTargetName);
-          if (!flags.empty()) {
-            linkFlagsList.push_back(flags);
-          }
-        } else if (item.Target && !item.Target->IsImported()) {
-          // CMake target within the same project
-          if (item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
-            // Save static libraries for topological sorting
-            directStaticLibs.insert(item.Target->GetName());
-          } else {
-            // Add non-static libraries normally
-            std::string depTargetName = item.Target->GetName();
-            std::string depDerivName = this->GetDerivationName(depTargetName);
-            if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-              libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
-                                 depTargetName + this->GetSharedLibraryExtension());
-            } else if (item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
-              libraries.push_back("${" + depDerivName + "}/" + depTargetName + 
-                                 this->GetSharedLibraryExtension());
-            }
-          }
-        } else if (!item.Target) {
-          // External library
-          std::string libName = item.AsStr();
-          linkFlagsList.push_back("-l" + libName);
-        }
-      }
-    }
-  }
-  
-  // If we have static library dependencies, we need ALL transitive dependencies
-  if (hasStaticDependencies) {
-    // Get all targets in topological order for proper static library linking
-    std::vector<std::string> topologicalOrder = this->DependencyGraph->GetTopologicalOrderForLinking(target->GetName());
-    
-    // Also need to include direct static dependencies in the topological order
-    std::set<std::string> allStaticDeps = this->DependencyGraph->GetAllTransitiveDependencies(target->GetName());
-    allStaticDeps.insert(directStaticLibs.begin(), directStaticLibs.end());
-    
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      this->LogDebug("Topological order for linking " + target->GetName() + ":");
-      for (const auto& t : topologicalOrder) {
-        this->LogDebug("  " + t);
-      }
-      std::string staticLibsStr = "Direct static libs: ";
-      for (const auto& t : directStaticLibs) {
-        staticLibsStr += t + " ";
-      }
-      this->LogDebug(staticLibsStr);
-    }
-    
-    // Add all transitive static libraries that aren't already in the libraries list
-    std::set<std::string> alreadyAdded;
-    for (const std::string& lib : libraries) {
-      // Extract target name from library reference
-      size_t start = lib.find("${link_") + 7;
-      size_t end = lib.find("}");
-      if (start != std::string::npos && end != std::string::npos && start < end) {
-        alreadyAdded.insert(lib.substr(start, end - start));
-      }
-    }
-    
-    // Add both direct and transitive static libraries in topological order
-    for (const std::string& depTarget : topologicalOrder) {
-      // Add if it's in our set of all static dependencies and not already added
-      if (allStaticDeps.count(depTarget) > 0 && alreadyAdded.find(depTarget) == alreadyAdded.end()) {
-        auto depIt = std::find_if(this->LocalGenerators.begin(), this->LocalGenerators.end(),
-          [&depTarget](const std::unique_ptr<cmLocalGenerator>& lg) {
-            auto const& targets = lg->GetGeneratorTargets();
-            return std::any_of(targets.begin(), targets.end(),
-              [&depTarget](const std::unique_ptr<cmGeneratorTarget>& t) {
-                return t->GetName() == depTarget;
-              });
-          });
-        
-        if (depIt != this->LocalGenerators.end()) {
-          auto const& targets = (*depIt)->GetGeneratorTargets();
-          auto targetIt = std::find_if(targets.begin(), targets.end(),
-            [&depTarget](const std::unique_ptr<cmGeneratorTarget>& t) {
-              return t->GetName() == depTarget;
-            });
-          
-          if (targetIt != targets.end()) {
-            std::string depDerivName = this->GetDerivationName(depTarget);
-            if ((*targetIt)->GetType() == cmStateEnums::STATIC_LIBRARY) {
-              libraries.push_back("${" + depDerivName + "}");
-            } else if ((*targetIt)->GetType() == cmStateEnums::SHARED_LIBRARY) {
-              libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
-                                 depTarget + this->GetSharedLibraryExtension());
-            } else if ((*targetIt)->GetType() == cmStateEnums::MODULE_LIBRARY) {
-              libraries.push_back("${" + depDerivName + "}/" + depTarget + 
-                                 this->GetSharedLibraryExtension());
-            }
-          }
-        }
-      }
-    }
-  } else {
-    // For targets without static dependencies, just add transitive shared library dependencies
-    for (const std::string& depTarget : transitiveDeps) {
-      if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
-        std::string depDerivName = this->GetDerivationName(depTarget);
-        libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
-                           depTarget + this->GetSharedLibraryExtension());
-      }
-    }
-  }
-  
-  // For static libraries, we need to reverse the order since dependencies must come after dependents
-  if (!libraries.empty() && hasStaticDependencies) {
-    std::reverse(libraries.begin(), libraries.end());
-  }
-  
-  // Prepare postBuildPhase for try_compile if needed
-  std::string postBuildPhase;
-  if (isTryCompile) {
-    this->LogDebug(std::string(__FILE__) + ":" + std::to_string(__LINE__) + 
-                  " Adding try_compile output file handling for: " + targetName);
-    
-    std::ostringstream postBuildStream;
-    postBuildStream << "      # Create output location in build directory for CMake COPY_FILE\n";
-    std::string escapedBuildDir = cmOutputConverter::EscapeForShell(buildDir, cmOutputConverter::Shell_Flag_IsUnix);
-    std::string escapedTargetName = cmOutputConverter::EscapeForShell(targetName, cmOutputConverter::Shell_Flag_IsUnix);
-    postBuildStream << "      COPY_DEST=" << escapedBuildDir << "/" << escapedTargetName << "\n";
-    postBuildStream << "      cp \"$out\" \"$COPY_DEST\"\n";
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      postBuildStream << "      echo '[NIX-DEBUG] Copied try_compile output to: '\"$COPY_DEST\"\n";
-    }
-    postBuildStream << "      # Write location file that CMake expects to find the executable path\n";
-    postBuildStream << "      echo \"$COPY_DEST\" > " << escapedBuildDir << "/" << escapedTargetName << "_loc\n";
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      postBuildStream << "      echo '[NIX-DEBUG] Wrote location file: '" << escapedBuildDir << "/" << escapedTargetName << "_loc\n";
-      postBuildStream << "      echo '[NIX-DEBUG] Location file contains: '\"$COPY_DEST\"\n";
-    }
-    postBuildPhase = postBuildStream.str();
-  }
-  
-  // Get version and soversion as strings
-  std::string versionStr;
-  std::string soversionStr;
-  if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-    cmValue version = target->GetProperty("VERSION");
-    cmValue soversion = target->GetProperty("SOVERSION");
-    if (version) {
-      versionStr = *version;
-    }
-    if (soversion) {
-      soversionStr = *soversion;
-    }
-  }
-  
-  // Convert linkFlags to string
-  std::string linkFlagsStr;
-  if (!linkFlagsList.empty()) {
-    linkFlagsStr = cmJoin(linkFlagsList, " ");
-  }
-  
-  // Initialize DerivationWriter if needed
+  // Step 8: Initialize DerivationWriter if needed
   if (!this->DerivationWriter) {
     this->DerivationWriter = std::make_unique<cmNixDerivationWriter>();
   }
   
-  // Delegate to DerivationWriter
+  // Step 9: Delegate to DerivationWriter
   this->DerivationWriter->WriteLinkDerivationWithHelper(
     nixFileStream,
-    derivName,
-    targetName,
-    nixTargetType,
-    buildInputs,
-    objects,
-    compilerPkg,
-    compilerCommand,
-    linkFlagsStr,
-    libraries,
-    versionStr,
-    soversionStr,
-    postBuildPhase
+    ctx.derivName,
+    ctx.targetName,
+    ctx.nixTargetType,
+    ctx.buildInputs,
+    ctx.objects,
+    ctx.compilerPkg,
+    ctx.compilerCommand,
+    ctx.linkFlagsStr,
+    ctx.libraries,
+    ctx.versionStr,
+    ctx.soversionStr,
+    ctx.postBuildPhase
   );
 }
 
@@ -2952,4 +2608,409 @@ std::string cmGlobalNixGenerator::UpdateCompileFlagsForGeneratedFiles(
   }
   
   return allCompileFlags;
+}
+
+// WriteLinkDerivation helper methods
+
+cmGlobalNixGenerator::LinkContext 
+cmGlobalNixGenerator::PrepareLinkContext(cmGeneratorTarget* target)
+{
+  LinkContext ctx;
+  
+  ctx.targetName = target->GetName();
+  ctx.derivName = this->GetDerivationName(ctx.targetName);
+  
+  // Determine paths
+  std::string sourceDir = this->GetCMakeInstance()->GetHomeDirectory();
+  std::string buildDir = this->GetCMakeInstance()->GetHomeOutputDirectory();
+  ctx.projectSourceRelPath = cmSystemTools::RelativePath(buildDir, sourceDir);
+  
+  // Check if this is a try_compile
+  ctx.isTryCompile = buildDir.find("CMakeScratch") != std::string::npos;
+  
+  // Get configuration
+  ctx.config = this->GetBuildConfiguration(target);
+  
+  // Determine output name and type
+  ctx.outputName = this->DetermineOutputName(target);
+  ctx.nixTargetType = this->MapTargetTypeToNix(target);
+  
+  // Determine primary language
+  ctx.primaryLang = this->DeterminePrimaryLanguage(target);
+  ctx.compilerPkg = this->GetCompilerPackage(ctx.primaryLang);
+  ctx.compilerCommand = this->GetCompilerCommand(ctx.primaryLang);
+  
+  return ctx;
+}
+
+std::string cmGlobalNixGenerator::DeterminePrimaryLanguage(cmGeneratorTarget* target)
+{
+  std::string primaryLang = "C";
+  std::vector<cmSourceFile*> sources;
+  target->GetSourceFiles(sources, "");
+  
+  for (cmSourceFile* source : sources) {
+    std::string lang = source->GetLanguage();
+    if (lang == "CXX") {
+      primaryLang = "CXX";
+      break;  // C++ takes precedence
+    } else if (lang == "Fortran" && primaryLang == "C") {
+      primaryLang = "Fortran";  // Fortran takes precedence over C
+    }
+  }
+  
+  return primaryLang;
+}
+
+std::string cmGlobalNixGenerator::DetermineOutputName(cmGeneratorTarget* target)
+{
+  std::string targetName = target->GetName();
+  
+  if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+    return this->GetLibraryPrefix() + targetName + this->GetSharedLibraryExtension();
+  } else if (target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+    return targetName + this->GetSharedLibraryExtension();  // Modules typically don't have lib prefix
+  } else {
+    return targetName;
+  }
+}
+
+std::string cmGlobalNixGenerator::MapTargetTypeToNix(cmGeneratorTarget* target)
+{
+  switch (target->GetType()) {
+    case cmStateEnums::STATIC_LIBRARY:
+      return "static";
+    case cmStateEnums::SHARED_LIBRARY:
+      return "shared";
+    case cmStateEnums::MODULE_LIBRARY:
+      return "module";
+    default:
+      return "executable";
+  }
+}
+
+void cmGlobalNixGenerator::CollectBuildInputs(
+  LinkContext& ctx, 
+  cmGeneratorTarget* target,
+  const std::vector<std::string>& libraryDeps)
+{
+  // Start with compiler package
+  ctx.buildInputs.push_back(ctx.compilerPkg);
+  
+  // Add external library dependencies
+  this->ProcessLibraryDependenciesForBuildInputs(libraryDeps, ctx.buildInputs, ctx.projectSourceRelPath);
+  
+  // Get transitive shared library dependencies
+  std::set<std::string> transitiveDeps = this->DependencyGraph->GetTransitiveSharedLibraries(ctx.targetName);
+  std::set<std::string> directSharedDeps;
+  
+  // Get link implementation
+  auto linkImpl = target->GetLinkImplementation(ctx.config, cmGeneratorTarget::UseTo::Compile);
+  
+  // Add direct CMake target dependencies (only shared libraries)
+  if (linkImpl) {
+    for (const cmLinkItem& item : linkImpl->Libraries) {
+      if (item.Target && !item.Target->IsImported()) {
+        // Only add shared and module libraries to buildInputs, not static libraries
+        if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY ||
+            item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+          std::string depTargetName = item.Target->GetName();
+          std::string depDerivName = this->GetDerivationName(depTargetName);
+          ctx.buildInputs.push_back(depDerivName);
+          directSharedDeps.insert(depTargetName);
+        }
+      }
+    }
+  }
+  
+  // Add transitive shared library dependencies (excluding direct ones)
+  for (const std::string& depTarget : transitiveDeps) {
+    if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
+      std::string depDerivName = this->GetDerivationName(depTarget);
+      ctx.buildInputs.push_back(depDerivName);
+    }
+  }
+}
+
+void cmGlobalNixGenerator::CollectObjectFiles(
+  LinkContext& ctx,
+  cmGeneratorTarget* target)
+{
+  std::vector<cmSourceFile*> sources;
+  target->GetSourceFiles(sources, "");
+  
+  // Get PCH sources to exclude from linking
+  std::unordered_set<std::string> pchSources;
+  std::set<std::string> languages;
+  target->GetLanguages(languages, ctx.config);
+  
+  for (const std::string& lang : languages) {
+    std::vector<std::string> pchArchs = target->GetPchArchs(ctx.config, lang);
+    for (const std::string& arch : pchArchs) {
+      std::string pchSource = target->GetPchSource(ctx.config, lang, arch);
+      if (!pchSource.empty()) {
+        pchSources.insert(pchSource);
+      }
+    }
+  }
+  
+  // Process regular source files
+  for (cmSourceFile* source : sources) {
+    // Skip Unity-generated batch files
+    std::string sourcePath = source->GetFullPath();
+    if (sourcePath.find("/Unity/unity_") != std::string::npos && 
+        sourcePath.find("_cxx.cxx") != std::string::npos) {
+      continue;
+    }
+    
+    std::string const& lang = source->GetLanguage();
+    if (lang == "C" || lang == "CXX" || lang == "Fortran" || lang == "CUDA" || 
+        lang == "ASM" || lang == "ASM-ATT" || lang == "ASM_NASM" || lang == "ASM_MASM") {
+      // Exclude PCH source files from linking
+      std::string resolvedSourcePath = source->GetFullPath();
+      if (cmSystemTools::FileIsSymlink(resolvedSourcePath)) {
+        resolvedSourcePath = cmSystemTools::GetRealPath(resolvedSourcePath);
+      }
+      if (pchSources.find(resolvedSourcePath) == pchSources.end()) {
+        std::string objDerivName = this->GetDerivationName(
+          target->GetName(), resolvedSourcePath);
+        ctx.objects.push_back(objDerivName);
+      }
+    }
+  }
+  
+  // Add object files from OBJECT libraries
+  std::vector<cmSourceFile const*> externalObjects;
+  target->GetExternalObjects(externalObjects, ctx.config);
+  
+  for (cmSourceFile const* source : externalObjects) {
+    std::string objectFile = source->GetFullPath();
+    
+    // Remove .o extension to get the source file path
+    std::string sourceFile = objectFile;
+    std::string objExt = this->GetObjectFileExtension();
+    if (sourceFile.size() > objExt.size() && 
+        sourceFile.substr(sourceFile.size() - objExt.size()) == objExt) {
+      sourceFile = sourceFile.substr(0, sourceFile.size() - objExt.size());
+    }
+    
+    // Find the OBJECT library that contains this source
+    for (auto const& lg : this->LocalGenerators) {
+      auto const& targets = lg->GetGeneratorTargets();
+      for (auto const& objTarget : targets) {
+        if (objTarget->GetType() == cmStateEnums::OBJECT_LIBRARY) {
+          std::vector<cmSourceFile*> objSources;
+          objTarget->GetSourceFiles(objSources, ctx.config);
+          for (cmSourceFile* objSource : objSources) {
+            if (objSource->GetFullPath() == sourceFile) {
+              // Found the OBJECT library that contains this source
+              std::string objDerivName = this->GetDerivationName(
+                objTarget->GetName(), sourceFile);
+              ctx.objects.push_back(objDerivName);
+              goto next_external_object;
+            }
+          }
+        }
+      }
+    }
+    next_external_object:;
+  }
+}
+
+void cmGlobalNixGenerator::ProcessLibraryDependencies(
+  LinkContext& ctx,
+  cmGeneratorTarget* target)
+{
+  // Get library dependencies
+  std::set<std::string> transitiveDeps = this->DependencyGraph->GetTransitiveSharedLibraries(ctx.targetName);
+  
+  // Get link implementation
+  auto linkImpl = target->GetLinkImplementation(ctx.config, cmGeneratorTarget::UseTo::Compile);
+  
+  // Check if target depends on any static libraries
+  bool hasStaticDependencies = false;
+  std::set<std::string> directStaticLibs;
+  
+  if (linkImpl) {
+    for (const cmLinkItem& item : linkImpl->Libraries) {
+      if (item.Target && !item.Target->IsImported() &&
+          item.Target->GetType() == cmStateEnums::STATIC_LIBRARY) {
+        hasStaticDependencies = true;
+        directStaticLibs.insert(item.Target->GetName());
+      }
+    }
+  }
+  
+  // Process library dependencies
+  std::vector<std::string> linkFlagsList;
+  
+  if (!hasStaticDependencies) {
+    // No static dependencies - process normally
+    this->ProcessLibraryDependenciesForLinking(target, ctx.config, linkFlagsList, ctx.libraries, transitiveDeps);
+  } else {
+    // Has static dependencies - handle specially
+    if (linkImpl) {
+      auto targetGen = cmNixTargetGenerator::New(target);
+      for (const cmLinkItem& item : linkImpl->Libraries) {
+        if (item.Target && item.Target->IsImported()) {
+          // Imported target
+          std::string importedTargetName = item.Target->GetName();
+          std::string flags = targetGen->GetPackageMapper().GetLinkFlags(importedTargetName);
+          if (!flags.empty()) {
+            linkFlagsList.push_back(flags);
+          }
+        } else if (item.Target && !item.Target->IsImported()) {
+          // CMake target within the same project
+          if (item.Target->GetType() != cmStateEnums::STATIC_LIBRARY) {
+            // Add non-static libraries normally
+            std::string depTargetName = item.Target->GetName();
+            std::string depDerivName = this->GetDerivationName(depTargetName);
+            if (item.Target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+              ctx.libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                                     depTargetName + this->GetSharedLibraryExtension());
+            } else if (item.Target->GetType() == cmStateEnums::MODULE_LIBRARY) {
+              ctx.libraries.push_back("${" + depDerivName + "}/" + depTargetName + 
+                                     this->GetSharedLibraryExtension());
+            }
+          }
+        } else if (!item.Target) {
+          // External library
+          std::string libName = item.AsStr();
+          linkFlagsList.push_back("-l" + libName);
+        }
+      }
+    }
+    
+    // Handle static library dependencies
+    this->HandleStaticLibraryDependencies(ctx, target, directStaticLibs, transitiveDeps);
+  }
+  
+  // Convert linkFlags to string
+  if (!linkFlagsList.empty()) {
+    ctx.linkFlagsStr = cmJoin(linkFlagsList, " ");
+  }
+}
+
+void cmGlobalNixGenerator::HandleStaticLibraryDependencies(
+  LinkContext& ctx,
+  cmGeneratorTarget* target,
+  const std::set<std::string>& directStaticLibs,
+  const std::set<std::string>& transitiveDeps)
+{
+  // Get all targets in topological order for proper static library linking
+  std::vector<std::string> topologicalOrder = this->DependencyGraph->GetTopologicalOrderForLinking(target->GetName());
+  
+  // Also need to include direct static dependencies
+  std::set<std::string> allStaticDeps = this->DependencyGraph->GetAllTransitiveDependencies(target->GetName());
+  allStaticDeps.insert(directStaticLibs.begin(), directStaticLibs.end());
+  
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    this->LogDebug("Topological order for linking " + target->GetName() + ":");
+    for (const auto& t : topologicalOrder) {
+      this->LogDebug("  " + t);
+    }
+  }
+  
+  // Track what's already added
+  std::set<std::string> alreadyAdded;
+  for (const std::string& lib : ctx.libraries) {
+    // Extract target name from library reference
+    size_t start = lib.find("${link_") + 7;
+    size_t end = lib.find("}");
+    if (start != std::string::npos && end != std::string::npos && start < end) {
+      alreadyAdded.insert(lib.substr(start, end - start));
+    }
+  }
+  
+  // Add both direct and transitive static libraries in topological order
+  for (const std::string& depTarget : topologicalOrder) {
+    if (allStaticDeps.count(depTarget) > 0 && alreadyAdded.find(depTarget) == alreadyAdded.end()) {
+      auto depIt = std::find_if(this->LocalGenerators.begin(), this->LocalGenerators.end(),
+        [&depTarget](const std::unique_ptr<cmLocalGenerator>& lg) {
+          auto const& targets = lg->GetGeneratorTargets();
+          return std::any_of(targets.begin(), targets.end(),
+            [&depTarget](const std::unique_ptr<cmGeneratorTarget>& t) {
+              return t->GetName() == depTarget;
+            });
+        });
+      
+      if (depIt != this->LocalGenerators.end()) {
+        auto const& targets = (*depIt)->GetGeneratorTargets();
+        auto targetIt = std::find_if(targets.begin(), targets.end(),
+          [&depTarget](const std::unique_ptr<cmGeneratorTarget>& t) {
+            return t->GetName() == depTarget;
+          });
+        
+        if (targetIt != targets.end()) {
+          std::string depDerivName = this->GetDerivationName(depTarget);
+          if ((*targetIt)->GetType() == cmStateEnums::STATIC_LIBRARY) {
+            ctx.libraries.push_back("${" + depDerivName + "}");
+          } else if ((*targetIt)->GetType() == cmStateEnums::SHARED_LIBRARY) {
+            ctx.libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                                   depTarget + this->GetSharedLibraryExtension());
+          } else if ((*targetIt)->GetType() == cmStateEnums::MODULE_LIBRARY) {
+            ctx.libraries.push_back("${" + depDerivName + "}/" + depTarget + 
+                                   this->GetSharedLibraryExtension());
+          }
+        }
+      }
+    }
+  }
+  
+  // For static libraries, reverse the order
+  if (!ctx.libraries.empty()) {
+    std::reverse(ctx.libraries.begin(), ctx.libraries.end());
+  }
+  
+  // Add transitive shared library dependencies for targets without static dependencies
+  std::set<std::string> directSharedDeps;
+  for (const std::string& depTarget : transitiveDeps) {
+    if (directSharedDeps.find(depTarget) == directSharedDeps.end()) {
+      std::string depDerivName = this->GetDerivationName(depTarget);
+      ctx.libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                             depTarget + this->GetSharedLibraryExtension());
+    }
+  }
+}
+
+std::string cmGlobalNixGenerator::PrepareTryCompilePostBuildPhase(
+  const std::string& buildDir,
+  const std::string& targetName)
+{
+  std::ostringstream postBuildStream;
+  postBuildStream << "      # Create output location in build directory for CMake COPY_FILE\n";
+  std::string escapedBuildDir = cmOutputConverter::EscapeForShell(buildDir, cmOutputConverter::Shell_Flag_IsUnix);
+  std::string escapedTargetName = cmOutputConverter::EscapeForShell(targetName, cmOutputConverter::Shell_Flag_IsUnix);
+  postBuildStream << "      COPY_DEST=" << escapedBuildDir << "/" << escapedTargetName << "\n";
+  postBuildStream << "      cp \"$out\" \"$COPY_DEST\"\n";
+  
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    postBuildStream << "      echo '[NIX-DEBUG] Copied try_compile output to: '\"$COPY_DEST\"\n";
+  }
+  
+  postBuildStream << "      # Write location file that CMake expects to find the executable path\n";
+  postBuildStream << "      echo \"$COPY_DEST\" > " << escapedBuildDir << "/" << escapedTargetName << "_loc\n";
+  
+  if (this->GetCMakeInstance()->GetDebugOutput()) {
+    postBuildStream << "      echo '[NIX-DEBUG] Wrote location file: '" << escapedBuildDir << "/" << escapedTargetName << "_loc\n";
+    postBuildStream << "      echo '[NIX-DEBUG] Location file contains: '\"$COPY_DEST\"\n";
+  }
+  
+  return postBuildStream.str();
+}
+
+void cmGlobalNixGenerator::ExtractVersionInfo(
+  LinkContext& ctx,
+  cmGeneratorTarget* target)
+{
+  if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
+    cmValue version = target->GetProperty("VERSION");
+    cmValue soversion = target->GetProperty("SOVERSION");
+    if (version) {
+      ctx.versionStr = *version;
+    }
+    if (soversion) {
+      ctx.soversionStr = *soversion;
+    }
+  }
 }

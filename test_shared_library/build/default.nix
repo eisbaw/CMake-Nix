@@ -319,7 +319,7 @@ let
     buildInputs = [ gcc link_mylib ];
     objects = [ mixed_app_test_shared_library_mixed_c_o ];
     compiler = gcc;
-    libraries = ["${link_static_helper}" "${link_mylib}/libmylib.so" ];
+    libraries = ["${link_static_helper}" "${link_mylib}/libmylib.so" "${link_mylib}/libmylib.so" ];
   };
 
   link_version_test = cmakeNixLD {

@@ -117,6 +117,42 @@ protected:
   void WriteLinkDerivation(cmGeneratedFileStream& nixFileStream, 
                           cmGeneratorTarget* target);
   
+  // Helper methods for WriteLinkDerivation refactoring
+  struct LinkContext {
+    std::string derivName;
+    std::string targetName;
+    std::string outputName;
+    std::string nixTargetType;
+    std::string config;
+    std::string primaryLang;
+    std::string compilerPkg;
+    std::string compilerCommand;
+    std::string projectSourceRelPath;
+    bool isTryCompile;
+    std::vector<std::string> buildInputs;
+    std::vector<std::string> objects;
+    std::vector<std::string> libraries;
+    std::string linkFlagsStr;
+    std::string versionStr;
+    std::string soversionStr;
+    std::string postBuildPhase;
+  };
+  
+  LinkContext PrepareLinkContext(cmGeneratorTarget* target);
+  std::string DeterminePrimaryLanguage(cmGeneratorTarget* target);
+  std::string DetermineOutputName(cmGeneratorTarget* target);
+  std::string MapTargetTypeToNix(cmGeneratorTarget* target);
+  void CollectBuildInputs(LinkContext& ctx, cmGeneratorTarget* target,
+                         const std::vector<std::string>& libraryDeps);
+  void CollectObjectFiles(LinkContext& ctx, cmGeneratorTarget* target);
+  void ProcessLibraryDependencies(LinkContext& ctx, cmGeneratorTarget* target);
+  void HandleStaticLibraryDependencies(LinkContext& ctx, cmGeneratorTarget* target,
+                                      const std::set<std::string>& directStaticLibs,
+                                      const std::set<std::string>& transitiveDeps);
+  std::string PrepareTryCompilePostBuildPhase(const std::string& buildDir,
+                                              const std::string& targetName);
+  void ExtractVersionInfo(LinkContext& ctx, cmGeneratorTarget* target);
+  
   // New helper methods for object derivation refactoring
   void WriteObjectDerivationUsingWriter(cmNixWriter& writer, 
                                        cmGeneratorTarget* target, 
