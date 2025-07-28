@@ -10,7 +10,7 @@ run: configure
     @echo "=== Testing circular dependency detection ==="
     @echo "Note: This test is expected to fail during CMake configuration"
     @echo "CMake should detect and report the circular dependencies"
-    -cd {{build_dir}} && cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
+    -cd {{build_dir}} && ../../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
     @echo "=== Test completed (failure expected) ==="
 
 # Clean build artifacts

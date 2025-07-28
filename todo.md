@@ -1,6 +1,70 @@
 # CMake Nix Backend - TODO Status
 
 
+Run  nix-shell --run 'time just dev' | tee dev.log   and then check the dev.log for errors and failures. Add these to todo.md (some already present below).
+
+
+
+just test_circular_deps::run || echo "✅ test_circular_deps failed as expected (circular dependencies should be detected)"
+mkdir -p build
+cd build && ../../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_circular_deps/build
+=== Testing circular dependency detection ===
+Note: This test is expected to fail during CMake configuration
+CMake should detect and report the circular dependencies
+cd build && cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
+sh: line 1: cmake: command not found
+
+
+just test_cuda_language::run || echo "✅ test_cuda_language failed as expected (CUDA language not yet supported)"
+rm -f default.nix
+../bin/cmake -G Nix .
+CMake Error at /home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeDetermineCUDACompiler.cmake:10 (message):
+  CUDA language not currently supported by "Nix" generator
+
+
+error: Recipe `benchmark` failed on line 98 with exit code 1
+⚠  test_performance_large skipped (extended runtime)
+
+
+nix-build -A my_test_app --no-out-link
+error: attribute 'my_test_app' in selection path 'my_test_app' not found
+       Did you mean one of my-test-app or my.test.app?
+
+
+
+BUG: test_custom_commands_advanced - Custom command header dependency tracking was lost during refactoring
+The main.cpp.o derivation doesn't depend on custom_build_generated_config_h_4826 derivation
+This means the config.h file isn't generated before compiling main.cpp
+
+just test_custom_commands_advanced::run || echo "✅ test_custom_commands_advanced failed as expected (custom command with generated headers limitation)"
+mkdir -p build/generated
+cd build && ../../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_commands_advanced/build
+=== Testing advanced custom commands ===
+cd build && nix-build -A test_app
+these 2 derivations will be built:
+  /nix/store/712ccnnp7lf66yzrgf0rmkjahqcsjs4r-main.o.drv
+  /nix/store/a1ppqzv4qfd439qm84r1x27c9x1bl9wa-test_app.drv
+building '/nix/store/712ccnnp7lf66yzrgf0rmkjahqcsjs4r-main.o.drv'...
+Running phase: unpackPhase
+unpacking source archive /nix/store/k3s2zba6fd4wn2f6wnhsdnh6wf33sf6a-source
+source root is source
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+main.cpp:2:10: fatal error: config.h: No such file or directory
+    2 | #include "config.h"
+
+
+
+
 ### Potential Future Enhancements (Low Priority):
 While the Nix backend is production-ready, these features could be added if needed:
 
@@ -58,55 +122,55 @@ The CMake Nix backend is feature-complete and production-ready:
    - `cmGlobalNixGenerator` is over 4,500 lines doing too many things
    - Should be decomposed into focused modules (derivation writer, dependency resolver, etc.)
    - Mixed abstraction levels throughout
-   
+
    **Refactoring Task Breakdown**:
    a) DONE Extract derivation writing functionality from cmGlobalNixGenerator into separate cmNixDerivationWriter class
       - DONE Create cmNixDerivationWriter class with clean interface
       - DONE Move WriteNixHelperFunctions, WriteFilesetUnion, WriteCompositeSource methods
       - DONE Refactor WriteObjectDerivation to use the new class (partial delegation)
-      - DONE Refactor WriteLinkDerivation to use the new class  
+      - DONE Refactor WriteLinkDerivation to use the new class
       - DONE Refactor WriteCustomCommandDerivations (already properly delegated to cmNixCustomCommandGenerator)
-   
+
    b) DONE Extract dependency graph management from cmGlobalNixGenerator into cmNixDependencyGraph class
       - DONE Move BuildDependencyGraph method and DependencyGraph nested class
-      - DONE Move ObjectDerivations map and related dependency tracking  
+      - DONE Move ObjectDerivations map and related dependency tracking
       - DONE Implement proper graph algorithms in isolated component
-   
+
    c) DONE Extract custom command handling from cmGlobalNixGenerator into cmNixCustomCommandHandler class
       - DONE Move CustomCommandInfo struct and CustomCommands vector
       - DONE Move WriteCustomCommandDerivations and CollectCustomCommands methods
       - DONE Move custom command cycle detection logic (300+ lines)
-   
+
    d) DONE Extract install rule generation from cmGlobalNixGenerator into cmNixInstallRuleGenerator class
       - DONE Move WriteInstallRules, WriteInstallOutputs, CollectInstallTargets methods
       - DONE Move InstallTargets vector and related state
       - DONE Create focused install handling component
-   
+
    e) DONE Extract header dependency processing from cmGlobalNixGenerator into cmNixHeaderDependencyResolver class
       - DONE Move ProcessHeaderDependencies, FilterProjectHeaders methods
       - DONE Move ExternalHeaderDerivations map and GetOrCreateHeaderDerivation
       - DONE Consolidate header scanning logic
-   
+
    f) DONE Create cmNixCacheManager to consolidate all caching logic
       - DONE Move DerivationNameCache, LibraryDependencyCache, TransitiveDependencyCache
       - DONE Implement clear cache invalidation strategies
       - DONE Add proper memory limits and eviction policies
-   
+
    g) DONE Move compiler detection and configuration logic to enhanced cmNixCompilerResolver
       - DONE Move DetermineCompilerPackage to cmNixCompilerResolver
       - DONE GetCompilerPackage and GetCompilerCommand already delegating to resolver
       - DONE Consolidate compiler-specific logic in one place
-   
+
    h) DONE Create cmNixBuildConfiguration class to handle build config logic
       - DONE Move GetBuildConfiguration method
       - DONE Add configuration-specific flag generation methods
       - DONE Separate build configuration concerns
-   
+
    i) DONE Extract file system operations into cmNixFileSystemHelper
       - DONE Move IsSystemPath to cmNixFileSystemHelper
       - DONE Add path validation logic and security checks
       - DONE Consolidate file system operations with proper error handling
-   
+
    j) DONE Create integration tests for the refactored components
       - DONE Test each extracted component in isolation
       - DONE Test component interactions
@@ -159,7 +223,7 @@ The CMake Nix backend is feature-complete and production-ready:
 
 ### Documentation Created (2025-07-28):
 - DONE Created `/Source/cmNixDependencyGraph.h` - Comprehensive documentation of dependency graph algorithms
-- DONE Created `/Source/cmNixCacheManager.h` - Detailed caching strategy and eviction policy documentation  
+- DONE Created `/Source/cmNixCacheManager.h` - Detailed caching strategy and eviction policy documentation
 - DONE Created `/Source/THREAD_SAFETY.md` - Complete thread safety guarantees documentation
 - DONE Created `/Source/PERFORMANCE.md` - Performance characteristics and benchmarking results
 
@@ -280,7 +344,7 @@ The CMake Nix backend is feature-complete and production-ready:
 ### Code Quality Issues:
 1. **DONE Magic Numbers Documentation**:
    - DONE Document rationale for MAX_CYCLE_DETECTION_DEPTH = 100
-   - DONE Document MAX_EXTERNAL_HEADERS_PER_SOURCE = 100  
+   - DONE Document MAX_EXTERNAL_HEADERS_PER_SOURCE = 100
    - DONE Document MAX_LIBRARY_DEPENDENCY_CACHE_SIZE = 1000
    - DONE Consider making these configurable via CMake variables (documented approach)
 
