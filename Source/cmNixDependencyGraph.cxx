@@ -3,6 +3,7 @@
 #include "cmNixDependencyGraph.h"
 
 #include <algorithm>
+#include <functional>
 #include <queue>
 #include <stdexcept>
 
@@ -109,7 +110,8 @@ std::vector<std::string> cmNixDependencyGraph::GetTopologicalOrderForLinking(con
     state[t] = 0;
   }
   
-  auto relevantDFS = [this, &relevant](const std::string& node,
+  std::function<bool(const std::string&, std::unordered_map<std::string, int>&, std::vector<std::string>&)> relevantDFS;
+  relevantDFS = [this, &relevant, &relevantDFS](const std::string& node,
                                        std::unordered_map<std::string, int>& s,
                                        std::vector<std::string>& order) -> bool {
     s[node] = 1;
@@ -122,7 +124,7 @@ std::vector<std::string> cmNixDependencyGraph::GetTopologicalOrderForLinking(con
             return false;
           }
           if (s[neighbor] == 0) {
-            if (!this->DFSVisit(neighbor, s, order)) {
+            if (!relevantDFS(neighbor, s, order)) {
               return false;
             }
           }
@@ -143,7 +145,8 @@ std::vector<std::string> cmNixDependencyGraph::GetTopologicalOrderForLinking(con
     }
   }
   
-  std::reverse(topologicalOrder.begin(), topologicalOrder.end());
+  // Don't reverse for linking - we want dependencies to come after the targets that depend on them
+  // std::reverse(topologicalOrder.begin(), topologicalOrder.end());
   return topologicalOrder;
 }
 
