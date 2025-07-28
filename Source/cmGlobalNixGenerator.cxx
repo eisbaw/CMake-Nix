@@ -186,10 +186,7 @@ cmGlobalNixGenerator::GenerateBuildCommand(
   
   // For try-compile, add post-build copy commands to move binaries from Nix store
   if (isTryCompile && !targetNames.empty()) {
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
-                << " Generating try-compile copy commands" << std::endl;
-    }
+    this->LogDebug(std::string(__FILE__) + ":" + std::to_string(__LINE__) + " Generating try-compile copy commands");
     
     GeneratedMakeCommand copyCommand;
     copyCommand.Add("sh");
@@ -201,10 +198,7 @@ cmGlobalNixGenerator::GenerateBuildCommand(
     
     for (auto const& tname : targetNames) {
       if (!tname.empty()) {
-        if (this->GetCMakeInstance()->GetDebugOutput()) {
-          std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
-                    << " Adding copy command for target: " << tname << std::endl;
-        }
+        this->LogDebug(std::string(__FILE__) + ":" + std::to_string(__LINE__) + " Adding copy command for target: " + tname);
         
         // Read the target location file and copy the binary
         std::string escapedTargetName = cmOutputConverter::EscapeForShell(tname, cmOutputConverter::Shell_Flag_IsUnix);
@@ -262,9 +256,7 @@ void cmGlobalNixGenerator::WriteNixHelperFunctions(cmNixWriter& writer)
   
   // Keep the old implementation for now until refactoring is complete
   // Debug: Check if we reach this point
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] Writing old helper functions after DerivationWriter" << std::endl;
-  }
+  this->LogDebug("Writing old helper functions after DerivationWriter");
   writer.WriteComment("Helper functions for DRY derivations");
   writer.WriteLine();
   
@@ -446,9 +438,7 @@ void cmGlobalNixGenerator::WriteNixFile()
     return;
   }
   
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] Opened Nix file successfully, starting to write..." << std::endl;
-  }
+  this->LogDebug("Opened Nix file successfully, starting to write...");
 
   // Use NixWriter for cleaner code generation
   cmNixWriter writer(nixFileStream);
@@ -477,10 +467,7 @@ void cmGlobalNixGenerator::WriteNixFile()
   // Update CustomCommandOutputs map for dependency tracking
   for (const auto& [output, info] : collectedCommands) {
     this->CustomCommandOutputs[output] = info.DerivationName;
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Registering custom command output: " 
-                << output << " -> " << info.DerivationName << std::endl;
-    }
+    this->LogDebug("Registering custom command output: " + output + " -> " + info.DerivationName);
   }
 
   // Collect install targets
@@ -573,10 +560,10 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
         target->GetSourceFiles(sources, "");
         
         if (this->GetCMakeInstance()->GetDebugOutput()) {
-          std::cerr << "[NIX-DEBUG] Target " << target->GetName() << " has " << sources.size() << " source files" << std::endl;
+          this->LogDebug("Target " + target->GetName() + " has " + std::to_string(sources.size()) + " source files");
           for (const cmSourceFile* source : sources) {
-            std::cerr << "[NIX-DEBUG]   Source: " << source->GetFullPath() 
-                      << " (Unity: " << (source->GetProperty("UNITY_SOURCE_FILE") ? "yes" : "no") << ")" << std::endl;
+            this->LogDebug("  Source: " + source->GetFullPath() + 
+                          " (Unity: " + (source->GetProperty("UNITY_SOURCE_FILE") ? "yes" : "no") + ")");
           }
         }
         
@@ -596,9 +583,7 @@ void cmGlobalNixGenerator::WritePerTranslationUnitDerivations(
           std::string sourcePath = source->GetFullPath();
           if (sourcePath.find("/Unity/unity_") != std::string::npos && 
               sourcePath.find("_cxx.cxx") != std::string::npos) {
-            if (this->GetCMakeInstance()->GetDebugOutput()) {
-              std::cerr << "[NIX-DEBUG] Skipping Unity batch file: " << sourcePath << std::endl;
-            }
+            this->LogDebug("Skipping Unity batch file: " + sourcePath);
             continue;
           }
           
@@ -726,10 +711,8 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     sourceFile = cmSystemTools::GetRealPath(sourceFile);
   }
   
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] WriteObjectDerivation for source: " << sourceFile 
-              << " (generated: " << source->GetIsGenerated() << ")" << std::endl;
-  }
+  this->LogDebug("WriteObjectDerivation for source: " + sourceFile + 
+                " (generated: " + std::to_string(source->GetIsGenerated()) + ")");
   
   // Validate source file
   std::string errorMessage;
@@ -821,9 +804,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       if (!cmNixPathUtils::IsPathOutsideTree(relToBuild) && cmSystemTools::FileExists(filePath)) {
         // This is a configuration-time generated file that needs to be embedded
         configTimeGeneratedFiles.push_back(filePath);
-        if (this->GetCMakeInstance()->GetDebugOutput()) {
-          std::cerr << "[NIX-DEBUG] Added " << flag << " file to config-time generated: " << filePath << std::endl;
-        }
+        this->LogDebug("Added " + flag + " file to config-time generated: " + filePath);
       }
     }
   }
@@ -872,10 +853,10 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       std::string fullOutputDir = cmSystemTools::CollapseFullPath(outputDir);
       std::string fullIncludeDir = cmSystemTools::CollapseFullPath(includeDir);
       
-      if (this->GetCMakeInstance()->GetDebugOutput() && output.find("syscall") != std::string::npos) {
-        std::cerr << "[NIX-DEBUG] Checking custom command output: " << output << std::endl;
-        std::cerr << "[NIX-DEBUG]   Output dir: " << fullOutputDir << std::endl;
-        std::cerr << "[NIX-DEBUG]   Checking against include dir: " << fullIncludeDir << std::endl;
+      if (output.find("syscall") != std::string::npos) {
+        this->LogDebug("Checking custom command output: " + output);
+        this->LogDebug("  Output dir: " + fullOutputDir);
+        this->LogDebug("  Checking against include dir: " + fullIncludeDir);
       }
       if (outputDir == fullIncludeDir || 
           cmSystemTools::IsSubDirectory(output, fullIncludeDir)) {
@@ -883,10 +864,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
         // This header is in an include directory, add it as a dependency
         if (std::find(customCommandHeaders.begin(), customCommandHeaders.end(), deriv) == customCommandHeaders.end()) {
           customCommandHeaders.push_back(deriv);
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Found custom command header in include dir: " 
-                      << output << " -> " << deriv << std::endl;
-          }
+          this->LogDebug("Found custom command header in include dir: " + output + " -> " + deriv);
         }
         break;
       }
@@ -931,10 +909,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
             auto customIt = this->CustomCommandOutputs.find(pathToCheck);
             if (customIt != this->CustomCommandOutputs.end()) {
               customCommandHeaders.push_back(customIt->second);
-              if (this->GetCMakeInstance()->GetDebugOutput()) {
-                std::cerr << "[NIX-DEBUG] Found custom command header for composite source: " 
-                          << pathToCheck << " -> " << customIt->second << std::endl;
-              }
+              this->LogDebug("Found custom command header for composite source: " + pathToCheck + " -> " + customIt->second);
               break;
             }
           }
@@ -1065,9 +1040,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
                 pos += replaceStr.length();
               }
               
-              if (this->GetCMakeInstance()->GetDebugOutput()) {
-                std::cerr << "[NIX-DEBUG] Replaced " << searchStr << " with " << replaceStr << " in compile flags" << std::endl;
-              }
+              this->LogDebug("Replaced " + searchStr + " with " + replaceStr + " in compile flags");
             }
           }
         }
@@ -1228,9 +1201,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
                 pos += replaceStr.length();
               }
               
-              if (this->GetCMakeInstance()->GetDebugOutput()) {
-                std::cerr << "[NIX-DEBUG] Replaced " << searchStr << " with " << replaceStr << " in compile flags" << std::endl;
-              }
+              this->LogDebug("Replaced " + searchStr + " with " + replaceStr + " in compile flags");
             }
           }
         }
@@ -1328,9 +1299,9 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     std::vector<std::string> dependencies = targetGen->GetSourceDependencies(source);
     
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Source dependencies for " << sourceFile << ": " << dependencies.size() << std::endl;
+      this->LogDebug("Source dependencies for " + sourceFile + ": " + std::to_string(dependencies.size()));
       for (const auto& dep : dependencies) {
-        std::cerr << "[NIX-DEBUG]   Dependency: " << dep << std::endl;
+        this->LogDebug("  Dependency: " + dep);
       }
     }
     
@@ -1350,9 +1321,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
     }
     
     // Process header dependencies using helper method
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Processing headers for " << sourceFile << ": " << dependencies.size() << " headers" << std::endl;
-    }
+    this->LogDebug("Processing headers for " + sourceFile + ": " + std::to_string(dependencies.size()) + " headers");
     this->HeaderDependencyResolver->ProcessHeaderDependencies(dependencies, buildDir, srcDir, 
                                    existingFiles, generatedFiles, configTimeGeneratedFiles);
     
@@ -1403,9 +1372,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
                   pos += replaceStr.length();
                 }
                 
-                if (this->GetCMakeInstance()->GetDebugOutput()) {
-                  std::cerr << "[NIX-DEBUG] Replaced " << searchStr << " with " << replaceStr << " in compile flags" << std::endl;
-                }
+                this->LogDebug("Replaced " + searchStr + " with " + replaceStr + " in compile flags");
               }
             }
           }
@@ -1674,9 +1641,7 @@ void cmGlobalNixGenerator::WriteObjectDerivation(
       pos += relPath.length();
     }
     
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Replaced " << absPath << " with " << relPath << " in compile flags" << std::endl;
-    }
+    this->LogDebug("Replaced " + absPath + " with " + relPath + " in compile flags");
   }
   
   // Add -fPIC for shared and module libraries if not already present
@@ -1817,10 +1782,8 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
   std::ostringstream compileFlagsStream;
   bool firstFlag = true;
   
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] GetCompileFlags called for " << objectName << std::endl;
-    std::cerr << "[NIX-DEBUG] Number of compile flags: " << compileFlagsVec.size() << std::endl;
-  }
+  this->LogDebug("GetCompileFlags called for " + objectName);
+  this->LogDebug("Number of compile flags: " + std::to_string(compileFlagsVec.size()));
   
   for (const auto& flag : compileFlagsVec) {
     if (!flag.Value.empty()) {
@@ -1854,36 +1817,28 @@ std::string cmGlobalNixGenerator::GetCompileFlags(cmGeneratorTarget* target,
           // Process the file path argument
           std::string filePath = parsedFlags[++i];
           
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Processing " << pFlag << " flag with file: " << filePath << std::endl;
-            std::cerr << "[NIX-DEBUG] buildDir: " << buildDir << std::endl;
-            std::cerr << "[NIX-DEBUG] sourceDir: " << sourceDir << std::endl;
-          }
+          this->LogDebug("Processing " + pFlag + " flag with file: " + filePath);
+          this->LogDebug("buildDir: " + buildDir);
+          this->LogDebug("sourceDir: " + sourceDir);
           
           // Check if it's an absolute path that needs to be made relative
           if (cmSystemTools::FileIsFullPath(filePath)) {
             // Check if it's in the build directory (configuration-time generated)
             std::string relToBuild = cmSystemTools::RelativePath(buildDir, filePath);
-            if (this->GetCMakeInstance()->GetDebugOutput()) {
-              std::cerr << "[NIX-DEBUG] relToBuild: " << relToBuild << std::endl;
-              std::cerr << "[NIX-DEBUG] IsPathOutsideTree: " << cmNixPathUtils::IsPathOutsideTree(relToBuild) << std::endl;
-            }
+            this->LogDebug("relToBuild: " + relToBuild);
+            this->LogDebug("IsPathOutsideTree: " + std::to_string(cmNixPathUtils::IsPathOutsideTree(relToBuild)));
             if (!cmNixPathUtils::IsPathOutsideTree(relToBuild)) {
               // This is a build directory file - for configuration-time generated files
               // that will be embedded, just use the relative path from build dir
               filePath = relToBuild;
-              if (this->GetCMakeInstance()->GetDebugOutput()) {
-                std::cerr << "[NIX-DEBUG] Converted to build-relative path: " << filePath << std::endl;
-              }
+              this->LogDebug("Converted to build-relative path: " + filePath);
             } else {
               // Check if it's in the source directory
               std::string relToSource = cmSystemTools::RelativePath(sourceDir, filePath);
               if (!cmNixPathUtils::IsPathOutsideTree(relToSource)) {
                 // This is a source directory file - use relative path
                 filePath = relToSource;
-                if (this->GetCMakeInstance()->GetDebugOutput()) {
-                  std::cerr << "[NIX-DEBUG] Converted to source-relative path: " << filePath << std::endl;
-                }
+                this->LogDebug("Converted to source-relative path: " + filePath);
               }
               // Otherwise keep the absolute path (will be handled later)
             }
@@ -2092,20 +2047,16 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   std::string projectSourceRelPath = cmSystemTools::RelativePath(buildDir, sourceDir);
   
   // Debug output
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] WriteLinkDerivation: sourceDir=" << sourceDir 
-              << ", buildDir=" << buildDir << ", projectSourceRelPath=" << projectSourceRelPath << std::endl;
-  }
+  this->LogDebug("WriteLinkDerivation: sourceDir=" + sourceDir + 
+                ", buildDir=" + buildDir + ", projectSourceRelPath=" + projectSourceRelPath);
   
   // Check if this is a try_compile
   bool isTryCompile = buildDir.find("CMakeScratch") != std::string::npos;
   
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
-              << " WriteLinkDerivation for target: " << targetName
-              << " buildDir: " << buildDir
-              << " isTryCompile: " << (isTryCompile ? "true" : "false") << std::endl;
-  }
+  this->LogDebug(std::string(__FILE__) + ":" + std::to_string(__LINE__) + 
+                " WriteLinkDerivation for target: " + targetName + 
+                " buildDir: " + buildDir + 
+                " isTryCompile: " + (isTryCompile ? "true" : "false"));
   
   // Use NixWriter for cleaner output
   cmNixWriter writer(nixFileStream);
@@ -2344,15 +2295,15 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
     allStaticDeps.insert(directStaticLibs.begin(), directStaticLibs.end());
     
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Topological order for linking " << target->GetName() << ":" << std::endl;
+      this->LogDebug("Topological order for linking " + target->GetName() + ":");
       for (const auto& t : topologicalOrder) {
-        std::cerr << "[NIX-DEBUG]   " << t << std::endl;
+        this->LogDebug("  " + t);
       }
-      std::cerr << "[NIX-DEBUG] Direct static libs: ";
+      std::string staticLibsStr = "Direct static libs: ";
       for (const auto& t : directStaticLibs) {
-        std::cerr << t << " ";
+        staticLibsStr += t + " ";
       }
-      std::cerr << std::endl;
+      this->LogDebug(staticLibsStr);
     }
     
     // Add all transitive static libraries that aren't already in the libraries list
@@ -2420,10 +2371,8 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   // Prepare postBuildPhase for try_compile if needed
   std::string postBuildPhase;
   if (isTryCompile) {
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] " << __FILE__ << ":" << __LINE__ 
-                << " Adding try_compile output file handling for: " << targetName << std::endl;
-    }
+    this->LogDebug(std::string(__FILE__) + ":" + std::to_string(__LINE__) + 
+                  " Adding try_compile output file handling for: " + targetName);
     
     std::ostringstream postBuildStream;
     postBuildStream << "      # Create output location in build directory for CMake COPY_FILE\n";
@@ -3022,11 +2971,9 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
   
   buildInputs.push_back(compilerPkg);
   
-  if (this->GetCMakeInstance()->GetDebugOutput()) {
-    std::cerr << "[NIX-DEBUG] Language: " << lang
-              << ", Compiler package: " << compilerPkg 
-              << (needs32Bit ? " (32-bit)" : "") << std::endl;
-  }
+  this->LogDebug("Language: " + lang + 
+                ", Compiler package: " + compilerPkg + 
+                (needs32Bit ? " (32-bit)" : ""));
   
   // Get external library dependencies
   std::vector<std::string> libraryDeps = this->GetCachedLibraryDependencies(target, config);
@@ -3036,16 +2983,13 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
   auto it = this->CustomCommandOutputs.find(sourceFile);
   if (it != this->CustomCommandOutputs.end()) {
     buildInputs.push_back(it->second);
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Found custom command dependency for " << sourceFile 
-                << " -> " << it->second << std::endl;
-    }
+    this->LogDebug("Found custom command dependency for " + sourceFile + " -> " + it->second);
   } else {
     if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] No custom command found for " << sourceFile << std::endl;
-      std::cerr << "[NIX-DEBUG] Available custom command outputs:" << std::endl;
+      this->LogDebug("No custom command found for " + sourceFile);
+      this->LogDebug("Available custom command outputs:");
       for (const auto& kv : this->CustomCommandOutputs) {
-        std::cerr << "[NIX-DEBUG]   " << kv.first << " -> " << kv.second << std::endl;
+        this->LogDebug("  " + kv.first + " -> " + kv.second);
       }
     }
   }
@@ -3054,10 +2998,10 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
   auto targetGen = cmNixTargetGenerator::New(target);
   std::vector<std::string> headers = targetGen->GetSourceDependencies(source);
   
-  if (this->GetCMakeInstance()->GetDebugOutput() && !headers.empty()) {
-    std::cerr << "[NIX-DEBUG] Checking header dependencies for " << sourceFile << std::endl;
+  if (!headers.empty()) {
+    this->LogDebug("Checking header dependencies for " + sourceFile);
     for (const auto& header : headers) {
-      std::cerr << "[NIX-DEBUG]   Header: " << header << std::endl;
+      this->LogDebug("  Header: " + header);
     }
   }
   
@@ -3085,21 +3029,19 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
         // Only add if not already in buildInputs
         if (std::find(buildInputs.begin(), buildInputs.end(), customIt->second) == buildInputs.end()) {
           buildInputs.push_back(customIt->second);
-          if (this->GetCMakeInstance()->GetDebugOutput()) {
-            std::cerr << "[NIX-DEBUG] Found custom command generated header dependency: " 
-                      << header << " (resolved to " << pathToCheck << ") -> " << customIt->second << std::endl;
-          }
+          this->LogDebug("Found custom command generated header dependency: " + 
+                        header + " (resolved to " + pathToCheck + ") -> " + customIt->second);
           found = true;
           break;
         }
       }
     }
     
-    if (this->GetCMakeInstance()->GetDebugOutput() && !found) {
-      std::cerr << "[NIX-DEBUG] Header " << header << " not found in custom command outputs" << std::endl;
-      std::cerr << "[NIX-DEBUG] Checked paths:" << std::endl;
+    if (!found) {
+      this->LogDebug("Header " + header + " not found in custom command outputs");
+      this->LogDebug("Checked paths:");
       for (const auto& path : pathsToCheck) {
-        std::cerr << "[NIX-DEBUG]   - " << path << std::endl;
+        this->LogDebug("  - " + path);
       }
     }
   }
@@ -3108,10 +3050,7 @@ std::vector<std::string> cmGlobalNixGenerator::BuildBuildInputsList(
   std::string headerDerivation = this->HeaderDependencyResolver->GetSourceHeaderDerivation(sourceFile);
   if (!headerDerivation.empty()) {
     buildInputs.push_back(headerDerivation);
-    if (this->GetCMakeInstance()->GetDebugOutput()) {
-      std::cerr << "[NIX-DEBUG] Found header derivation dependency for " << sourceFile 
-                << " -> " << headerDerivation << std::endl;
-    }
+    this->LogDebug("Found header derivation dependency for " + sourceFile + " -> " + headerDerivation);
   }
   
   return buildInputs;
@@ -3245,10 +3184,8 @@ void cmGlobalNixGenerator::GenerateSkeletonPackageFiles()
             std::string pkgFileName = this->GetCMakeInstance()->GetHomeOutputDirectory() + 
                                     "/pkg_" + pkg.first + ".nix";
             
-            if (this->GetCMakeInstance()->GetDebugOutput()) {
-              std::cerr << "[NIX-DEBUG] Found " << pkg.first << " in line: " << line << std::endl;
-              std::cerr << "[NIX-DEBUG] Would create: " << pkgFileName << std::endl;
-            }
+            this->LogDebug("Found " + pkg.first + " in line: " + line);
+            this->LogDebug("Would create: " + pkgFileName);
             
             if (!cmSystemTools::FileExists(pkgFileName)) {
               std::ofstream pkgFile(pkgFileName);
