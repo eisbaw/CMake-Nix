@@ -2671,3 +2671,40 @@ The following test directories exist but are not included in the main `just dev`
 18. **test_try_compile** - try_compile functionality test
 
 Note: Some of these tests may be experimental, duplicative, or have special requirements that prevent them from being in the main test suite. They should be evaluated individually for inclusion.
+
+## Code Quality Issues Found (2025-07-28)
+
+### Debug Output Issues:
+DONE 1. **Unguarded Debug Output in cmNixTargetGenerator.cxx**:
+   - Fixed: Multiple std::cerr debug statements not controlled by GetDebugOutput()
+   - Lines 217, 224, 232, 239, 300, 303-311, 315-316, 346-349, 365-366, 958-961, 968
+   - Impact: Debug output would appear even when CMAKE_NIX_DEBUG is not set
+   - Fixed by wrapping all debug output in GetDebugOutput() checks
+
+### Potential Improvements:
+2. **Long Functions** (Low Priority):
+   - cmGlobalNixGenerator::WriteObjectDerivation - ~400+ lines
+   - cmGlobalNixGenerator::WriteLinkDerivation - ~300+ lines
+   - Could be refactored into smaller helper functions for better readability
+   - Current implementation is well-structured with clear sections
+
+3. **Magic Strings** (Low Priority):
+   - Build phase scripts contain embedded shell commands with hardcoded strings
+   - Example: "echo '[NIX-DEBUG]", "mkdir -p", etc.
+   - Could benefit from constants or template strings
+
+4. **Complex Conditional Logic** (Low Priority):
+   - Multiple nested conditions in compile flag processing
+   - Could be simplified with early returns or helper functions
+   - Current implementation works correctly
+
+### Positive Findings:
+- ✅ No generic catch(...) blocks found
+- ✅ All `new` operators properly wrapped in smart pointers
+- ✅ No raw malloc/free usage
+- ✅ No TODO/FIXME/XXX comments
+- ✅ Thread safety properly implemented with mutexes
+- ✅ Path validation prevents traversal attacks
+- ✅ Shell commands properly escaped
+
+**Overall Assessment**: The code quality remains excellent. The only actionable issue was the unguarded debug output, which has been fixed. Other findings are minor style improvements that don't affect functionality.
