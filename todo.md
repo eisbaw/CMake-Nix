@@ -183,3 +183,49 @@ The CMake Nix backend is feature-complete and production-ready:
    - Enhance development tooling
    - Add property-based testing
    - Improve error messages with context
+
+## New Issues Found (2025-07-28 Code Review)
+
+### Critical Issues to Fix:
+1. **Debug Output Cleanup**:
+   - Remove excessive `[NIX-DEBUG]` cerr statements throughout the codebase
+   - Implement proper logging framework or centralized debug mechanism
+   - Files affected: cmGlobalNixGenerator.cxx, cmNixTargetGenerator.cxx
+
+2. **Thread Safety Audit**:
+   - Review double-checked locking in cmNixCacheManager.cxx
+   - Ensure all shared state has proper mutex protection
+   - Add thread safety tests for concurrent operations
+
+3. **Error Handling Improvements**:
+   - Fix silent failures in cmNixTargetGenerator::ScanWithCompiler
+   - Add proper error propagation instead of debug-only logging
+   - Implement consistent error reporting strategy
+
+### Code Quality Issues:
+1. **Magic Numbers Documentation**:
+   - Document rationale for MAX_CYCLE_DETECTION_DEPTH = 100
+   - Document MAX_EXTERNAL_HEADERS_PER_SOURCE = 100
+   - Document MAX_LIBRARY_DEPENDENCY_CACHE_SIZE = 1000
+   - Consider making these configurable via CMake variables
+
+2. **Function Complexity**:
+   - Refactor WriteObjectDerivation into smaller functions
+   - Refactor WriteLinkDerivation to reduce nesting
+   - Extract common path manipulation patterns
+
+3. **Resource Management**:
+   - Replace manual file stream close() with RAII
+   - Review all new/delete pairs for smart pointer usage
+   - Add exception safety to file operations
+
+### Performance Optimizations:
+1. **String Operations**:
+   - Use string builders for concatenation in loops
+   - Cache GetCMakeInstance()->GetHomeOutputDirectory() calls
+   - Optimize repeated cmSystemTools::RelativePath operations
+
+2. **File System Caching**:
+   - Cache file existence checks
+   - Cache directory listings where appropriate
+   - Reduce redundant file system queries
