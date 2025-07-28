@@ -2796,6 +2796,10 @@ void cmGlobalNixGenerator::WriteLinkDerivation(
   
   // Write libraries parameter
   if (!libraries.empty()) {
+    // For static libraries, we need to reverse the order since dependencies must come after dependents
+    if (hasStaticDependencies) {
+      std::reverse(libraries.begin(), libraries.end());
+    }
     nixFileStream << "    libraries = [";
     bool firstLib = true;
     for (const std::string& lib : libraries) {

@@ -1,0 +1,1684 @@
+make -j$(nproc)
+[  1%] Built target kwiml_test
+[  1%] Built target cmsys_c
+[  2%] Built target cmexpat
+[  3%] Built target cmlibrhash
+[  5%] Built target cmzlib
+[  6%] Built target cmstd
+[  7%] Built target cmbzip2
+[  7%] Built target cmllpkgc
+[  9%] Built target cmsys
+[ 10%] Built target cmnghttp2
+[ 10%] Built target cmjsoncpp
+[ 12%] Built target cmzstd
+[ 15%] Built target cmlibuv
+[ 21%] Built target cmliblzma
+[ 21%] Built target detect_jobserver
+[ 22%] Built target pseudo_llvm-rc
+[ 22%] Built target pseudonl_BC
+[ 22%] Built target pseudonl_purify
+[ 23%] Built target exit_crash
+[ 23%] Built target pseudonl_valgrind
+[ 24%] Built target exit_code
+[ 24%] Built target color_warning
+[ 24%] Built target fake_build_command
+[ 24%] Built target print_stdin
+[ 24%] Built target pseudo_emulator_custom_command
+[ 24%] Built target pseudo_emulator_custom_command_arg
+[ 24%] Built target pseudo_emulator
+[ 24%] Built target foo
+[ 24%] Built target cmsysTestDynload
+[ 25%] Built target pseudo_cpplint
+[ 25%] Built target pseudo_tidy
+[ 26%] Built target cmsysTestsC
+[ 26%] Built target cmsysTestProcess
+[ 26%] Built target pseudo_iwyu
+[ 26%] Built target pseudo_cppcheck
+[ 26%] Built target testEncoding
+[ 27%] Built target cmsysTestsCxx
+[ 28%] Built target cmcppdap
+[ 39%] Built target cmlibarchive
+[ 54%] Built target cmcurl
+[ 54%] Built target curltest
+[ 87%] Built target CMakeLib
+[ 88%] Built target testUVProcessChainHelper
+[ 88%] Built target testAffinity
+[ 88%] Built target pseudo_BC
+[ 88%] Built target memcheck_fail
+[ 88%] Built target pseudo_valgrind
+[ 88%] Built target runcompilecommands
+[ 88%] Built target testDebuggerNamedPipe
+[ 88%] Built target cmake
+[ 88%] Built target pseudo_purify
+[ 88%] Built target pseudo_cuda-memcheck
+[ 90%] Built target CPackLib
+[ 91%] Built target cpack
+[ 96%] Built target CTestLib
+[ 96%] Built target ctresalloc
+[ 96%] Built target ctest
+[100%] Built target CMakeLibTests
+just test_multifile::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_multifile
+nix-build -A calculator && ./result && rm ./result
+/nix/store/1f7skfdg4js2qddc8nnjj0hgc1dbhzkk-calculator
+2 + 3 = 5
+5 - 2 = 3
+just test_headers::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.3s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_headers
+nix-build -A test_headers && ./result && rm ./result
+/nix/store/ifhp0jwykz4h5hknvzl9vxgp3npwbp6k-test_headers
+5 + 3 = 8
+5 - 3 = 2
+just test_implicit_headers::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_implicit_headers
+nix-build -A calc_app && ./result && rm ./result
+/nix/store/5zxqwfxi33kkwrqi4g4bji7zra0z5k1n-calc_app
+Logger v1.0 initialized
+[LOG] Creating calculator
+[LOG] Addition performed
+[1753666575] add operation completed. Total ops: 1
+15.5 + 24.3 = 39.80
+[LOG] Multiplication performed
+[1753666575] multiply operation completed. Total ops: 2
+39.80 * 2.0 = 79.60
+Calculator stats: 2 operations, last result: 79.60
+[LOG] Destroying calculator
+just test_explicit_headers::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_explicit_headers
+nix-build -A ecs_app && ./result && rm ./result
+/nix/store/cppcmyfnrpnxd6jzvnkp7a1kjgxqxmf8-ecs_app
+Entity Component System Test
+============================
+Memory pool created: 2640 bytes (aligned to 8)
+Entity manager initialized with capacity 10
+Created entity with ID 1
+Created entity with ID 2
+Created entity with ID 3
+
+Created entities: 1, 2, 3
+Memory pool created: 1024 bytes (aligned to 16)
+Allocated memory at 0x3ec4cd70 and 0x3ec4cdb0
+Memory pool destroyed: 192 bytes used of 1024
+Destroyed entity with ID 2
+Total allocated memory: 2640 bytes
+Destroying entity manager (3 entities)
+Memory pool destroyed: 2640 bytes used of 2640
+
+Test completed successfully!
+just test_explicit_sources::run
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_NIX_EXPLICIT_SOURCES=ON .
+-- Configuring done (0.0s)
+-- Generating done (0.2s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_explicit_sources
+nix-build -A explicit_test
+/nix/store/gch0ncas50lvgswhvpawih75ayznwgii-explicit_test
+./result && rm ./result
+Testing explicit sources feature
+Helper result: 15
+Square of 7: 49
+just test_compiler_detection::run
+../bin/cmake -G Nix -S . -B build
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_compiler_detection/build
+nix-build --no-out-link -A c_program
+/nix/store/sbhbqh29hiz12pxh1fvpxxw8488dqz46-c_program
+nix-build --no-out-link -A cpp_program
+/nix/store/lkf14h29gmyc789w8vcs5aaj5bym43wj-cpp_program
+nix-build --no-out-link -A mixed_program
+/nix/store/5fvg09iwydd5jhkc3aqdifil527421zw-mixed_program
+=== C Program ===
+nix-build -A c_program && ./result && rm ./result
+/nix/store/sbhbqh29hiz12pxh1fvpxxw8488dqz46-c_program
+C program compiled with detected compiler
+Compiled with GCC 13.3
+\n=== C++ Program ===
+nix-build -A cpp_program && ./result && rm ./result
+/nix/store/lkf14h29gmyc789w8vcs5aaj5bym43wj-cpp_program
+C++ program compiled with detected compiler
+Compiled with G++ 13.3
+\n=== Mixed Program ===
+nix-build -A mixed_program && ./result && rm ./result
+/nix/store/5fvg09iwydd5jhkc3aqdifil527421zw-mixed_program
+C program compiled with detected compiler
+Compiled with GCC 13.3
+just test_shared_library::run
+../bin/cmake -G Nix -S . -B build
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_shared_library/build
+cd build && nix-build --no-out-link -A mylib
+/nix/store/1vzscr7mg8sbjmzdw83b546a7b0spzii-mylib
+cd build && nix-build --no-out-link -A versioned_lib
+/nix/store/8nxh82kyz1aj9pw0qxf94l5n3ndssfxj-versioned_lib
+cd build && nix-build --no-out-link -A app
+/nix/store/7347nl8gp0f2pbf5c3ij5acgd54rdr9v-app
+cd build && nix-build --no-out-link -A mixed_app
+/nix/store/9b1k0aml9chciam0scm8pzfmqmw35x26-mixed_app
+cd build && nix-build --no-out-link -A version_test
+/nix/store/3akgji3cj83lyzj4v27qdjld7g7qaprz-version_test
+cd build && nix-build --no-out-link -A version_test2
+/nix/store/vc27gg6yb27y6amdkmv82g8fb20k8w47-version_test2
+=== Testing app with shared library ===
+cd build && nix-build -A app && ./result && rm ./result
+/nix/store/7347nl8gp0f2pbf5c3ij5acgd54rdr9v-app
+Testing shared library
+Hello from shared library!
+Shared library function: 5 + 3
+Result: 8
+\n=== Testing mixed app ===
+cd build && nix-build -A mixed_app && ./result && rm ./result
+/nix/store/9b1k0aml9chciam0scm8pzfmqmw35x26-mixed_app
+Testing mixed library linking
+Helper function from static library
+Hello from shared library!
+Shared library function: 10 + 7
+Mixed result: 17
+\n=== Testing library versioning ===
+Versioned library (VERSION 1.2.3, SOVERSION 1):
+cd build && nix-build -A versioned_lib && ls -la result/ && rm ./result
+/nix/store/8nxh82kyz1aj9pw0qxf94l5n3ndssfxj-versioned_lib
+total 9648
+dr-xr-xr-x    2 root root      4096 jan  1  1970 .
+drwxrwxr-t 4356 root nixbld 9850880 jul 28 03:34 ..
+lrwxrwxrwx    1 root root        25 jan  1  1970 libversioned_lib.so -> libversioned_lib.so.1.2.3
+lrwxrwxrwx    1 root root        25 jan  1  1970 libversioned_lib.so.1 -> libversioned_lib.so.1.2.3
+-r-xr-xr-x    1 root root     15424 jan  1  1970 libversioned_lib.so.1.2.3
+\nVersion test library (VERSION 2.0.0, SOVERSION 2):
+cd build && nix-build -A version_test && ls -la result/ && rm ./result
+/nix/store/3akgji3cj83lyzj4v27qdjld7g7qaprz-version_test
+total 9648
+dr-xr-xr-x    2 root root      4096 jan  1  1970 .
+drwxrwxr-t 4356 root nixbld 9850880 jul 28 03:34 ..
+lrwxrwxrwx    1 root root        24 jan  1  1970 libversion_test.so -> libversion_test.so.2.0.0
+lrwxrwxrwx    1 root root        24 jan  1  1970 libversion_test.so.2 -> libversion_test.so.2.0.0
+-r-xr-xr-x    1 root root     15272 jan  1  1970 libversion_test.so.2.0.0
+\nVersion test2 library (VERSION 3.4.5, no SOVERSION):
+cd build && nix-build -A version_test2 && ls -la result/ && rm ./result
+/nix/store/vc27gg6yb27y6amdkmv82g8fb20k8w47-version_test2
+total 9648
+dr-xr-xr-x    2 root root      4096 jan  1  1970 .
+drwxrwxr-t 4356 root nixbld 9850880 jul 28 03:34 ..
+lrwxrwxrwx    1 root root        25 jan  1  1970 libversion_test2.so -> libversion_test2.so.3.4.5
+-r-xr-xr-x    1 root root     15272 jan  1  1970 libversion_test2.so.3.4.5
+just test_find_package::run
+../bin/cmake -G Nix -S . -B build
+-- ZLIB found, building compress_app
+-- OpenGL found, building opengl_app
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_find_package/build
+nix-build -A threaded_app
+/nix/store/6a47r9z1krswph9k3ygjyv2rynmyjflj-threaded_app
+nix-build --no-out-link -A compress_app
+/nix/store/jw1msz6742j38pdvmrlyk6giwaaqlk99-compress_app
+nix-build --no-out-link -A opengl_app
+/nix/store/bl04m7vni2qni688kpridlvxv5s8d2r4-opengl_app
+=== Testing threaded app ===
+nix-build -A threaded_app && ./result && rm ./result
+/nix/store/6a47r9z1krswph9k3ygjyv2rynmyjflj-threaded_app
+Testing pthread support
+Thread 1 running
+Thread 2 running
+Thread 1 finishing
+Thread 2 finishing
+All threads completed
+\n=== Testing compression app (if available) ===
+nix-build -A compress_app && ./result && rm ./result
+/nix/store/jw1msz6742j38pdvmrlyk6giwaaqlk99-compress_app
+Testing zlib compression
+Original: 45 bytes
+Compressed: 51 bytes
+Compression ratio: -13.33%
+Decompressed: Hello, this is a test string for compression!
+Match: YES
+just test_subdirectory::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_subdirectory
+nix-build -A calculator && ./result && rm ./result
+/nix/store/3mci0hrsxiqjy8jhchxyqjz6rd9230ri-calculator
+Calculator Application
+======================
+Result: 15
+
+Result: 21
+just test_custom_commands::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_commands
+nix-build -A app && ./result && rm ./result
+/nix/store/107xvqcm0asyiqhilzikvncl4d9hl15l-app
+Main function
+Generated value: 42
+just test_external_library::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_library
+nix-build -A main && ./result && rm ./result
+/nix/store/xy9v9z4bnj51hj5799zliw49r251pgkk-main
+Testing external libraries with pure Nix approach
+sin(π/2) = 1.000000
+sqrt(42) = 6.480741
+External library test completed successfully!
+just test_zlib_example::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_zlib_example
+nix-build -A compress_demo && ./result && rm ./result
+/nix/store/4d0awj4wikp6bz65sbrsm9jssi9y4295-compress_demo
+ZLib Compression Demo - Pure Nix Library Approach
+=================================================
+ZLib version: 1.3.1
+
+Original text (297 bytes):
+Hello from CMake Nix Generator! This is a test of zlib compression functionality. The CMake Nix generator automatically detected the zlib dependency, generated a pkg_z.nix file, and linked it properly in the Nix derivation. This demonstrates the pure Nix approach for external library management!
+
+Compressed data (201 bytes) - Compression ratio: 67.7%
+
+Decompressed text (297 bytes):
+Hello from CMake Nix Generator! This is a test of zlib compression functionality. The CMake Nix generator automatically detected the zlib dependency, generated a pkg_z.nix file, and linked it properly in the Nix derivation. This demonstrates the pure Nix approach for external library management!
+
+✅ Success! Compression and decompression worked correctly.
+✅ ZLib external library integration via pure Nix approach is working!
+
+Pure Nix library test completed successfully!
+just test_error_conditions::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_error_conditions
+=== Testing valid targets only ===
+nix-build --no-out-link -A '"test-with-dashes"'
+/nix/store/xss4dpxz1l19b2y5clxypcqvrgnjmy98-test-with-dashes
+nix-build --no-out-link -A test_with_underscores
+/nix/store/avjp3acj7r5w794saas53kdigy8cqd5a-test_with_underscores
+nix-build --no-out-link -A very_long_target_name_that_might_cause_issues_with_nix_derivation_naming
+/nix/store/089pfnw5gnjmc0vww7jl66aays0kk7f2-very_long_target_name_that_might_cause_issues_with_nix_derivation_naming
+just test_complex_build::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_complex_build
+=== Building complex mixed language application ===
+nix-build -A mixed_lang_app && ./result && rm ./result
+this derivation will be built:
+  /nix/store/1qikr5cs8daysgy3w7kxvf3v9lphgfll-mixed_lang_app.drv
+building '/nix/store/1qikr5cs8daysgy3w7kxvf3v9lphgfll-mixed_lang_app.drv'...
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+Running phase: installPhase
+Running phase: fixupPhase
+shrinking RPATHs of ELF executables and libraries in /nix/store/6b4g85n9s3d3jf1hq2d4z5qnnzz2046w-mixed_lang_app
+shrinking /nix/store/6b4g85n9s3d3jf1hq2d4z5qnnzz2046w-mixed_lang_app
+patchelf: getting info about '/nix/store/6b4g85n9s3d3jf1hq2d4z5qnnzz2046w-mixed_lang_app/lib//nix/store/qd2l39plaa4aqq82308w00dpvyfcl3kb-shared_complex/libshared_complex.so': Not a directory
+checking for references to /build/ in /nix/store/6b4g85n9s3d3jf1hq2d4z5qnnzz2046w-mixed_lang_app...
+patching script interpreter paths in /nix/store/6b4g85n9s3d3jf1hq2d4z5qnnzz2046w-mixed_lang_app
+/nix/store/6b4g85n9s3d3jf1hq2d4z5qnnzz2046w-mixed_lang_app
+Complex build test - C++ main
+Version 1.0
+Feature X is enabled
+Helper function called (C99) with value: 5
+Helper result: 10
+Utils function (C++17) - Version 1.0 [Feature X Enabled]
+Computing 3 + 4 = 7
+Complex lib version 1 with feature A
+Complex function result: 20
+Complex lib version 1 with feature A
+Advanced processing: 7 -> 14
+Advanced process result: 24
+Initializing shared library...
+Shared compute: 12 * 8 = 96
+Shared compute result: 96
+All tests completed successfully!
+\n=== Building static library ===
+nix-build --no-out-link -A complex_lib
+/nix/store/82p5yzwam4ysgpq8qgyxcdvcmjfm5hqj-complex_lib
+\n=== Building shared library ===
+nix-build --no-out-link -A shared_complex
+/nix/store/qd2l39plaa4aqq82308w00dpvyfcl3kb-shared_complex
+just test_multiconfig::run
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_multiconfig
+=== Testing Debug configuration ===
+nix-build -A simple_test && ./result && rm ./result
+/nix/store/2lj9hr9cyi2an64r2cvzkq2y924r9djj-simple_test
+Simple Multi-Config Test
+NDEBUG is NOT defined (Debug)
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_multiconfig
+=== Testing Release configuration ===
+nix-build -A simple_test && ./result && rm ./result
+/nix/store/zc8kwqkqrhdnrz6jrayv38d5fjz09syz-simple_test
+Simple Multi-Config Test
+NDEBUG is defined (Release/RelWithDebInfo/MinSizeRel)
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=RelWithDebInfo .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_multiconfig
+=== Testing RelWithDebInfo configuration ===
+nix-build -A simple_test && ./result && rm ./result
+/nix/store/j33hm7ljarw6w3nfg8gvkwicjk6img8n-simple_test
+Simple Multi-Config Test
+NDEBUG is defined (Release/RelWithDebInfo/MinSizeRel)
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=MinSizeRel .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_multiconfig
+=== Testing MinSizeRel configuration ===
+nix-build -A simple_test && ./result && rm ./result
+/nix/store/4q13ar4s8s6iglmdjsidsz1f5a4bmcbj-simple_test
+Simple Multi-Config Test
+NDEBUG is defined (Release/RelWithDebInfo/MinSizeRel)
+just test_install_rules::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_install_rules
+=== Building main executable ===
+nix-build -A install_app && ./result && rm ./result
+/nix/store/gal93sgm8zkij8fwfhzk3zbfynavb0g6-install_app
+Install Rules Test Application
+==============================
+Function from shared library
+Function from static library
+Application completed successfully!
+\n=== Building shared library ===
+nix-build --no-out-link -A install_lib
+/nix/store/b4vrnvj7m6sm3xwr1w09ya0j18bpjl2p-install_lib
+\n=== Building static library ===
+nix-build --no-out-link -A install_static
+/nix/store/aq4wr1hicqh7fj30rxjl8fxlsm279c6k-install_static
+just test_mixed_language::run
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_mixed_language
+=== Building mixed language application ===
+nix-build -A mixed_app && ./result && rm ./result
+/nix/store/7ilr5q2p33vrb7r5lw1swr817gvqfbh7-mixed_app
+Mixed Language Test Application
+===============================
+
+Testing C functions:
+c_add(10, 5) = 15
+c_multiply(4, 7) = 28
+c_divide(20.0, 4.0) = 5.00
+
+Testing C++ wrapper:
+calc.add(15, 25) = 40
+calc.multiply(6, 8) = 48
+calc.divide(100.0, 3.0) = 33.3333
+
+Testing pure C++ functionality:
+Fibonacci sequence (8 numbers): 0, 1, 1, 2, 3, 5, 8, 13
+Result: 42
+2^10 = 1024
+
+Mixed language test completed successfully!
+just test_preprocessor::run
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_preprocessor
+=== Building Debug version ===
+nix-build -A preprocessor_app && ./result && rm ./result
+/nix/store/ccxy93hxz7vsaqnhbnrdlc6hk108sqa2-preprocessor_app
+Preprocessor Test Application
+============================
+
+Application: PreprocessorTest
+Compiled: DATE
+
+Configuration Information:
+========================
+Version: 2.1.0
+Build Number: 42
+Config String: production
+Debug Level: 2
+Max Connections: 100
+Default Timeout: 30
+Features:
+  - Logging: ENABLED
+  - Networking: DISABLED
+
+Version Number: 20100
+
+Build Configuration:
+Build Type: DEBUG
+Assertions: ENABLED
+
+Testing conditional macros:
+[DEBUG] Debug level is 0
+
+Preprocessor test completed!
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_preprocessor
+=== Building Release version ===
+nix-build -A preprocessor_app && ./result && rm ./result
+/nix/store/znyw4a2nhjhh26dwr99mz7k98db4xrli-preprocessor_app
+Preprocessor Test Application
+============================
+
+Application: PreprocessorTest
+Compiled: DATE
+
+Configuration Information:
+========================
+Version: 2.1.0
+Build Number: 42
+Config String: production
+Debug Level: 2
+Max Connections: 100
+Default Timeout: 30
+Features:
+  - Logging: ENABLED
+  - Networking: DISABLED
+
+Version Number: 20100
+
+Build Configuration:
+Build Type: RELEASE
+Optimizations: ENABLED
+Logging: DISABLED for performance
+
+Testing conditional macros:
+
+Preprocessor test completed!
+just test_complex_dependencies::run
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_complex_dependencies
+=== Building complex application (transitive deps) ===
+nix-build -A complex_app && ./result && rm ./result
+these 2 derivations will be built:
+  /nix/store/m2qcxg6s9mpglpz3npd29838mkaippq8-engine_lib.drv
+  /nix/store/i7m6jrpg0q2j2l70g99lfha3h45qkvv4-complex_app.drv
+building '/nix/store/m2qcxg6s9mpglpz3npd29838mkaippq8-engine_lib.drv'...
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+Running phase: installPhase
+Running phase: fixupPhase
+shrinking RPATHs of ELF executables and libraries in /nix/store/6ysnwxnwbqabxhrg0lbkx4wj9hlppw45-engine_lib
+shrinking /nix/store/6ysnwxnwbqabxhrg0lbkx4wj9hlppw45-engine_lib/libengine_lib.so.1.3.5
+checking for references to /build/ in /nix/store/6ysnwxnwbqabxhrg0lbkx4wj9hlppw45-engine_lib...
+patching script interpreter paths in /nix/store/6ysnwxnwbqabxhrg0lbkx4wj9hlppw45-engine_lib
+building '/nix/store/i7m6jrpg0q2j2l70g99lfha3h45qkvv4-complex_app.drv'...
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+Running phase: installPhase
+Running phase: fixupPhase
+shrinking RPATHs of ELF executables and libraries in /nix/store/zabfj0pzr28a0q9plkjg7p5v2kiqzydp-complex_app
+shrinking /nix/store/zabfj0pzr28a0q9plkjg7p5v2kiqzydp-complex_app
+patchelf: getting info about '/nix/store/zabfj0pzr28a0q9plkjg7p5v2kiqzydp-complex_app/lib//nix/store/6ysnwxnwbqabxhrg0lbkx4wj9hlppw45-engine_lib/libengine_lib.so': Not a directory
+checking for references to /build/ in /nix/store/zabfj0pzr28a0q9plkjg7p5v2kiqzydp-complex_app...
+patching script interpreter paths in /nix/store/zabfj0pzr28a0q9plkjg7p5v2kiqzydp-complex_app
+/nix/store/zabfj0pzr28a0q9plkjg7p5v2kiqzydp-complex_app
+Complex Dependencies Test Application
+====================================
+
+[LOG] Engine initialized
+[DEBUG] Created circle
+[DEBUG] Created rectangle
+[DEBUG] Created game object
+[DEBUG] Created game object
+[DEBUG] Added object to scene
+[DEBUG] Added object to scene
+Initial state:
+Engine running for 0s, Scene contains 2 objects
+
+Simulating 3 frames:
+
+Frame 1:
+[DEBUG] Adding 3D vectors
+[DEBUG] Adding 3D vectors
+[LOG] Drawing Circle at (5, 5) with radius 3 with color RGBA(255, 0, 0, 255)
+[LOG] Drawing Rectangle from (0, 0) to (4, 3) with color RGBA(0, 255, 0, 255)
+
+Frame 2:
+[DEBUG] Adding 3D vectors
+[DEBUG] Adding 3D vectors
+[LOG] Drawing Circle at (5, 5) with radius 3 with color RGBA(255, 0, 0, 255)
+[LOG] Drawing Rectangle from (0, 0) to (4, 3) with color RGBA(0, 255, 0, 255)
+
+Frame 3:
+[DEBUG] Adding 3D vectors
+[DEBUG] Adding 3D vectors
+[LOG] Drawing Circle at (5, 5) with radius 3 with color RGBA(255, 0, 0, 255)
+[LOG] Drawing Rectangle from (0, 0) to (4, 3) with color RGBA(0, 255, 0, 255)
+
+Final state:
+Engine running for 0.3s, Scene contains 2 objects
+
+Testing math operations:
+5! = 120
+2^8 = 256
+Is 17 prime? Yes
+
+Testing string utilities:
+Joined words: Complex -> Dependencies -> Test
+
+Complex dependencies test completed successfully!
+just test_package_integration::run
+rm -f default.nix
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release .
+-- Could NOT find ZLIB (missing: ZLIB_LIBRARY) (found version "1.3.1")
+-- Could NOT find ZLIB (missing: ZLIB_LIBRARY) (found version "1.3.1")
+-- Could NOT find PNG (missing: PNG_LIBRARY PNG_PNG_INCLUDE_DIR) 
+-- OpenSSL found and will be linked
+-- CURL found and will be linked
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_package_integration
+=== Building package integration application ===
+nix-build -A integration_app && ./result && rm ./result
+/nix/store/w8nw0y0kikdn07m64q3ggrn8ydnd3280-integration_app
+Package Integration Test Application
+===================================
+
+Hardware concurrency: 14 threads
+
+Testing multithreading functionality:
+  Sum of 1-1000: 500500
+  First 5 squares: 1 4 9 16 25 
+  Even numbers found: 499
+  Processing time: 8ms
+
+Testing available packages:
+  ZLIB: Not available
+  OpenSSL: Available
+    SHA256 hash test: SUCCESS (first 8 bytes: 63ee7f365450f958...)
+  CURL: Available (version 8.11.1)
+    CURL initialization: SUCCESS
+  PNG: Not available
+
+Package integration test completed successfully!
+just test_feature_detection::run
+../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug .
+-- Feature Detection Results:
+--   HAVE_CONSTEXPR: 1
+--   HAVE_LAMBDAS: 1
+--   HAVE_AUTO_TYPE: 1
+--   HAVE_NULLPTR: 1
+--   HAVE_RANGE_FOR: 1
+--   HAVE_STATIC_ASSERT: 1
+--   HAVE_VARIADIC_TEMPLATES: 1
+--   CMAKE_CXX_COMPILE_FEATURES: cxx_std_98;cxx_template_template_parameters;cxx_std_11;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates;cxx_std_14;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates;cxx_std_17;cxx_std_20;cxx_std_23;cxx_std_26
+-- Running BASIC feature detection test (use -DCOMPREHENSIVE_TEST=ON for full test)
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_feature_detection
+nix-build --no-out-link -A feature_test
+/nix/store/sz8qb99s5qnf2w0ad6cxkgqg3dfrwrsz-feature_test
+nix-build -A feature_test && ./result && rm ./result
+/nix/store/sz8qb99s5qnf2w0ad6cxkgqg3dfrwrsz-feature_test
+C++11 Feature Detection Test
+===========================
+✓ constexpr support detected
+  constexpr value: 42
+✓ lambda support detected
+  lambda result: 42
+✓ auto type support detected
+  auto value: 123
+✓ nullptr support detected
+  nullptr test: passed
+✓ range-based for loop support detected
+  range-for values: 1 2 3 4 5 
+✓ static_assert support detected
+  static_assert test passed
+✓ variadic template support detected
+  variadic template test completed
+
+Feature detection test completed.
+✅ Feature detection test completed
+just test_object_library::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_object_library
+nix-build -A calculator && ./result && rm ./result
+/nix/store/2mwpymyf17288fam0ipfggl7h5hlrl7s-calculator
+5 + 3 = 8
+4 * 7 = 28
+just test_module_library::run
+rm -f default.nix
+rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
+../bin/cmake -G Nix .
+-- The C compiler identification is GNU 14.2.1
+-- Detecting C compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_c6b04
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_c6b04
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_c6b04 (result=0, time=3579ms)
+-- Detecting C compiler ABI info - done
+-- Setting fallback CMAKE_C_SIZEOF_DATA_PTR for Nix generator
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_4055e
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_4055e
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_4055e (result=0, time=210ms)
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc - works
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Configuring done (4.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_module_library
+nix-build -A myplugin
+/nix/store/rih9bj5cgnbpsnk2ysp7jv4xky3qsk0l-myplugin
+nix-build -A plugin_demo
+/nix/store/gmf4ay5x6zw6r77d02dfxfr3jfpyxcc3-plugin_demo
+echo "=== Testing MODULE library build ==="
+=== Testing MODULE library build ===
+ls -la $(nix-build --no-out-link -A myplugin)
+total 9648
+dr-xr-xr-x    2 root root      4096 jan  1  1970 .
+drwxrwxr-t 4359 root nixbld 9850880 jul 28 03:37 ..
+-r-xr-xr-x    1 root root     15368 jan  1  1970 myplugin.so
+echo ""
+
+echo "=== Testing executable build ==="
+=== Testing executable build ===
+nix-build -A plugin_demo && ./result && rm ./result
+/nix/store/gmf4ay5x6zw6r77d02dfxfr3jfpyxcc3-plugin_demo
+Main application
+just test_compile_language_expr::run
+rm -f default.nix
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_compile_language_expr
+nix-build -A mixed_lang_test && ./result && rm ./result
+/nix/store/2mjzr7wdgmj770nj611sqx9g3vpqdvrq-mixed_lang_test
+C main function
+Successfully compiled as C
+Function from C header
+Compiled with GCC
+C++ function called
+Successfully compiled as C++
+Function from C++ header
+Compiled with G++
+just test_interface_library::run
+rm -f default.nix
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_interface_library
+nix-build -A app && ./result && rm ./result
+/nix/store/igdysnnfcwkrsky1lv46wka8kayk0fsj-app
+Interface library definitions are working!
+just test_json_library::run
+rm -rf default.nix CMakeCache.txt CMakeFiles cmake_install.cmake
+rm -f default.nix
+../bin/cmake -G Nix .
+-- The CXX compiler identification is GNU 14.2.1
+-- Detecting CXX compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_9b55c
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_9b55c
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_9b55c (result=0, time=4014ms)
+-- Detecting CXX compiler ABI info - done
+-- Setting fallback CMAKE_CXX_SIZEOF_DATA_PTR for Nix generator
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_8d5ff
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_8d5ff
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_8d5ff (result=0, time=259ms)
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++ - works
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- The C compiler identification is GNU 14.2.1
+-- Detecting C compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_4bb81
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_4bb81
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_4bb81 (result=0, time=3993ms)
+-- Detecting C compiler ABI info - done
+-- Setting fallback CMAKE_C_SIZEOF_DATA_PTR for Nix generator
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_de5b4
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_de5b4
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_de5b4 (result=0, time=221ms)
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc - works
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Configuring done (9.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_json_library
+=== Building JSON library example ===
+nix-build -A json_example && ./result && rm ./result
+/nix/store/l1yk6fp6wn8n8gnbnqyzkh24q9cjf4jr-json_example
+Testing JSON library with CMake Nix backend
+==========================================
+
+Name: JSON Library Test
+Version: 1
+Tested: true
+Performance speed: fast
+
+Features:
+  - parsing
+  - writing
+  - nested objects
+
+Numbers: 1, 2.5, -3, 4
+
+Generated JSON:
+{
+  "message": "JSON library working!",
+  "results": [
+    "Parse test passed",
+    "Access test passed",
+    "Creation test passed"
+  ],
+  "success": true
+}
+
+✅ All JSON library tests passed!
+just test_spdlog::test
+rm -rf build
+../bin/cmake -G Nix -S spdlog -B build
+-- The CXX compiler identification is GNU 14.2.1
+-- Detecting CXX compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_cd995
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_cd995
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_cd995 (result=0, time=3634ms)
+-- Detecting CXX compiler ABI info - done
+-- Setting fallback CMAKE_CXX_SIZEOF_DATA_PTR for Nix generator
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_95c00
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_95c00
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_95c00 (result=0, time=255ms)
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++ - works
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Build spdlog: 1.15.3
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_8487f
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_8487f
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_8487f (result=0, time=276ms)
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Build type: Release
+-- Looking for fwrite_unlocked
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_934e3
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_934e3
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_934e3 (result=0, time=276ms)
+-- Looking for fwrite_unlocked - found
+-- Generating example(s)
+-- Generating install
+-- Configuring done (4.8s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_spdlog/build
+cd spdlog && nix-build -A spdlog
+/nix/store/h666xcazakr2pqd3jn135vpzplik2aya-spdlog
+cd spdlog && nix-build -A example
+/nix/store/kdprnigzjsm8dvpl352ylap813hf7n5y-example
+✅ spdlog library built successfully with CMake Nix backend!
+just test_asm_language::run  # ASM language not yet supported
+rm -f default.nix
+rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
+../bin/cmake -G Nix .
+-- The C compiler identification is GNU 14.2.1
+-- The ASM compiler identification is GNU
+-- Found assembler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc
+-- Detecting C compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_fc8e2
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_fc8e2
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_fc8e2 (result=0, time=3520ms)
+-- Detecting C compiler ABI info - done
+-- Setting fallback CMAKE_C_SIZEOF_DATA_PTR for Nix generator
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_40454
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_40454
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_40454 (result=0, time=212ms)
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc - works
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Configuring done (4.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_asm_language
+nix-build -A asm_test
+/nix/store/36mg972d9ypbgwy0g1h24rvj3jxwcaa8-asm_test
+./result && rm ./result
+Testing ASM language support
+Hello from assembly!
+ASM test completed successfully!
+just test_pch::run
+⚠️  PCH test disabled - Precompiled headers are fundamentally incompatible with Nix
+NOTE: PCH requires mutable build state which conflicts with Nix's pure build model
+The composite-src-with-generated derivation causes permission errors when PCH headers are embedded
+# run: build
+# ./result
+# rm -f ./result
+just test_unity_build::run
+../bin/cmake -G Nix -S . -B build 2>&1 | tee configure.log
+-- Configuring done (0.0s)
+CMake Warning at CMakeLists.txt:5 (add_executable):
+  Unity builds are not supported by the Nix generator and will be ignored for
+  target 'unity_app'.  The Nix backend achieves better performance through
+  fine-grained parallelism.
+
+
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_unity_build/build
+cd build && nix-build -A unity_app && nix-build -A normal_app
+/nix/store/87gx2ysbivvnqv2zb0ja7nblaixjv3gy-unity_app
+/nix/store/jzv0f5hkhrnrb6l85kjlz52b474ccmwg-normal_app
+=== Running Unity Build App (should show warning) ===
+cd build && ./result
+Unity Build Test Application
+=============================
+Function 1 called
+Function 2 called
+Function 3 called
+
+All functions executed successfully!
+
+=== Running Normal App ===
+cd build && nix-build -A normal_app && ./result
+/nix/store/jzv0f5hkhrnrb6l85kjlz52b474ccmwg-normal_app
+Unity Build Test Application
+=============================
+Function 1 called
+Function 2 called
+Function 3 called
+
+All functions executed successfully!
+just test_fortran_language::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_fortran_language
+nix-build -A fortran_hello
+/nix/store/50va34d3d8fdil2lr59cz9dnbwf69s4k-fortran_hello
+echo "=== Testing pure Fortran executable ==="
+=== Testing pure Fortran executable ===
+./result
+ Hello from Fortran!
+ Compiler: gfortran
+ Fortran test successful
+nix-build -A mixed_fortran
+/nix/store/b94brayyqkpz8sd24kfk8xw0j13ssxdp-mixed_fortran
+echo "\n=== Testing mixed Fortran/C executable ==="
+\n=== Testing mixed Fortran/C executable ===
+./result
+Mixed Fortran/C Test
+====================
+Using Fortran functions from C:
+fortran_add(10, 5) = 15
+fortran_multiply(10, 5) = 50
+
+Mixed language test successful!
+just test_fmt_library::run
+rm -f default.nix
+../bin/cmake -G Nix .
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_fmt_library
+nix-build -A fmt_example
+/nix/store/hspasidgdxz07ccgm3lcyhd51inail3a-fmt_example
+./result && rm ./result
+Testing fmt library with CMake Nix backend
+==========================================
+
+Hello, fmt!
+The answer is 42.
+Hello, world!
+Vector: 1, 2, 3, 4, 5
+Map entries: one: 1 three: 3 two: 2 
+
+✅ All fmt library tests passed!
+
+Formatted 10,000 strings in 5232 microseconds
+just test_export_import::run
+rm -rf build
+mkdir -p build
+cd build && ../../bin/cmake -G Nix ..
+-- The CXX compiler identification is GNU 14.2.1
+-- Detecting CXX compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_96cd2
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_96cd2
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_96cd2 (result=0, time=3996ms)
+-- Detecting CXX compiler ABI info - done
+-- Setting fallback CMAKE_CXX_SIZEOF_DATA_PTR for Nix generator
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_63ed3
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_63ed3
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_63ed3 (result=0, time=262ms)
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++ - works
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (4.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_export_import/build
+cd build && nix-build -A myapp
+/nix/store/fs6vmwgdkqclhcnvcwyr6zd3w0hscn6a-myapp
+=== Testing export() functionality ===
+Checking if export file was created...
+✅ Export file created successfully
+Checking export file contents...
+✅ Library target exported
+✅ Executable target exported
+=== Running executable ===
+cd build && ./result
+Hello from exported library!
+✅ All export/import tests passed!
+# test_external_tools is designed to fail - it demonstrates incompatibility
+# Run it but don't fail the test suite if it fails as expected
+just test_external_tools::run || echo "✅ test_external_tools failed as expected (demonstrates incompatibility)"
+=== Testing ExternalProject_Add and FetchContent ===
+NOTE: This test demonstrates that these features are incompatible with Nix
+
+Configuring project...
+-- The C compiler identification is GNU 14.2.1
+-- The CXX compiler identification is GNU 14.2.1
+-- Detecting C compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_b496e
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_b496e
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_b496e (result=0, time=3815ms)
+-- Detecting C compiler ABI info - done
+-- Setting fallback CMAKE_C_SIZEOF_DATA_PTR for Nix generator
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_80a18
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_80a18
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_80a18 (result=0, time=206ms)
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc - works
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_af9e8
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_af9e8
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_af9e8 (result=0, time=3604ms)
+-- Detecting CXX compiler ABI info - done
+-- Setting fallback CMAKE_CXX_SIZEOF_DATA_PTR for Nix generator
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_1ba5b
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_1ba5b
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_1ba5b (result=0, time=295ms)
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++ - works
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (8.7s)
+CMake Warning:
+  ExternalProject_Add is incompatible with the Nix generator.
+
+  ExternalProject downloads dependencies at build time, which conflicts with
+  Nix's pure build philosophy.
+
+
+
+  Recommended alternatives:
+
+    1. Pre-fetch dependencies and add to Nix store
+    2. Use find_package() with Nix-provided packages
+    3. Include dependencies as Git submodules
+    4. Create pkg_<Package>.nix files for external dependencies
+
+
+
+  The Nix generator will create a default.nix file, but builds may fail when
+  ExternalProject tries to download content.
+
+
+CMake Warning:
+  FetchContent is incompatible with the Nix generator.
+
+  FetchContent downloads dependencies at configure time, which conflicts with
+  Nix's pure build philosophy.
+
+
+
+  Recommended alternatives:
+
+    1. Pre-fetch dependencies and add to Nix store
+    2. Use find_package() with Nix-provided packages
+    3. Include dependencies as Git submodules
+    4. Create pkg_<Package>.nix files for external dependencies
+
+
+
+  Example: For FetchContent_Declare(fmt ...), create pkg_fmt.nix:
+
+    { fmt }:
+    {
+      buildInputs = [ fmt ];
+      cmakeFlags = [];
+    }
+
+
+CMake Error at CMakeLists.txt:42 (target_link_libraries):
+  Target "external_test" links to:
+
+    fmt::fmt-header-only
+
+  but the target was not found.  Possible reasons include:
+
+    * There is a typo in the target name.
+    * A find_package call is missing for an IMPORTED target.
+    * An ALIAS target is missing.
+
+
+
+-- Generating done (0.0s)
+CMake Generate step failed.  Build files cannot be regenerated correctly.
+✅ Configuration failed as expected
+
+This is the expected behavior because:
+1. FetchContent tries to download dependencies at configure time
+2. Nix builds are pure and cannot access the network
+3. The downloaded content would not be in the Nix store
+
+Recommended alternatives for Nix:
+- Pre-fetch dependencies and add to Nix store
+- Use find_package() with Nix-provided packages
+- Include dependencies as Git submodules
+- Use Nix flakes for dependency management
+
+Example: Instead of FetchContent for fmt, create pkg_fmt.nix:
+  { fmt }:
+  {
+    buildInputs = [ fmt ];
+    cmakeFlags = [];
+  }
+just test_file_edge_cases::run
+=== Testing File Edge Cases ===
+
+Configuring project with various edge cases...
+-- The C compiler identification is GNU 14.2.1
+-- The CXX compiler identification is GNU 14.2.1
+-- Detecting C compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_6fc17
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_6fc17
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_6fc17 (result=0, time=3599ms)
+-- Detecting C compiler ABI info - done
+-- Setting fallback CMAKE_C_SIZEOF_DATA_PTR for Nix generator
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_35097
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_35097
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_35097 (result=0, time=203ms)
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc - works
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_c6b62
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_c6b62
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_c6b62 (result=0, time=3725ms)
+-- Detecting CXX compiler ABI info - done
+-- Setting fallback CMAKE_CXX_SIZEOF_DATA_PTR for Nix generator
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_3ec8a
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_3ec8a
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_3ec8a (result=0, time=265ms)
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++ - works
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (8.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_file_edge_cases/build
+
+Building targets with edge case filenames...
+
+Testing target: test_spaces
+/nix/store/ww5q459vylcbchkaqp6mi4mrx1rn6gjm-test_spaces
+✅ test_spaces built successfully
+File with spaces in name compiled successfully!
+This tests the Nix generator's ability to handle filenames with spaces.
+
+Testing target: test-with-dashes
+/nix/store/sgxvhvf4wx0jgbzp28fgjpp0fcfklck0-test-with-dashes
+✅ test-with-dashes built successfully
+Special characters test passed!
+
+Testing target: test_with_underscores
+/nix/store/0xlsy4r617g1i9jxi6i0pvb688xmy12v-test_with_underscores
+✅ test_with_underscores built successfully
+Special characters test passed!
+
+Testing target: test.with.dots
+/nix/store/2c5dyz4als8gky9m0gxckdq451shvzr3-test.with.dots
+✅ test.with.dots built successfully
+Special characters test passed!
+
+Testing target: test_unicode
+/nix/store/l9nf2vn243gcjw6ffnb92pzfhqhcka7a-test_unicode
+✅ test_unicode built successfully
+Unicode filename test passed! (文件)
+
+Testing target: test_long_names
+/nix/store/lbi2avn12yx4ppk23f53klxx23mx46i2-test_long_names
+✅ test_long_names built successfully
+Very long filename test passed!
+Filename length: this_is_a_very_long_filename_that_might_cause_issues_with_some_build_systems_but_should_work_fine.cpp
+
+Testing target: test_symlinks
+/nix/store/k9baz4420j98b6mygc6ayfaaz6blazl0-test_symlinks
+✅ test_symlinks built successfully
+Special characters test passed!
+
+Testing target: TestMixedCase
+/nix/store/mawf92l1qfnn4d14hn8hnlpk5mcdqjgg-TestMixedCase
+✅ TestMixedCase built successfully
+Mixed case filename test passed!
+
+Testing target: test_nested
+/nix/store/3qsv6pc7iixdk6510v4jk22s4lp7vn3d-test_nested
+✅ test_nested built successfully
+Special characters test passed!
+
+Testing target: test_dir_spaces
+/nix/store/p6r7fqfd4zkhzd7hxi2sk2a5jxpz11f2-test_dir_spaces
+✅ test_dir_spaces built successfully
+Special characters test passed!
+
+=== Edge Case Test Summary ===
+Some edge cases may fail due to Nix naming restrictions.
+This is expected behavior - Nix has strict rules for attribute names.
+just test_nix_tools::run
+=== Testing Nix Evaluation Tools ===
+
+1. Configuring project...
+-- The C compiler identification is GNU 14.2.1
+-- The CXX compiler identification is GNU 14.2.1
+-- Detecting C compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_11d1d
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_11d1d
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_11d1d (result=0, time=3701ms)
+-- Detecting C compiler ABI info - done
+-- Setting fallback CMAKE_C_SIZEOF_DATA_PTR for Nix generator
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_1c18d
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_1c18d
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_1c18d (result=0, time=203ms)
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc - works
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_f13a8
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_f13a8
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_f13a8 (result=0, time=4133ms)
+-- Detecting CXX compiler ABI info - done
+-- Setting fallback CMAKE_CXX_SIZEOF_DATA_PTR for Nix generator
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_1857b
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_1857b
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_1857b (result=0, time=249ms)
+-- Check for working CXX compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/g++ - works
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (8.8s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_nix_tools/build
+
+2. Testing nix-instantiate (evaluation without building)...
+==================================================
+✅ nix-instantiate succeeded for simple_app
+warning: you did not specify '--add-root'; the result might be removed by the garbage collector
+   Derivation: /nix/store/sclnm1vv72krf565fq7sanj8qc1fgc08-simple_app.drv
+   Derivation contents (first 10 lines):
+
+3. Testing nix-build --dry-run...
+=================================
+⚠️  nix-build --dry-run output unexpected
+
+
+4. Testing nix eval (expression evaluation)...
+============================================
+Available targets:
+custom_app
+shared_app
+shared_lib
+shared_lib_install
+simple_app
+simple_app_install
+simple_lib
+
+5. Testing nix-store queries...
+===============================
+✅ Built simple_app at: /nix/store/gb6qynxm43g1spdfhw335jpanzjdaaj1-simple_app
+   Dependencies:
+/nix/store/2d5spnl8j5r4n1s4bj1zmra7mwx0f1n8-xgcc-13.3.0-libgcc
+/nix/store/bmjqxvy53752b3xfvbab6s87xq06hxbs-gcc-13.3.0-libgcc
+/nix/store/nqb2ns2d1lahnd5ncwmn6k84qfd7vx2k-glibc-2.40-36
+   Closure size:
+16864
+
+6. Testing attribute name handling...
+====================================
+✅ Attribute 'simple_app' is valid
+✅ Attribute 'shared_lib' is valid
+✅ Attribute 'custom_app' is valid
+✅ Attribute 'simple_app_install' is valid
+
+7. Testing error reporting...
+=============================
+Trying non-existent attribute:
+error: attribute 'nonexistent' in selection path 'nonexistent' not found
+   (no error shown)
+
+=== Nix Tools Test Summary ===
+The Nix generator creates expressions compatible with:
+- nix-instantiate (evaluation)
+- nix-build (building)
+- nix eval (attribute inspection)
+- nix-store (dependency queries)
+
+✅ All major Nix tools work with generated expressions!
+just test_imacros_config::run
+rm -rf build default.nix
+../bin/cmake -G Nix -S . -B build
+-- The C compiler identification is GNU 14.2.1
+-- Detecting C compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_080c7
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_080c7
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_080c7 (result=0, time=4052ms)
+-- Detecting C compiler ABI info - done
+-- Setting fallback CMAKE_C_SIZEOF_DATA_PTR for Nix generator
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_d2040
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_d2040
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_d2040 (result=0, time=191ms)
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc - works
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Configuring done (4.5s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_imacros_config/build
+cd build && nix-build -A test_imacros
+these 3 derivations will be built:
+  /nix/store/gh7vpjqw9dmzy1dpflah0p52l6cq2h6v-composite-src-with-generated.drv
+  /nix/store/v8jb70pavpgv1nq3hi3b35ayzd4v8rsk-main.o.drv
+  /nix/store/n0cla8i60n21rydbrw4lba4ff0bsi73x-test_imacros.drv
+building '/nix/store/gh7vpjqw9dmzy1dpflah0p52l6cq2h6v-composite-src-with-generated.drv'...
+building '/nix/store/v8jb70pavpgv1nq3hi3b35ayzd4v8rsk-main.o.drv'...
+Running phase: unpackPhase
+unpacking source archive /nix/store/7hxgxv619vwgv1rzdz5f44p89xljhkwi-composite-src-with-generated
+source root is composite-src-with-generated
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+Running phase: installPhase
+building '/nix/store/n0cla8i60n21rydbrw4lba4ff0bsi73x-test_imacros.drv'...
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+Running phase: installPhase
+Running phase: fixupPhase
+shrinking RPATHs of ELF executables and libraries in /nix/store/pxwh7bgk99wmfysgqcicg7zq4ff6pq58-test_imacros
+shrinking /nix/store/pxwh7bgk99wmfysgqcicg7zq4ff6pq58-test_imacros
+patchelf: getting info about '/nix/store/pxwh7bgk99wmfysgqcicg7zq4ff6pq58-test_imacros/lib/libc.so.6': Not a directory
+checking for references to /build/ in /nix/store/pxwh7bgk99wmfysgqcicg7zq4ff6pq58-test_imacros...
+patching script interpreter paths in /nix/store/pxwh7bgk99wmfysgqcicg7zq4ff6pq58-test_imacros
+/nix/store/pxwh7bgk99wmfysgqcicg7zq4ff6pq58-test_imacros
+cd build && ./result && rm ./result
+Testing -imacros flag with configuration-time generated files
+=============================================================
+
+Project: test_imacros_config
+Test value: 42
+Greeting: Hello from generated config!
+Double of 21: 42
+
+✅ Success! -imacros flag correctly includes generated config file
+just test_external_config_deps::run
+rm -rf build default.nix
+../bin/cmake -G Nix -S . -B build
+-- The C compiler identification is GNU 14.2.1
+-- Detecting C compiler ABI info
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_d56cf
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_d56cf
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_d56cf (result=0, time=4015ms)
+-- Detecting C compiler ABI info - done
+-- Setting fallback CMAKE_C_SIZEOF_DATA_PTR for Nix generator
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc
+[TRACE] TryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_f1fe4
+[NIX-DEBUG] ExecuteTryCompile STARTED: CMAKE_TRY_COMPILE / cmTC_f1fe4
+[NIX-DEBUG] Starting configure...
+[NIX-DEBUG] Configure succeeded
+[NIX-DEBUG] Starting generate...
+[NIX-DEBUG] Generate succeeded
+[NIX-DEBUG] ExecuteTryCompile COMPLETED: CMAKE_TRY_COMPILE (result=0)
+[TRACE] TryCompile COMPLETED: CMAKE_TRY_COMPILE / cmTC_f1fe4 (result=0, time=205ms)
+-- Check for working C compiler: /nix/store/0fsnicvfpf55nkza12cjnad0w84d6ba7-gcc-wrapper-14.2.1.20250322/bin/gcc - works
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Configuring done (4.4s)
+CMake Warning:
+  Source file path is outside project directory:
+  /home/mpedersen/topics/cmake_nix_backend/CMake/external_src/external.c
+
+
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_config_deps/build
+cd build && nix-build -A test_app
+these 5 derivations will be built:
+  /nix/store/0ggqxr6cn1jfcgnmnz6k64xm0y1mgbkc-composite-src.drv
+  /nix/store/cmh9dj1gjfz2wx40j6232bdgljh1dfl2-composite-src-with-generated.drv
+  /nix/store/9s35r8p9zs04b9734zvwpy6v1506n24r-main.o.drv
+  /nix/store/xjllni16yqlxq9idbbl70bidxqpzdzpk-external.o.drv
+  /nix/store/51yfacw512dhgcykif3z1pqb00v4vns7-test_app.drv
+building '/nix/store/cmh9dj1gjfz2wx40j6232bdgljh1dfl2-composite-src-with-generated.drv'...
+building '/nix/store/0ggqxr6cn1jfcgnmnz6k64xm0y1mgbkc-composite-src.drv'...
+building '/nix/store/9s35r8p9zs04b9734zvwpy6v1506n24r-main.o.drv'...
+building '/nix/store/xjllni16yqlxq9idbbl70bidxqpzdzpk-external.o.drv'...
+Running phase: unpackPhase
+unpacking source archive /nix/store/qbis0lp5024sf877r20bjkmhqba6hp96-composite-src-with-generated
+source root is composite-src-with-generated
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+Running phase: installPhase
+Running phase: unpackPhase
+unpacking source archive /nix/store/ji6bzkgxcjbjypvps4mb4c7g362mzr1a-composite-src
+source root is composite-src
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+Running phase: installPhase
+building '/nix/store/51yfacw512dhgcykif3z1pqb00v4vns7-test_app.drv'...
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+Running phase: installPhase
+Running phase: fixupPhase
+shrinking RPATHs of ELF executables and libraries in /nix/store/m4zbdky2ziknn56nirz9g3rzaqzmg3yr-test_app
+shrinking /nix/store/m4zbdky2ziknn56nirz9g3rzaqzmg3yr-test_app
+patchelf: getting info about '/nix/store/m4zbdky2ziknn56nirz9g3rzaqzmg3yr-test_app/lib/libc.so.6': Not a directory
+checking for references to /build/ in /nix/store/m4zbdky2ziknn56nirz9g3rzaqzmg3yr-test_app...
+patching script interpreter paths in /nix/store/m4zbdky2ziknn56nirz9g3rzaqzmg3yr-test_app
+/nix/store/m4zbdky2ziknn56nirz9g3rzaqzmg3yr-test_app
+cd build && ./result
+Project: test_external_config_deps v1.0.0
+External module from test_external_config_deps says: External source using config-time generated header
+External computation: 42 -> 84
+✅ Test passed: External source correctly used config-time generated headers
+# New tests from todo.md code quality findings
+just test_circular_deps::run || echo "✅ test_circular_deps failed as expected (circular dependencies should be detected)"
+mkdir -p build
+cd build && ../../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_circular_deps/build
+=== Testing circular dependency detection ===
+Note: This test is expected to fail during CMake configuration
+CMake should detect and report the circular dependencies
+cd build && cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
+sh: line 1: cmake: command not found
+=== Test completed (failure expected) ===
+just test_cuda_language::run || echo "✅ test_cuda_language failed as expected (CUDA language not yet supported)"
+rm -f default.nix
+../bin/cmake -G Nix .
+CMake Error at /home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeDetermineCUDACompiler.cmake:10 (message):
+  CUDA language not currently supported by "Nix" generator
+Call Stack (most recent call first):
+  CMakeLists.txt:2 (project)
+
+
+-- Configuring incomplete, errors occurred!
+error: Recipe `build` failed on line 5 with exit code 1
+✅ test_cuda_language failed as expected (CUDA language not yet supported)
+just test_custom_commands_advanced::run || echo "✅ test_custom_commands_advanced failed as expected (custom command with generated headers limitation)"
+mkdir -p build/generated
+cd build && ../../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Debug ..
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_custom_commands_advanced/build
+=== Testing advanced custom commands ===
+cd build && nix-build -A test_app
+these 2 derivations will be built:
+  /nix/store/4l6jnnhsm7b9pqfpf1074i884scmz7bp-main.o.drv
+  /nix/store/f98c1f2fn4wy2iqillk0sai0nr6z5vwy-test_app.drv
+building '/nix/store/4l6jnnhsm7b9pqfpf1074i884scmz7bp-main.o.drv'...
+Running phase: unpackPhase
+unpacking source archive /nix/store/k3s2zba6fd4wn2f6wnhsdnh6wf33sf6a-source
+source root is source
+Running phase: patchPhase
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+Running phase: configurePhase
+no configure script, doing nothing
+Running phase: buildPhase
+main.cpp:2:10: fatal error: config.h: No such file or directory
+    2 | #include "config.h"
+      |          ^~~~~~~~~~
+compilation terminated.
+error: builder for '/nix/store/4l6jnnhsm7b9pqfpf1074i884scmz7bp-main.o.drv' failed with exit code 1;
+       last 12 log lines:
+       > Running phase: unpackPhase
+       > unpacking source archive /nix/store/k3s2zba6fd4wn2f6wnhsdnh6wf33sf6a-source
+       > source root is source
+       > Running phase: patchPhase
+       > Running phase: updateAutotoolsGnuConfigScriptsPhase
+       > Running phase: configurePhase
+       > no configure script, doing nothing
+       > Running phase: buildPhase
+       > main.cpp:2:10: fatal error: config.h: No such file or directory
+       >     2 | #include "config.h"
+       >       |          ^~~~~~~~~~
+       > compilation terminated.
+       For full logs, run 'nix-store -l /nix/store/4l6jnnhsm7b9pqfpf1074i884scmz7bp-main.o.drv'.
+error: 1 dependencies of derivation '/nix/store/f98c1f2fn4wy2iqillk0sai0nr6z5vwy-test_app.drv' failed to build
+error: Recipe `run` failed on line 11 with exit code 1
+✅ test_custom_commands_advanced failed as expected (custom command with generated headers limitation)
+just test_deep_dependencies::run
+rm -rf build CMakeLists.txt lib*.cpp main.cpp
+=== Generating deep dependency tree ===
+python3 generate_deps.py
+Generated 10 levels with 5 libraries per level
+Total libraries: 50
+Total dependencies: 1125
+=== Configuring with CMake Nix backend ===
+mkdir -p build
+cd build && ../../bin/cmake -G Nix -DCMAKE_BUILD_TYPE=Release ..
+-- Configuring done (0.0s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies
+=== Building with Nix ===
+cd build && nix-build -A deep_test
+error: opening file '/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/build/default.nix': No such file or directory
+error: Recipe `build` failed on line 32 with exit code 1
+error: Recipe `test-all` failed on line 205 with exit code 1

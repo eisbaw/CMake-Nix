@@ -1,0 +1,37 @@
+Running with debug output on.
+-- The CXX compiler identification is GNU 13.3.0
+   Called from: [3]	/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/CMakeLists.txt
+                [2]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeDetermineCXXCompiler.cmake
+                [1]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeDetermineCompilerId.cmake
+-- Detecting CXX compiler ABI info
+   Called from: [3]	/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/CMakeLists.txt
+                [2]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeTestCXXCompiler.cmake
+                [1]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeDetermineCompilerABI.cmake
+-- Detecting CXX compiler ABI info - done
+   Called from: [3]	/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/CMakeLists.txt
+                [2]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeTestCXXCompiler.cmake
+                [1]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeDetermineCompilerABI.cmake
+-- Setting fallback CMAKE_CXX_SIZEOF_DATA_PTR for Nix generator
+   Called from: [2]	/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/CMakeLists.txt
+                [1]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeTestCXXCompiler.cmake
+-- Check for working CXX compiler: /nix/store/888bkaqdpfpx72dd8bdc69qsqlgbhcvf-gcc-wrapper-13.3.0/bin/g++
+   Called from: [3]	/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/CMakeLists.txt
+                [2]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeTestCXXCompiler.cmake
+                [1]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeTestCompilerCommon.cmake
+-- Check for working CXX compiler: /nix/store/888bkaqdpfpx72dd8bdc69qsqlgbhcvf-gcc-wrapper-13.3.0/bin/g++ - works
+   Called from: [3]	/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/CMakeLists.txt
+                [2]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeTestCXXCompiler.cmake
+                [1]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeTestCompilerCommon.cmake
+-- Detecting CXX compile features
+   Called from: [3]	/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/CMakeLists.txt
+                [2]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeTestCXXCompiler.cmake
+                [1]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeDetermineCompilerSupport.cmake
+-- Detecting CXX compile features - done
+   Called from: [3]	/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/CMakeLists.txt
+                [2]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeTestCXXCompiler.cmake
+                [1]	/home/mpedersen/topics/cmake_nix_backend/CMake/share/cmake-4.1/Modules/CMakeDetermineCompilerSupport.cmake
+-- Configuring done (5.1s)
+-- Generating /home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies
+   Called from: [1]	/home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies/CMakeLists.txt
+-- Generating done (0.1s)
+-- Build files have been written to: /home/mpedersen/topics/cmake_nix_backend/CMake/test_deep_dependencies
