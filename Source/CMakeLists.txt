@@ -799,6 +799,8 @@ add_library(
   cmNixCustomCommandGenerator.h
   cmNixCustomCommandHandler.cxx
   cmNixCustomCommandHandler.h
+  cmNixInstallRuleGenerator.cxx
+  cmNixInstallRuleGenerator.h
   cmNixPathUtils.cxx
   cmNixPathUtils.h
   cmNixWriter.cxx

@@ -28,6 +28,7 @@
 #include "cmNixTargetGenerator.h"
 #include "cmNixCustomCommandGenerator.h"
 #include "cmNixCustomCommandHandler.h"
+#include "cmNixInstallRuleGenerator.h"
 #include "cmNixCompilerResolver.h"
 #include "cmNixPathUtils.h"
 #include "cmInstallGenerator.h"
@@ -52,8 +53,9 @@ cmGlobalNixGenerator::cmGlobalNixGenerator(cmake* cm)
   : cmGlobalCommonGenerator(cm)
   , CompilerResolver(std::make_unique<cmNixCompilerResolver>(cm))
   , DerivationWriter(std::make_unique<cmNixDerivationWriter>())
-  , DependencyGraph(std::make_unique<cmNixDependencyGraph>())
   , CustomCommandHandler(std::make_unique<cmNixCustomCommandHandler>())
+  , InstallRuleGenerator(std::make_unique<cmNixInstallRuleGenerator>())
+  , DependencyGraph(std::make_unique<cmNixDependencyGraph>())
 {
   // Set the make program file
   this->FindMakeProgramFile = "CMakeNixFindMake.cmake";
@@ -2536,11 +2538,26 @@ std::string cmGlobalNixGenerator::GetCompilerCommand(const std::string& lang) co
 
 std::string cmGlobalNixGenerator::GetBuildConfiguration(cmGeneratorTarget* target) const
 {
-  std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
-  if (config.empty()) {
-    config = "Release"; // Default to Release if no configuration specified
+  if (target) {
+    std::string config = target->Target->GetMakefile()->GetSafeDefinition("CMAKE_BUILD_TYPE");
+    if (config.empty()) {
+      config = "Release"; // Default to Release if no configuration specified
+    }
+    return config;
   }
-  return config;
+  
+  // When no target is provided, check the top-level makefile
+  if (!this->LocalGenerators.empty()) {
+    cmMakefile* mf = this->LocalGenerators[0]->GetMakefile();
+    std::string config = mf->GetSafeDefinition("CMAKE_BUILD_TYPE");
+    if (config.empty()) {
+      config = "Release"; // Default to Release if no configuration specified
+    }
+    return config;
+  }
+  
+  // Fallback
+  return "Release";
 }
 
 std::vector<std::string> cmGlobalNixGenerator::GetCachedLibraryDependencies(
@@ -2687,13 +2704,10 @@ void cmGlobalNixGenerator::ProcessLibraryDependenciesForBuildInputs(
 void cmGlobalNixGenerator::WriteInstallOutputs(cmGeneratedFileStream& nixFileStream)
 {
   std::lock_guard<std::mutex> lock(this->InstallTargetsMutex);
-  for (cmGeneratorTarget* target : this->InstallTargets) {
-    std::string targetName = target->GetName();
-    std::string derivName = this->GetDerivationName(targetName);
-    std::string installDerivName = derivName + "_install";
-    
-    nixFileStream << "  \"" << targetName << "_install\" = " << installDerivName << ";\n";
-  }
+  this->InstallRuleGenerator->WriteInstallOutputs(
+    this->InstallTargets, 
+    nixFileStream,
+    [this](const std::string& targetName) { return this->GetDerivationName(targetName); });
 }
 
 void cmGlobalNixGenerator::WriteExternalHeaderDerivations(
@@ -2781,81 +2795,18 @@ std::string cmGlobalNixGenerator::GetOrCreateHeaderDerivation(
 void cmGlobalNixGenerator::CollectInstallTargets()
 {
   std::lock_guard<std::mutex> lock(this->InstallTargetsMutex);
-  this->InstallTargets.clear();
-  
-  for (auto const& lg : this->LocalGenerators) {
-    for (auto const& target : lg->GetGeneratorTargets()) {
-      if (target->GetType() == cmStateEnums::EXECUTABLE ||
-          target->GetType() == cmStateEnums::STATIC_LIBRARY ||
-          target->GetType() == cmStateEnums::SHARED_LIBRARY ||
-          target->GetType() == cmStateEnums::MODULE_LIBRARY ||
-          target->GetType() == cmStateEnums::OBJECT_LIBRARY) {
-        if(!target->Target->GetInstallGenerators().empty()) {
-          this->InstallTargets.push_back(target.get());
-        }
-      }
-    }
-  }
+  this->InstallTargets = this->InstallRuleGenerator->CollectInstallTargets(this->LocalGenerators);
 }
 
 void cmGlobalNixGenerator::WriteInstallRules(cmGeneratedFileStream& nixFileStream)
 {
   std::lock_guard<std::mutex> lock(this->InstallTargetsMutex);
-  if (this->InstallTargets.empty()) {
-    return;
-  }
-  
-  nixFileStream << "\n  # Install derivations\n";
-  
-  for (cmGeneratorTarget* target : this->InstallTargets) {
-    std::string targetName = target->GetName();
-    std::string derivName = this->GetDerivationName(targetName);
-    std::string installDerivName = derivName + "_install";
-    
-    nixFileStream << "  " << installDerivName << " = stdenv.mkDerivation {\n";
-    nixFileStream << "    name = \"" << targetName << "-install\";\n";
-    nixFileStream << "    src = " << derivName << ";\n";
-    nixFileStream << "    dontUnpack = true;\n";
-    nixFileStream << "    dontBuild = true;\n";
-    nixFileStream << "    dontConfigure = true;\n";
-    nixFileStream << "    installPhase = ''\n";
-
-    // Get install destination, with error handling for missing install generators
-    std::string dest;
-    const auto& installGens = target->Target->GetInstallGenerators();
-    if (installGens.empty()) {
-      // No install rules defined - use default destinations
-      if (target->GetType() == cmStateEnums::EXECUTABLE) {
-        dest = "bin";
-      } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY || 
-                 target->GetType() == cmStateEnums::STATIC_LIBRARY) {
-        dest = "lib";
-      } else {
-        dest = "share";
-      }
-    } else {
-      dest = installGens[0]->GetDestination(this->GetBuildConfiguration(target));
-    }
-    
-    std::string escapedDest = cmOutputConverter::EscapeForShell(dest, cmOutputConverter::Shell_Flag_IsUnix);
-    std::string escapedTargetName = cmOutputConverter::EscapeForShell(targetName, cmOutputConverter::Shell_Flag_IsUnix);
-    
-    nixFileStream << "      mkdir -p $out/" << escapedDest << "\n";
-    
-    // Determine installation destination based on target type
-    if (target->GetType() == cmStateEnums::EXECUTABLE) {
-      nixFileStream << "      cp $src $out/" << escapedDest << "/" << escapedTargetName << "\n";
-    } else if (target->GetType() == cmStateEnums::SHARED_LIBRARY) {
-      nixFileStream << "      cp -r $src/* $out/" << escapedDest << "/ 2>/dev/null || true\n";
-    } else if (target->GetType() == cmStateEnums::STATIC_LIBRARY) {
-      std::string libName = this->GetLibraryPrefix() + targetName + this->GetStaticLibraryExtension();
-      std::string escapedLibName = cmOutputConverter::EscapeForShell(libName, cmOutputConverter::Shell_Flag_IsUnix);
-      nixFileStream << "      cp $src $out/" << escapedDest << "/" << escapedLibName << "\n";
-    }
-    
-    nixFileStream << "    '';\n";
-    nixFileStream << "  };\n\n";
-  }
+  std::string config = this->GetBuildConfiguration(nullptr);
+  this->InstallRuleGenerator->WriteInstallRules(
+    this->InstallTargets, 
+    nixFileStream, 
+    config,
+    [this](const std::string& targetName) { return this->GetDerivationName(targetName); });
 }
 
 // Dependency graph implementation

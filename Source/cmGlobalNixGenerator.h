@@ -312,6 +312,9 @@ private:
   // Custom command handling is delegated to cmNixCustomCommandHandler
   std::unique_ptr<cmNixCustomCommandHandler> CustomCommandHandler;
   
+  // Install rule handling is delegated to cmNixInstallRuleGenerator
+  std::unique_ptr<class cmNixInstallRuleGenerator> InstallRuleGenerator;
+  
   // Header derivation tracking for external sources
   struct HeaderDerivationInfo {
     std::string DerivationName;
