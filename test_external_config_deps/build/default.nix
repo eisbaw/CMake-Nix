@@ -193,7 +193,7 @@ let
     buildInputs = [ gcc ];
     source = "main.c";
     compiler = gcc;
-    flags = "-O3 -DNDEBUG -Ihome/mpedersen/topics/cmake_nix_backend/CMake/test_external_config_deps -Ibuild";
+    flags = "-O3 -DNDEBUG -I/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_config_deps -Ibuild";
   };
 
   test_app_external_src_external_c_o = cmakeNixCC {
@@ -201,16 +201,18 @@ let
     src = pkgs.runCommand "composite-src" {
     } ''
       mkdir -p $out
+      # Copy source files
       cp -rL ${./..}/* $out/ 2>/dev/null || true
       # Copy headers from external include directory: /home/mpedersen/topics/cmake_nix_backend/CMake/test_external_config_deps
       mkdir -p $out/home/mpedersen/topics/cmake_nix_backend/CMake
       cp -rL ${builtins.path { path = "/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_config_deps"; }} $out/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_config_deps
+      # Copy external source file
       cp ${builtins.path { path = "/home/mpedersen/topics/cmake_nix_backend/CMake/external_src/external.c"; }} $out/external.c
     '';
     buildInputs = [ gcc ];
     source = "external.c";
     compiler = gcc;
-    flags = "-O3 -DNDEBUG -Ihome/mpedersen/topics/cmake_nix_backend/CMake/test_external_config_deps -Ibuild";
+    flags = "-O3 -DNDEBUG -I/home/mpedersen/topics/cmake_nix_backend/CMake/test_external_config_deps -Ibuild";
   };
 
 

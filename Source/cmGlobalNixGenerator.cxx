@@ -2853,6 +2853,29 @@ void cmGlobalNixGenerator::ProcessLibraryDependencies(
   if (!hasStaticDependencies) {
     // No static dependencies - process normally
     this->ProcessLibraryDependenciesForLinking(target, ctx.config, linkFlagsList, ctx.libraries, transitiveDeps);
+    
+    // Add transitive shared library dependencies for executables
+    if (target->GetType() == cmStateEnums::EXECUTABLE) {
+      // Track direct dependencies to avoid duplicates
+      std::set<std::string> directDeps;
+      auto linkImpl = target->GetLinkImplementation(ctx.config, cmGeneratorTarget::UseTo::Compile);
+      if (linkImpl) {
+        for (const cmLinkItem& item : linkImpl->Libraries) {
+          if (item.Target && !item.Target->IsImported()) {
+            directDeps.insert(item.Target->GetName());
+          }
+        }
+      }
+      
+      // Add transitive dependencies that aren't already directly linked
+      for (const std::string& depTarget : transitiveDeps) {
+        if (directDeps.find(depTarget) == directDeps.end()) {
+          std::string depDerivName = this->GetDerivationName(depTarget);
+          ctx.libraries.push_back("${" + depDerivName + "}/" + this->GetLibraryPrefix() + 
+                                 depTarget + this->GetSharedLibraryExtension());
+        }
+      }
+    }
   } else {
     // Has static dependencies - handle specially
     if (linkImpl) {
